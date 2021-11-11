@@ -10,6 +10,31 @@
 #include <float.h>
 #include "cunittest.h"
 
+#if defined(_MSC_VER)
+#   include <windows.h>
+#   include <time.h>
+#   include <io.h>
+#   define isatty(x)                        _isatty(x)
+#   define fileno(x)                        _fileno(x)
+#   define GET_TID()                        ((unsigned long)GetCurrentThreadId())
+#   define snprintf(str, size, fmt, ...)    _snprintf_s(str, size, _TRUNCATE, fmt, ##__VA_ARGS__)
+#   ifndef strdup
+#       define strdup(str)                  _strdup(str)
+#   endif
+#   define strncasecmp(s1, s2, n)           _strnicmp(s1, s2, n)
+#   define sscanf(str, fmt, ...)            sscanf_s(str, fmt, ##__VA_ARGS__)
+#elif defined(__linux__)
+#   include <sys/time.h>
+#   include <unistd.h>
+#   include <pthread.h>
+#   define GET_TID()                        ((unsigned long)pthread_self())
+#else
+#   define GET_TID()                        0
+#endif
+
+#define COLOR_GREEN(str)                    "@G" str "@D"
+#define COLOR_RED(str)                      "@R" str "@D"
+#define COLOR_YELLO(str)                    "@Y" str "@D"
 /*
  * Before Visual Studio 2015, there is a bug that a `do { } while (0)` will triger C4127 warning
  * https://docs.microsoft.com/en-us/cpp/error-messages/compiler-warnings/compiler-warning-level-4-c4127
@@ -656,33 +681,6 @@ void cunittest_list_erase(cunittest_list_t* handler, cunittest_list_node_t* node
 /* test                                                                 */
 /************************************************************************/
 
-#if defined(_MSC_VER)
-#   include <windows.h>
-#   include <time.h>
-#   define GET_TID()                        ((unsigned long)GetCurrentThreadId())
-#   define snprintf(str, size, fmt, ...)    _snprintf_s(str, size, _TRUNCATE, fmt, ##__VA_ARGS__)
-#   ifndef strdup
-#       define strdup(str)                  _strdup(str)
-#   endif
-#   define strncasecmp(s1, s2, n)           _strnicmp(s1, s2, n)
-#   define sscanf(str, fmt, ...)            sscanf_s(str, fmt, ##__VA_ARGS__)
-#   define COLOR_GREEN(str)                 str
-#   define COLOR_RED(str)                   str
-#   define COLOR_YELLO(str)                 str
-#elif defined(__linux__)
-#   include <sys/time.h>
-#   include <pthread.h>
-#   define GET_TID()                        ((unsigned long)pthread_self())
-#   define COLOR_GREEN(str)                 "\033[32m" str "\033[0m"
-#   define COLOR_RED(str)                   "\033[31m" str "\033[0m"
-#   define COLOR_YELLO(str)                 "\033[33m" str "\033[0m"
-#else
-#   define GET_TID()                        0
-#   define COLOR_GREEN(str)                 str
-#   define COLOR_RED(str)                   str
-#   define COLOR_YELLO(str)                 str
-#endif
-
 #define MASK_FAILURE                        (0x01 << 0x00)
 #define MASK_SKIPPED                        (0x01 << 0x01)
 #define SET_MASK(val, mask)                 do { (val) |= (mask); } while (0)
@@ -706,10 +704,10 @@ typedef int test_bool;
 
 typedef enum print_color
 {
-    print_default,
-    print_red,
-    print_green,
-    print_yellow,
+    print_default   = 0,
+    print_red       = 1,
+    print_green     = 2,
+    print_yellow    = 4,
 }print_color_t;
 
 typedef union double_point
@@ -991,19 +989,119 @@ static test_bool _test_check_disable(const char* name)
     return !g_test_ctx.mask.also_run_disabled_tests && (strncmp("DISABLED_", name, 9) == 0);
 }
 
-static const char* _test_get_ansi_color_code(print_color_t color)
+#if defined(_WIN32)
+
+static int _get_bit_offset(WORD color_mask)
+{
+    if (color_mask == 0) return 0;
+
+    int bitOffset = 0;
+    while ((color_mask & 1) == 0)
+    {
+        color_mask >>= 1;
+        ++bitOffset;
+    }
+    return bitOffset;
+}
+
+static WORD _get_color_attribute(print_color_t color)
 {
     switch (color)
     {
     case print_red:
-        return "1";
-
+        return FOREGROUND_RED;
     case print_green:
-        return "2";
-
+        return FOREGROUND_GREEN;
     case print_yellow:
-        return "3";
+        return FOREGROUND_RED | FOREGROUND_GREEN;
+    default:
+        return 0;
+    }
+}
 
+static WORD _get_new_color(print_color_t color, WORD old_color_attrs)
+{
+    // Let's reuse the BG
+    static const WORD background_mask = BACKGROUND_BLUE | BACKGROUND_GREEN |
+        BACKGROUND_RED | BACKGROUND_INTENSITY;
+    static const WORD foreground_mask = FOREGROUND_BLUE | FOREGROUND_GREEN |
+        FOREGROUND_RED | FOREGROUND_INTENSITY;
+    const WORD existing_bg = old_color_attrs & background_mask;
+
+    WORD new_color =
+        _get_color_attribute(color) | existing_bg | FOREGROUND_INTENSITY;
+    const int bg_bitOffset = _get_bit_offset(background_mask);
+    const int fg_bitOffset = _get_bit_offset(foreground_mask);
+
+    if (((new_color & background_mask) >> bg_bitOffset) ==
+        ((new_color & foreground_mask) >> fg_bitOffset))
+    {
+        new_color ^= FOREGROUND_INTENSITY;  // invert intensity
+    }
+    return new_color;
+}
+
+static char* strndup(const char* s, size_t n)
+{
+    size_t l = strnlen(s, n);
+    char* d = malloc(l + 1);
+    if (!d) return NULL;
+    memcpy(d, s, l);
+    d[l] = 0;
+    return d;
+}
+
+#else
+
+typedef struct color_printf_ctx
+{
+    int terminal_color_support;
+}color_printf_ctx_t;
+
+static color_printf_ctx_t g_color_printf = {
+    0,
+};
+
+static void _initlize_color_unix(void)
+{
+    static const char* support_color_term_list[] = {
+        "xterm",
+        "xterm-color",
+        "xterm-256color",
+        "screen",
+        "screen-256color",
+        "tmux",
+        "tmux-256color",
+        "rxvt-unicode",
+        "rxvt-unicode-256color",
+        "linux",
+        "cygwin",
+    };
+
+    /* On non-Windows platforms, we rely on the TERM variable. */
+    const char* term = getenv("TERM");
+
+    size_t i;
+    for (i = 0; i < ARRAY_SIZE(support_color_term_list); i++)
+    {
+        if (strcmp(term, support_color_term_list[i]) == 0)
+        {
+            g_color_printf.terminal_color_support = 1;
+            break;
+        }
+    }
+}
+
+static const char* _get_ansi_color_code_fg(print_color_t color)
+{
+    switch (color)
+    {
+    case print_red:
+        return "31";
+    case print_green:
+        return "32";
+    case print_yellow:
+        return "33";
     default:
         break;
     }
@@ -1011,45 +1109,112 @@ static const char* _test_get_ansi_color_code(print_color_t color)
     return NULL;
 }
 
-static void _test_print_colorful(print_color_t color, const char* fmt, ...)
+#endif
+
+static int _should_use_color(int is_tty)
 {
+#if defined(_WIN32)
+    /**
+     * On Windows the TERM variable is usually not set, but the console there
+     * does support colors.
+     */
+    return is_tty;
+#else
+    static pthread_once_t once_control = PTHREAD_ONCE_INIT;
+    pthread_once(&once_control, _initlize_color_unix);
+
+    return is_tty && g_color_printf.terminal_color_support;
+#endif
+}
+
+static int _test_print_colorful(print_color_t color, FILE* stream, const char* fmt, ...)
+{
+    int ret;
     va_list args;
     va_start(args, fmt);
 
-    if (color == print_default)
+    int stream_fd = fileno(stream);
+    if (!_should_use_color(isatty(stream_fd)) || (color == print_default))
     {
-        vprintf(fmt, args);
+        ret = vfprintf(stream, fmt, args);
         goto fin;
     }
 
-#if defined(_MSC_VER)
-    const HANDLE stdout_handle = GetStdHandle(STD_OUTPUT_HANDLE);
+#if defined(_WIN32)
+    const HANDLE stdout_handle = (HANDLE)_get_osfhandle(stream_fd);
 
     // Gets the current text color.
     CONSOLE_SCREEN_BUFFER_INFO buffer_info;
     GetConsoleScreenBufferInfo(stdout_handle, &buffer_info);
     const WORD old_color_attrs = buffer_info.wAttributes;
-    const WORD new_color = _test_get_new_color(color, old_color_attrs);
+    const WORD new_color = _get_new_color(color, old_color_attrs);
 
     // We need to flush the stream buffers into the console before each
     // SetConsoleTextAttribute call lest it affect the text that is already
     // printed but has not yet reached the console.
-    fflush(stdout);
+    fflush(stream);
     SetConsoleTextAttribute(stdout_handle, new_color);
 
-    vprintf(fmt, args);
+    ret = vfprintf(stream, fmt, args);
 
-    fflush(stdout);
+    fflush(stream);
     // Restores the text color.
     SetConsoleTextAttribute(stdout_handle, old_color_attrs);
 #else
-    printf("\033[0;3%sm", _test_get_ansi_color_code(color));
-    vprintf(fmt, args);
-    printf("\033[m");
+    fprintf(stream, "\033[0;%sm", _get_ansi_color_code_fg(color));
+    ret = vfprintf(stream, fmt, args);
+    fprintf(stream, "\033[m");  // Resets the terminal to default.
 #endif
 
 fin:
     va_end(args);
+    return ret;
+}
+
+static int _print_encoded(FILE* stream, const char* str)
+{
+    char* str_tmp;
+    int ret = 0;
+    print_color_t color = print_default;
+
+    for (;;)
+    {
+        const char* p = strchr(str, '@');
+        if (p == NULL)
+        {
+            ret += _test_print_colorful(color, stream, "%s", str);
+            return ret;
+        }
+
+        str_tmp = strndup(str, p - str);
+        ret += _test_print_colorful(color, stream, "%s", str_tmp);
+        free(str_tmp);
+
+        const char ch = p[1];
+        str = p + 2;
+
+        switch (ch)
+        {
+        case '@':
+            ret += _test_print_colorful(color, stream, "@");
+            break;
+        case 'D':
+            color = 0;
+            break;
+        case 'R':
+            color = print_red;
+            break;
+        case 'G':
+            color = print_green;
+            break;
+        case 'Y':
+            color = print_yellow;
+            break;
+        default:
+            --str;
+            break;
+        }
+    }
 }
 
 static void _test_hook_before_fixture_setup(cunittest_case_t* test_case)
@@ -1248,8 +1413,8 @@ static void _test_run_case(void)
         return;
     }
 
-    _test_print_colorful(print_green, "[ RUN      ]");
-    _test_print_colorful(print_default, " %s\n", g_test_ctx2.strbuf);
+    _test_print_colorful(print_green, stdout, "[ RUN      ]");
+    _test_print_colorful(print_default, stdout, " %s\n", g_test_ctx2.strbuf);
 
     int ret;
     if ((ret = setjmp(g_test_ctx2.jmpbuf)) != 0)
@@ -1308,17 +1473,17 @@ procedure_teardown_fin:
     if (HAS_MASK(g_test_ctx.runtime.cur_case->info.mask, MASK_FAILURE))
     {
         g_test_ctx.counter.result.failed++;
-        _test_print_colorful(print_red, "[  FAILED  ]");
+        _test_print_colorful(print_red, stdout, "[  FAILED  ]");
     }
     else if (HAS_MASK(g_test_ctx.runtime.cur_case->info.mask, MASK_SKIPPED))
     {
         g_test_ctx.counter.result.skipped++;
-        _test_print_colorful(print_yellow, "[   SKIP   ]");
+        _test_print_colorful(print_yellow, stdout, "[   SKIP   ]");
     }
     else
     {
         g_test_ctx.counter.result.success++;
-        _test_print_colorful(print_green, "[       OK ]");
+        _test_print_colorful(print_green, stdout, "[       OK ]");
     }
 
     printf(" %s", g_test_ctx2.strbuf);
@@ -1360,7 +1525,7 @@ static void _test_show_report_failed(void)
         snprintf(g_test_ctx2.strbuf, sizeof(g_test_ctx2.strbuf), "%s.%s",
             case_data->info.suit_name, case_data->info.case_name);
 
-        _test_print_colorful(print_red, "[  FAILED  ]");
+        _test_print_colorful(print_red, stdout, "[  FAILED  ]");
         printf(" %s\n", g_test_ctx2.strbuf);
     }
 }
@@ -1370,7 +1535,7 @@ static void _test_show_report(void)
     cunittest_timestamp_dif(&g_test_ctx.timestamp.tv_total_start,
         &g_test_ctx.timestamp.tv_total_end, &g_test_ctx.timestamp.tv_diff);
 
-    _test_print_colorful(print_green, "[==========]");
+    _test_print_colorful(print_green, stdout, "[==========]");
     printf(" %u/%u test case%s ran.",
         g_test_ctx.counter.result.total,
         (unsigned)cunittest_list_size(&g_test_ctx.info.case_list),
@@ -1385,21 +1550,21 @@ static void _test_show_report(void)
 
     if (g_test_ctx.counter.result.disabled != 0)
     {
-        _test_print_colorful(print_green, "[ DISABLED ]");
+        _test_print_colorful(print_green, stdout, "[ DISABLED ]");
         printf(" %u test%s.\n",
             g_test_ctx.counter.result.disabled,
             g_test_ctx.counter.result.disabled > 1 ? "s" : "");
     }
     if (g_test_ctx.counter.result.skipped != 0)
     {
-        _test_print_colorful(print_yellow, "[ BYPASSED ]");
+        _test_print_colorful(print_yellow, stdout, "[ BYPASSED ]");
         printf(" %u test%s.\n",
             g_test_ctx.counter.result.skipped,
             g_test_ctx.counter.result.skipped > 1 ? "s" : "");
     }
     if (g_test_ctx.counter.result.success != 0)
     {
-        _test_print_colorful(print_green, "[  PASSED  ]");
+        _test_print_colorful(print_green, stdout, "[  PASSED  ]");
         printf(" %u test%s.\n",
             g_test_ctx.counter.result.success,
             g_test_ctx.counter.result.success > 1 ? "s" : "");
@@ -1411,7 +1576,7 @@ static void _test_show_report(void)
         return;
     }
 
-    _test_print_colorful(print_red, "[  FAILED  ]");
+    _test_print_colorful(print_red, stdout, "[  FAILED  ]");
     printf(" %u test%s, listed below:\n", g_test_ctx.counter.result.failed, g_test_ctx.counter.result.failed > 1 ? "s" : "");
     _test_show_report_failed();
 }
@@ -1689,7 +1854,7 @@ static int _test_setup(int argc, char* argv[], const cunittest_hook_t* hook)
             g_test_ctx.mask.break_on_failure = 1;
             break;
         case help:
-            printf(
+            _print_encoded(stdout,
                 "This program contains tests written using Test. You can use the\n"
                 "following command line flags to control its behavior:\n"
                 "\n"
@@ -1743,7 +1908,7 @@ static void _test_run_test_loop(void)
 {
     _test_reset_all_test();
 
-    _test_print_colorful(print_yellow, "[==========]");
+    _test_print_colorful(print_yellow, stdout, "[==========]");
     printf(" total %u test%s registered.\n",
         (unsigned)cunittest_list_size(&g_test_ctx.info.case_list),
         cunittest_list_size(&g_test_ctx.info.case_list) > 1 ? "s" : "");
@@ -1949,7 +2114,7 @@ int cunittest_run_tests(int argc, char* argv[], const cunittest_hook_t* hook)
     {
         if (g_test_ctx.counter.repeat.repeat > 1)
         {
-            _test_print_colorful(print_yellow, "[==========]");
+            _test_print_colorful(print_yellow, stdout, "[==========]");
             printf(" start loop: %u/%u\n",
                 g_test_ctx.counter.repeat.repeated + 1, g_test_ctx.counter.repeat.repeat);
         }
@@ -1958,7 +2123,7 @@ int cunittest_run_tests(int argc, char* argv[], const cunittest_hook_t* hook)
 
         if (g_test_ctx.counter.repeat.repeat > 1)
         {
-            _test_print_colorful(print_yellow, "[==========]");
+            _test_print_colorful(print_yellow, stdout, "[==========]");
             printf(" end loop (%u/%u)\n",
                 g_test_ctx.counter.repeat.repeated + 1, g_test_ctx.counter.repeat.repeat);
             if (g_test_ctx.counter.repeat.repeated < g_test_ctx.counter.repeat.repeat - 1)
