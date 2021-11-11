@@ -247,12 +247,12 @@ extern "C" {
  * @param [in] b    Value b
  * @param [in] ...  User defined error message
  */
-#define ASSERT_EQ_D32(a, b, ...)        ASSERT_TEMPLATE_VA(__VA_ARGS__)(int32_t, "%"PRId32, ==, _ASSERT_INTERNAL_HELPER_EQ, a, b, ##__VA_ARGS__)
-#define ASSERT_NE_D32(a, b, ...)        ASSERT_TEMPLATE_VA(__VA_ARGS__)(int32_t, "%"PRId32, !=, _ASSERT_INTERNAL_HELPER_NE, a, b, ##__VA_ARGS__)
-#define ASSERT_LT_D32(a, b, ...)        ASSERT_TEMPLATE_VA(__VA_ARGS__)(int32_t, "%"PRId32, <,  _ASSERT_INTERNAL_HELPER_LT, a, b, ##__VA_ARGS__)
-#define ASSERT_LE_D32(a, b, ...)        ASSERT_TEMPLATE_VA(__VA_ARGS__)(int32_t, "%"PRId32, <=, _ASSERT_INTERNAL_HELPER_LE, a, b, ##__VA_ARGS__)
-#define ASSERT_GT_D32(a, b, ...)        ASSERT_TEMPLATE_VA(__VA_ARGS__)(int32_t, "%"PRId32, >,  _ASSERT_INTERNAL_HELPER_GT, a, b, ##__VA_ARGS__)
-#define ASSERT_GE_D32(a, b, ...)        ASSERT_TEMPLATE_VA(__VA_ARGS__)(int32_t, "%"PRId32, >=, _ASSERT_INTERNAL_HELPER_GE, a, b, ##__VA_ARGS__)
+#define ASSERT_EQ_D32(a, b, ...)        ASSERT_TEMPLATE_VA(__VA_ARGS__)(int32_t, "%" PRId32, ==, _ASSERT_INTERNAL_HELPER_EQ, a, b, ##__VA_ARGS__)
+#define ASSERT_NE_D32(a, b, ...)        ASSERT_TEMPLATE_VA(__VA_ARGS__)(int32_t, "%" PRId32, !=, _ASSERT_INTERNAL_HELPER_NE, a, b, ##__VA_ARGS__)
+#define ASSERT_LT_D32(a, b, ...)        ASSERT_TEMPLATE_VA(__VA_ARGS__)(int32_t, "%" PRId32, <,  _ASSERT_INTERNAL_HELPER_LT, a, b, ##__VA_ARGS__)
+#define ASSERT_LE_D32(a, b, ...)        ASSERT_TEMPLATE_VA(__VA_ARGS__)(int32_t, "%" PRId32, <=, _ASSERT_INTERNAL_HELPER_LE, a, b, ##__VA_ARGS__)
+#define ASSERT_GT_D32(a, b, ...)        ASSERT_TEMPLATE_VA(__VA_ARGS__)(int32_t, "%" PRId32, >,  _ASSERT_INTERNAL_HELPER_GT, a, b, ##__VA_ARGS__)
+#define ASSERT_GE_D32(a, b, ...)        ASSERT_TEMPLATE_VA(__VA_ARGS__)(int32_t, "%" PRId32, >=, _ASSERT_INTERNAL_HELPER_GE, a, b, ##__VA_ARGS__)
 
 /**
  * @def ASSERT_EQ_U32
@@ -314,12 +314,12 @@ extern "C" {
  * @param [in] b    Value b
  * @param [in] ...  User defined error message
  */
-#define ASSERT_EQ_U32(a, b, ...)        ASSERT_TEMPLATE_VA(__VA_ARGS__)(uint32_t, "%"PRIu32, ==, _ASSERT_INTERNAL_HELPER_EQ, a, b, ##__VA_ARGS__)
-#define ASSERT_NE_U32(a, b, ...)        ASSERT_TEMPLATE_VA(__VA_ARGS__)(uint32_t, "%"PRIu32, !=, _ASSERT_INTERNAL_HELPER_NE, a, b, ##__VA_ARGS__)
-#define ASSERT_LT_U32(a, b, ...)        ASSERT_TEMPLATE_VA(__VA_ARGS__)(uint32_t, "%"PRIu32, <,  _ASSERT_INTERNAL_HELPER_LT, a, b, ##__VA_ARGS__)
-#define ASSERT_LE_U32(a, b, ...)        ASSERT_TEMPLATE_VA(__VA_ARGS__)(uint32_t, "%"PRIu32, <=, _ASSERT_INTERNAL_HELPER_LE, a, b, ##__VA_ARGS__)
-#define ASSERT_GT_U32(a, b, ...)        ASSERT_TEMPLATE_VA(__VA_ARGS__)(uint32_t, "%"PRIu32, >,  _ASSERT_INTERNAL_HELPER_GT, a, b, ##__VA_ARGS__)
-#define ASSERT_GE_U32(a, b, ...)        ASSERT_TEMPLATE_VA(__VA_ARGS__)(uint32_t, "%"PRIu32, >=, _ASSERT_INTERNAL_HELPER_GE, a, b, ##__VA_ARGS__)
+#define ASSERT_EQ_U32(a, b, ...)        ASSERT_TEMPLATE_VA(__VA_ARGS__)(uint32_t, "%" PRIu32, ==, _ASSERT_INTERNAL_HELPER_EQ, a, b, ##__VA_ARGS__)
+#define ASSERT_NE_U32(a, b, ...)        ASSERT_TEMPLATE_VA(__VA_ARGS__)(uint32_t, "%" PRIu32, !=, _ASSERT_INTERNAL_HELPER_NE, a, b, ##__VA_ARGS__)
+#define ASSERT_LT_U32(a, b, ...)        ASSERT_TEMPLATE_VA(__VA_ARGS__)(uint32_t, "%" PRIu32, <,  _ASSERT_INTERNAL_HELPER_LT, a, b, ##__VA_ARGS__)
+#define ASSERT_LE_U32(a, b, ...)        ASSERT_TEMPLATE_VA(__VA_ARGS__)(uint32_t, "%" PRIu32, <=, _ASSERT_INTERNAL_HELPER_LE, a, b, ##__VA_ARGS__)
+#define ASSERT_GT_U32(a, b, ...)        ASSERT_TEMPLATE_VA(__VA_ARGS__)(uint32_t, "%" PRIu32, >,  _ASSERT_INTERNAL_HELPER_GT, a, b, ##__VA_ARGS__)
+#define ASSERT_GE_U32(a, b, ...)        ASSERT_TEMPLATE_VA(__VA_ARGS__)(uint32_t, "%" PRIu32, >=, _ASSERT_INTERNAL_HELPER_GE, a, b, ##__VA_ARGS__)
 
 /**
  * @def ASSERT_EQ_X32
@@ -387,12 +387,12 @@ extern "C" {
  * @param [in] b    Value b
  * @param [in] ...  User defined error message
  */
-#define ASSERT_EQ_X32(a, b, ...)        ASSERT_TEMPLATE_VA(__VA_ARGS__)(uint32_t, "%#010"PRIx32, ==, _ASSERT_INTERNAL_HELPER_EQ, a, b, ##__VA_ARGS__)
-#define ASSERT_NE_X32(a, b, ...)        ASSERT_TEMPLATE_VA(__VA_ARGS__)(uint32_t, "%#010"PRIx32, !=, _ASSERT_INTERNAL_HELPER_NE, a, b, ##__VA_ARGS__)
-#define ASSERT_LT_X32(a, b, ...)        ASSERT_TEMPLATE_VA(__VA_ARGS__)(uint32_t, "%#010"PRIx32, <,  _ASSERT_INTERNAL_HELPER_LT, a, b, ##__VA_ARGS__)
-#define ASSERT_LE_X32(a, b, ...)        ASSERT_TEMPLATE_VA(__VA_ARGS__)(uint32_t, "%#010"PRIx32, <=, _ASSERT_INTERNAL_HELPER_LE, a, b, ##__VA_ARGS__)
-#define ASSERT_GT_X32(a, b, ...)        ASSERT_TEMPLATE_VA(__VA_ARGS__)(uint32_t, "%#010"PRIx32, >,  _ASSERT_INTERNAL_HELPER_GT, a, b, ##__VA_ARGS__)
-#define ASSERT_GE_X32(a, b, ...)        ASSERT_TEMPLATE_VA(__VA_ARGS__)(uint32_t, "%#010"PRIx32, >=, _ASSERT_INTERNAL_HELPER_GE, a, b, ##__VA_ARGS__)
+#define ASSERT_EQ_X32(a, b, ...)        ASSERT_TEMPLATE_VA(__VA_ARGS__)(uint32_t, "0x%#08" PRIx32, ==, _ASSERT_INTERNAL_HELPER_EQ, a, b, ##__VA_ARGS__)
+#define ASSERT_NE_X32(a, b, ...)        ASSERT_TEMPLATE_VA(__VA_ARGS__)(uint32_t, "0x%#08" PRIx32, !=, _ASSERT_INTERNAL_HELPER_NE, a, b, ##__VA_ARGS__)
+#define ASSERT_LT_X32(a, b, ...)        ASSERT_TEMPLATE_VA(__VA_ARGS__)(uint32_t, "0x%#08" PRIx32, <,  _ASSERT_INTERNAL_HELPER_LT, a, b, ##__VA_ARGS__)
+#define ASSERT_LE_X32(a, b, ...)        ASSERT_TEMPLATE_VA(__VA_ARGS__)(uint32_t, "0x%#08" PRIx32, <=, _ASSERT_INTERNAL_HELPER_LE, a, b, ##__VA_ARGS__)
+#define ASSERT_GT_X32(a, b, ...)        ASSERT_TEMPLATE_VA(__VA_ARGS__)(uint32_t, "0x%#08" PRIx32, >,  _ASSERT_INTERNAL_HELPER_GT, a, b, ##__VA_ARGS__)
+#define ASSERT_GE_X32(a, b, ...)        ASSERT_TEMPLATE_VA(__VA_ARGS__)(uint32_t, "0x%#08" PRIx32, >=, _ASSERT_INTERNAL_HELPER_GE, a, b, ##__VA_ARGS__)
 
 /**
  * @def ASSERT_EQ_D64
@@ -454,12 +454,12 @@ extern "C" {
  * @param [in] b    Value b
  * @param [in] ...  User defined error message
  */
-#define ASSERT_EQ_D64(a, b, ...)        ASSERT_TEMPLATE_VA(__VA_ARGS__)(int64_t, "%"PRId64, ==, _ASSERT_INTERNAL_HELPER_EQ, a, b, ##__VA_ARGS__)
-#define ASSERT_NE_D64(a, b, ...)        ASSERT_TEMPLATE_VA(__VA_ARGS__)(int64_t, "%"PRId64, !=, _ASSERT_INTERNAL_HELPER_NE, a, b, ##__VA_ARGS__)
-#define ASSERT_LT_D64(a, b, ...)        ASSERT_TEMPLATE_VA(__VA_ARGS__)(int64_t, "%"PRId64, <,  _ASSERT_INTERNAL_HELPER_LT, a, b, ##__VA_ARGS__)
-#define ASSERT_LE_D64(a, b, ...)        ASSERT_TEMPLATE_VA(__VA_ARGS__)(int64_t, "%"PRId64, <=, _ASSERT_INTERNAL_HELPER_LE, a, b, ##__VA_ARGS__)
-#define ASSERT_GT_D64(a, b, ...)        ASSERT_TEMPLATE_VA(__VA_ARGS__)(int64_t, "%"PRId64, >,  _ASSERT_INTERNAL_HELPER_GT, a, b, ##__VA_ARGS__)
-#define ASSERT_GE_D64(a, b, ...)        ASSERT_TEMPLATE_VA(__VA_ARGS__)(int64_t, "%"PRId64, >=, _ASSERT_INTERNAL_HELPER_GE, a, b, ##__VA_ARGS__)
+#define ASSERT_EQ_D64(a, b, ...)        ASSERT_TEMPLATE_VA(__VA_ARGS__)(int64_t, "%" PRId64, ==, _ASSERT_INTERNAL_HELPER_EQ, a, b, ##__VA_ARGS__)
+#define ASSERT_NE_D64(a, b, ...)        ASSERT_TEMPLATE_VA(__VA_ARGS__)(int64_t, "%" PRId64, !=, _ASSERT_INTERNAL_HELPER_NE, a, b, ##__VA_ARGS__)
+#define ASSERT_LT_D64(a, b, ...)        ASSERT_TEMPLATE_VA(__VA_ARGS__)(int64_t, "%" PRId64, <,  _ASSERT_INTERNAL_HELPER_LT, a, b, ##__VA_ARGS__)
+#define ASSERT_LE_D64(a, b, ...)        ASSERT_TEMPLATE_VA(__VA_ARGS__)(int64_t, "%" PRId64, <=, _ASSERT_INTERNAL_HELPER_LE, a, b, ##__VA_ARGS__)
+#define ASSERT_GT_D64(a, b, ...)        ASSERT_TEMPLATE_VA(__VA_ARGS__)(int64_t, "%" PRId64, >,  _ASSERT_INTERNAL_HELPER_GT, a, b, ##__VA_ARGS__)
+#define ASSERT_GE_D64(a, b, ...)        ASSERT_TEMPLATE_VA(__VA_ARGS__)(int64_t, "%" PRId64, >=, _ASSERT_INTERNAL_HELPER_GE, a, b, ##__VA_ARGS__)
 
 /**
  * @def ASSERT_EQ_U64
@@ -521,12 +521,12 @@ extern "C" {
  * @param [in] b    Value b
  * @param [in] ...  User defined error message
  */
-#define ASSERT_EQ_U64(a, b, ...)        ASSERT_TEMPLATE_VA(__VA_ARGS__)(uint64_t, "%"PRIu64, ==, _ASSERT_INTERNAL_HELPER_EQ, a, b, ##__VA_ARGS__)
-#define ASSERT_NE_U64(a, b, ...)        ASSERT_TEMPLATE_VA(__VA_ARGS__)(uint64_t, "%"PRIu64, !=, _ASSERT_INTERNAL_HELPER_NE, a, b, ##__VA_ARGS__)
-#define ASSERT_LT_U64(a, b, ...)        ASSERT_TEMPLATE_VA(__VA_ARGS__)(uint64_t, "%"PRIu64, <,  _ASSERT_INTERNAL_HELPER_LT, a, b, ##__VA_ARGS__)
-#define ASSERT_LE_U64(a, b, ...)        ASSERT_TEMPLATE_VA(__VA_ARGS__)(uint64_t, "%"PRIu64, <=, _ASSERT_INTERNAL_HELPER_LE, a, b, ##__VA_ARGS__)
-#define ASSERT_GT_U64(a, b, ...)        ASSERT_TEMPLATE_VA(__VA_ARGS__)(uint64_t, "%"PRIu64, >,  _ASSERT_INTERNAL_HELPER_GT, a, b, ##__VA_ARGS__)
-#define ASSERT_GE_U64(a, b, ...)        ASSERT_TEMPLATE_VA(__VA_ARGS__)(uint64_t, "%"PRIu64, >=, _ASSERT_INTERNAL_HELPER_GE, a, b, ##__VA_ARGS__)
+#define ASSERT_EQ_U64(a, b, ...)        ASSERT_TEMPLATE_VA(__VA_ARGS__)(uint64_t, "%" PRIu64, ==, _ASSERT_INTERNAL_HELPER_EQ, a, b, ##__VA_ARGS__)
+#define ASSERT_NE_U64(a, b, ...)        ASSERT_TEMPLATE_VA(__VA_ARGS__)(uint64_t, "%" PRIu64, !=, _ASSERT_INTERNAL_HELPER_NE, a, b, ##__VA_ARGS__)
+#define ASSERT_LT_U64(a, b, ...)        ASSERT_TEMPLATE_VA(__VA_ARGS__)(uint64_t, "%" PRIu64, <,  _ASSERT_INTERNAL_HELPER_LT, a, b, ##__VA_ARGS__)
+#define ASSERT_LE_U64(a, b, ...)        ASSERT_TEMPLATE_VA(__VA_ARGS__)(uint64_t, "%" PRIu64, <=, _ASSERT_INTERNAL_HELPER_LE, a, b, ##__VA_ARGS__)
+#define ASSERT_GT_U64(a, b, ...)        ASSERT_TEMPLATE_VA(__VA_ARGS__)(uint64_t, "%" PRIu64, >,  _ASSERT_INTERNAL_HELPER_GT, a, b, ##__VA_ARGS__)
+#define ASSERT_GE_U64(a, b, ...)        ASSERT_TEMPLATE_VA(__VA_ARGS__)(uint64_t, "%" PRIu64, >=, _ASSERT_INTERNAL_HELPER_GE, a, b, ##__VA_ARGS__)
 
 /**
  * @def ASSERT_EQ_X64
@@ -594,12 +594,12 @@ extern "C" {
  * @param [in] b    Value b
  * @param [in] ...  User defined error message
  */
-#define ASSERT_EQ_X64(a, b, ...)        ASSERT_TEMPLATE_VA(__VA_ARGS__)(uint64_t, "%#018"PRIx64, ==, _ASSERT_INTERNAL_HELPER_EQ, a, b, ##__VA_ARGS__)
-#define ASSERT_NE_X64(a, b, ...)        ASSERT_TEMPLATE_VA(__VA_ARGS__)(uint64_t, "%#018"PRIx64, !=, _ASSERT_INTERNAL_HELPER_NE, a, b, ##__VA_ARGS__)
-#define ASSERT_LT_X64(a, b, ...)        ASSERT_TEMPLATE_VA(__VA_ARGS__)(uint64_t, "%#018"PRIx64, <,  _ASSERT_INTERNAL_HELPER_LT, a, b, ##__VA_ARGS__)
-#define ASSERT_LE_X64(a, b, ...)        ASSERT_TEMPLATE_VA(__VA_ARGS__)(uint64_t, "%#018"PRIx64, <=, _ASSERT_INTERNAL_HELPER_LE, a, b, ##__VA_ARGS__)
-#define ASSERT_GT_X64(a, b, ...)        ASSERT_TEMPLATE_VA(__VA_ARGS__)(uint64_t, "%#018"PRIx64, >,  _ASSERT_INTERNAL_HELPER_GT, a, b, ##__VA_ARGS__)
-#define ASSERT_GE_X64(a, b, ...)        ASSERT_TEMPLATE_VA(__VA_ARGS__)(uint64_t, "%#018"PRIx64, >=, _ASSERT_INTERNAL_HELPER_GE, a, b, ##__VA_ARGS__)
+#define ASSERT_EQ_X64(a, b, ...)        ASSERT_TEMPLATE_VA(__VA_ARGS__)(uint64_t, "0x%#016" PRIx64, ==, _ASSERT_INTERNAL_HELPER_EQ, a, b, ##__VA_ARGS__)
+#define ASSERT_NE_X64(a, b, ...)        ASSERT_TEMPLATE_VA(__VA_ARGS__)(uint64_t, "0x%#016" PRIx64, !=, _ASSERT_INTERNAL_HELPER_NE, a, b, ##__VA_ARGS__)
+#define ASSERT_LT_X64(a, b, ...)        ASSERT_TEMPLATE_VA(__VA_ARGS__)(uint64_t, "0x%#016" PRIx64, <,  _ASSERT_INTERNAL_HELPER_LT, a, b, ##__VA_ARGS__)
+#define ASSERT_LE_X64(a, b, ...)        ASSERT_TEMPLATE_VA(__VA_ARGS__)(uint64_t, "0x%#016" PRIx64, <=, _ASSERT_INTERNAL_HELPER_LE, a, b, ##__VA_ARGS__)
+#define ASSERT_GT_X64(a, b, ...)        ASSERT_TEMPLATE_VA(__VA_ARGS__)(uint64_t, "0x%#016" PRIx64, >,  _ASSERT_INTERNAL_HELPER_GT, a, b, ##__VA_ARGS__)
+#define ASSERT_GE_X64(a, b, ...)        ASSERT_TEMPLATE_VA(__VA_ARGS__)(uint64_t, "0x%#016" PRIx64, >=, _ASSERT_INTERNAL_HELPER_GE, a, b, ##__VA_ARGS__)
 
 /**
  * @def ASSERT_EQ_SIZE
@@ -661,12 +661,12 @@ extern "C" {
  * @param [in] b    Value b
  * @param [in] ...  User defined error message
  */
-#define ASSERT_EQ_SIZE(a, b, ...)       ASSERT_TEMPLATE_VA(__VA_ARGS__)(size_t, "%"TEST_PRIsize, ==, _ASSERT_INTERNAL_HELPER_EQ, a, b, ##__VA_ARGS__)
-#define ASSERT_NE_SIZE(a, b, ...)       ASSERT_TEMPLATE_VA(__VA_ARGS__)(size_t, "%"TEST_PRIsize, !=, _ASSERT_INTERNAL_HELPER_NE, a, b, ##__VA_ARGS__)
-#define ASSERT_LT_SIZE(a, b, ...)       ASSERT_TEMPLATE_VA(__VA_ARGS__)(size_t, "%"TEST_PRIsize, <,  _ASSERT_INTERNAL_HELPER_LT, a, b, ##__VA_ARGS__)
-#define ASSERT_LE_SIZE(a, b, ...)       ASSERT_TEMPLATE_VA(__VA_ARGS__)(size_t, "%"TEST_PRIsize, <=, _ASSERT_INTERNAL_HELPER_LE, a, b, ##__VA_ARGS__)
-#define ASSERT_GT_SIZE(a, b, ...)       ASSERT_TEMPLATE_VA(__VA_ARGS__)(size_t, "%"TEST_PRIsize, >,  _ASSERT_INTERNAL_HELPER_GT, a, b, ##__VA_ARGS__)
-#define ASSERT_GE_SIZE(a, b, ...)       ASSERT_TEMPLATE_VA(__VA_ARGS__)(size_t, "%"TEST_PRIsize, >=, _ASSERT_INTERNAL_HELPER_GE, a, b, ##__VA_ARGS__)
+#define ASSERT_EQ_SIZE(a, b, ...)       ASSERT_TEMPLATE_VA(__VA_ARGS__)(size_t, "%" TEST_PRIsize, ==, _ASSERT_INTERNAL_HELPER_EQ, a, b, ##__VA_ARGS__)
+#define ASSERT_NE_SIZE(a, b, ...)       ASSERT_TEMPLATE_VA(__VA_ARGS__)(size_t, "%" TEST_PRIsize, !=, _ASSERT_INTERNAL_HELPER_NE, a, b, ##__VA_ARGS__)
+#define ASSERT_LT_SIZE(a, b, ...)       ASSERT_TEMPLATE_VA(__VA_ARGS__)(size_t, "%" TEST_PRIsize, <,  _ASSERT_INTERNAL_HELPER_LT, a, b, ##__VA_ARGS__)
+#define ASSERT_LE_SIZE(a, b, ...)       ASSERT_TEMPLATE_VA(__VA_ARGS__)(size_t, "%" TEST_PRIsize, <=, _ASSERT_INTERNAL_HELPER_LE, a, b, ##__VA_ARGS__)
+#define ASSERT_GT_SIZE(a, b, ...)       ASSERT_TEMPLATE_VA(__VA_ARGS__)(size_t, "%" TEST_PRIsize, >,  _ASSERT_INTERNAL_HELPER_GT, a, b, ##__VA_ARGS__)
+#define ASSERT_GE_SIZE(a, b, ...)       ASSERT_TEMPLATE_VA(__VA_ARGS__)(size_t, "%" TEST_PRIsize, >=, _ASSERT_INTERNAL_HELPER_GE, a, b, ##__VA_ARGS__)
 
 /**
  * @def ASSERT_EQ_PTR
