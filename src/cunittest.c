@@ -1080,6 +1080,10 @@ static void _initlize_color_unix(void)
 
     /* On non-Windows platforms, we rely on the TERM variable. */
     const char* term = getenv("TERM");
+    if (term == NULL)
+    {
+        return;
+    }
 
     size_t i;
     for (i = 0; i < ARRAY_SIZE(support_color_term_list); i++)
