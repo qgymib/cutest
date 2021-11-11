@@ -1,8 +1,8 @@
 cmake_minimum_required(VERSION 3.3)
-project(cunittest)
+project(cutest)
 
 add_library(${PROJECT_NAME}
-    "src/cunittest.c")
+    "src/cutest.c")
 
 target_include_directories(${PROJECT_NAME}
     PUBLIC
