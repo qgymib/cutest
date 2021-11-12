@@ -18,6 +18,12 @@ else ()
     target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra -Werror)
 endif ()
 
+find_package(Threads REQUIRED)
+target_link_libraries(${PROJECT_NAME}
+    PRIVATE
+        Threads::Threads
+)
+
 if (CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
     include(CTest)
 endif()
