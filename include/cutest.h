@@ -185,7 +185,15 @@ extern "C" {
  * @param [in] x        expression
  */
 #define ASSERT(x)   \
-    ((void)((x) || (cutest_unwrap_assert_fail(#x, __FILE__, __LINE__, __FUNCTION__),0)))
+    do {\
+        if (x) {\
+            break;\
+        }\
+        if (cutest_internal_break_on_failure()) {\
+            TEST_DEBUGBREAK;\
+        }\
+        cutest_unwrap_assert_fail(#x, __FILE__, __LINE__, __FUNCTION__);\
+    } TEST_MSVC_WARNNING_GUARD(while (0), 4127)
 
 /**
  * @def ASSERT_EQ_D32
