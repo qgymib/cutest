@@ -99,8 +99,8 @@ extern "C" {
  *
  * @note If you declare a Parameterized Test but do not want to use #TEST_GET_PARAM(),
  *   you may get a compile time warning like `unused parameter _test_parameterized_data`.
- *   To suppress this warning, just place `(void)TEST_GET_PARAM()` in the begin
- *   of your test body.
+ *   To suppress this warning, just place `TEST_PARAMETERIZED_SUPPRESS_UNUSED`
+ *   in the begin of your test body.
  *
  * @param [in] fixture_name     The name of fixture
  * @param [in] case_name        The name of test case
