@@ -6,4 +6,5 @@ endfunction()
 
 CUTEST_ADD_TEST(empty)
 CUTEST_ADD_TEST(simple_fixture)
+CUTEST_ADD_TEST(simple_parameterized)
 CUTEST_ADD_TEST(simple_suit)
