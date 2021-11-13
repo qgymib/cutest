@@ -1803,26 +1803,26 @@ static int _test_setup(int argc, char* argv[], const cutest_hook_t* hook)
     (void)argc;
     enum test_opt
     {
-        ctest_list_tests = 1,
-        ctest_filter,
-        ctest_also_run_disabled_tests,
-        ctest_repeat,
-        ctest_shuffle,
-        ctest_random_seed,
-        ctest_print_time,
-        ctest_break_on_failure,
+        test_list_tests = 1,
+        test_filter,
+        test_also_run_disabled_tests,
+        test_repeat,
+        test_shuffle,
+        test_random_seed,
+        test_print_time,
+        test_break_on_failure,
         help,
     };
 
     test_optparse_long_opt_t longopts[] = {
-        { "ctest_list_tests",               ctest_list_tests,               OPTPARSE_OPTIONAL },
-        { "ctest_filter",                   ctest_filter,                   OPTPARSE_OPTIONAL },
-        { "ctest_also_run_disabled_tests",  ctest_also_run_disabled_tests,  OPTPARSE_OPTIONAL },
-        { "ctest_repeat",                   ctest_repeat,                   OPTPARSE_OPTIONAL },
-        { "ctest_shuffle",                  ctest_shuffle,                  OPTPARSE_OPTIONAL },
-        { "ctest_random_seed",              ctest_random_seed,              OPTPARSE_OPTIONAL },
-        { "ctest_print_time",               ctest_print_time,               OPTPARSE_OPTIONAL },
-        { "ctest_break_on_failure",         ctest_break_on_failure,         OPTPARSE_OPTIONAL },
+        { "test_list_tests",                test_list_tests,               OPTPARSE_OPTIONAL },
+        { "test_filter",                    test_filter,                   OPTPARSE_OPTIONAL },
+        { "test_also_run_disabled_tests",   test_also_run_disabled_tests,  OPTPARSE_OPTIONAL },
+        { "test_repeat",                    test_repeat,                   OPTPARSE_OPTIONAL },
+        { "test_shuffle",                   test_shuffle,                  OPTPARSE_OPTIONAL },
+        { "test_random_seed",               test_random_seed,              OPTPARSE_OPTIONAL },
+        { "test_print_time",                test_print_time,               OPTPARSE_OPTIONAL },
+        { "test_break_on_failure",          test_break_on_failure,         OPTPARSE_OPTIONAL },
         { "help",                           help,                           OPTPARSE_OPTIONAL },
         { 0,                                0,                              OPTPARSE_NONE },
     };
@@ -1833,28 +1833,28 @@ static int _test_setup(int argc, char* argv[], const cutest_hook_t* hook)
     int option;
     while ((option = test_optparse_long(&options, longopts, NULL)) != -1) {
         switch (option) {
-        case ctest_list_tests:
+        case test_list_tests:
             _test_list_tests();
             return -1;
-        case ctest_filter:
+        case test_filter:
             _test_setup_arg_pattern(options.optarg);
             break;
-        case ctest_also_run_disabled_tests:
+        case test_also_run_disabled_tests:
             g_test_ctx.mask.also_run_disabled_tests = 1;
             break;
-        case ctest_repeat:
+        case test_repeat:
             _test_setup_arg_repeat(options.optarg);
             break;
-        case ctest_shuffle:
+        case test_shuffle:
             g_test_ctx.mask.shuffle = 1;
             break;
-        case ctest_random_seed:
+        case test_random_seed:
             _test_setup_arg_random_seed(options.optarg);
             break;
-        case ctest_print_time:
+        case test_print_time:
             _test_setup_arg_print_time(options.optarg);
             break;
-        case ctest_break_on_failure:
+        case test_break_on_failure:
             g_test_ctx.mask.break_on_failure = 1;
             break;
         case help:
@@ -1863,31 +1863,31 @@ static int _test_setup(int argc, char* argv[], const cutest_hook_t* hook)
                 "following command line flags to control its behavior:\n"
                 "\n"
                 "Test Selection:\n"
-                "  "COLOR_GREEN("--ctest_list_tests")"\n"
+                "  "COLOR_GREEN("--test_list_tests")"\n"
                 "      List the names of all tests instead of running them. The name of\n"
                 "      TEST(Foo, Bar) is \"Foo.Bar\".\n"
-                "  "COLOR_GREEN("--ctest_filter=") COLOR_YELLO("POSTIVE_PATTERNS[") COLOR_GREEN("-") COLOR_YELLO("NEGATIVE_PATTERNS]")"\n"
+                "  "COLOR_GREEN("--test_filter=") COLOR_YELLO("POSTIVE_PATTERNS[") COLOR_GREEN("-") COLOR_YELLO("NEGATIVE_PATTERNS]")"\n"
                 "      Run only the tests whose name matches one of the positive patterns but\n"
                 "      none of the negative patterns. '?' matches any single character; '*'\n"
                 "      matches any substring; ':' separates two patterns.\n"
-                "  "COLOR_GREEN("--ctest_also_run_disabled_tests")"\n"
+                "  "COLOR_GREEN("--test_also_run_disabled_tests")"\n"
                 "      Run all disabled tests too.\n"
                 "\n"
                 "Test Execution:\n"
-                "  "COLOR_GREEN("--ctest_repeat=")COLOR_YELLO("[COUNT]")"\n"
+                "  "COLOR_GREEN("--test_repeat=")COLOR_YELLO("[COUNT]")"\n"
                 "      Run the tests repeatedly; use a negative count to repeat forever.\n"
-                "  "COLOR_GREEN("--ctest_shuffle")"\n"
+                "  "COLOR_GREEN("--test_shuffle")"\n"
                 "      Randomize tests' orders on every iteration.\n"
-                "  "COLOR_GREEN("--ctest_random_seed=") COLOR_YELLO("[NUMBER]") "\n"
+                "  "COLOR_GREEN("--test_random_seed=") COLOR_YELLO("[NUMBER]") "\n"
                 "      Random number seed to use for shuffling test orders (between 0 and\n"
                 "      99999. By default a seed based on the current time is used for shuffle).\n"
                 "\n"
                 "Test Output:\n"
-                "  "COLOR_GREEN("--ctest_print_time=") COLOR_YELLO("(") COLOR_GREEN("0") COLOR_YELLO("|") COLOR_GREEN("1") COLOR_YELLO(")") "\n"
+                "  "COLOR_GREEN("--test_print_time=") COLOR_YELLO("(") COLOR_GREEN("0") COLOR_YELLO("|") COLOR_GREEN("1") COLOR_YELLO(")") "\n"
                 "      Don't print the elapsed time of each test.\n"
                 "\n"
                 "Assertion Behavior:\n"
-                "  "COLOR_GREEN("--ctest_break_on_failure")"\n"
+                "  "COLOR_GREEN("--test_break_on_failure")"\n"
                 "      Turn assertion failures into debugger break-points.\n"
                 );
             return -1;
