@@ -1815,14 +1815,14 @@ static int _test_setup(int argc, char* argv[], const cutest_hook_t* hook)
     };
 
     test_optparse_long_opt_t longopts[] = {
-        { "test_list_tests",                test_list_tests,               OPTPARSE_OPTIONAL },
-        { "test_filter",                    test_filter,                   OPTPARSE_OPTIONAL },
-        { "test_also_run_disabled_tests",   test_also_run_disabled_tests,  OPTPARSE_OPTIONAL },
-        { "test_repeat",                    test_repeat,                   OPTPARSE_OPTIONAL },
-        { "test_shuffle",                   test_shuffle,                  OPTPARSE_OPTIONAL },
-        { "test_random_seed",               test_random_seed,              OPTPARSE_OPTIONAL },
-        { "test_print_time",                test_print_time,               OPTPARSE_OPTIONAL },
-        { "test_break_on_failure",          test_break_on_failure,         OPTPARSE_OPTIONAL },
+        { "test_list_tests",                test_list_tests,                OPTPARSE_OPTIONAL },
+        { "test_filter",                    test_filter,                    OPTPARSE_OPTIONAL },
+        { "test_also_run_disabled_tests",   test_also_run_disabled_tests,   OPTPARSE_OPTIONAL },
+        { "test_repeat",                    test_repeat,                    OPTPARSE_OPTIONAL },
+        { "test_shuffle",                   test_shuffle,                   OPTPARSE_OPTIONAL },
+        { "test_random_seed",               test_random_seed,               OPTPARSE_OPTIONAL },
+        { "test_print_time",                test_print_time,                OPTPARSE_OPTIONAL },
+        { "test_break_on_failure",          test_break_on_failure,          OPTPARSE_OPTIONAL },
         { "help",                           help,                           OPTPARSE_OPTIONAL },
         { 0,                                0,                              OPTPARSE_NONE },
     };
@@ -1859,7 +1859,7 @@ static int _test_setup(int argc, char* argv[], const cutest_hook_t* hook)
             break;
         case help:
             _print_encoded(stdout,
-                "This program contains tests written using Test. You can use the\n"
+                "This program contains tests written using cutest. You can use the\n"
                 "following command line flags to control its behavior:\n"
                 "\n"
                 "Test Selection:\n"
