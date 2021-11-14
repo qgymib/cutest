@@ -80,7 +80,8 @@ extern "C" {
  */
 #define TEST_PARAMETERIZED_DEFINE(fixture_name, TYPE, ...)  \
     typedef TYPE _parameterized_type_##fixture_name;\
-    TYPE _parameterized_data_##fixture_name[] = { __VA_ARGS__ }
+    static const char* const _parameterized_type_name_##fixture_name = #TYPE;\
+    static TYPE _parameterized_data_##fixture_name[] = { __VA_ARGS__ }
 
 /**
  * @brief Suppress unused parameter warning if #TEST_GET_PARAM() is not used.
@@ -122,8 +123,11 @@ extern "C" {
             {\
                 sizeof(_parameterized_data_##fixture_name) / sizeof(_parameterized_data_##fixture_name[0]), \
                 _parameterized_data_##fixture_name, \
+                NULL,\
             }, /* parameterized */\
         };\
+        _case_##fixture_name##_##case_name.parameterized.type_name = \
+            _parameterized_type_name_##fixture_name;\
         cutest_register_case(&_case_##fixture_name##_##case_name);\
     }\
     void TEST_##fixture_name##_##case_name(\
@@ -146,7 +150,7 @@ extern "C" {
                 (void*)TEST_##fixture_name##_##case_name,\
             }, /* stage */\
             {\
-                0, NULL\
+                0, NULL, NULL\
             }, /* parameterized */\
         };\
         cutest_register_case(&_case_##fixture_name##_##case_name);\
@@ -168,7 +172,7 @@ extern "C" {
                 NULL, NULL, (void*)TEST_##suit_name##_##case_name,\
             }, /* stage */\
             {\
-                0, NULL\
+                0, NULL, NULL\
             }, /* parameterized */\
         };\
         cutest_register_case(&_case_##suit_name##_##case_name);\
@@ -1371,6 +1375,7 @@ typedef struct cutest_case
     {
         size_t                  n_dat;                  /**< parameterized data size */
         void*                   p_dat;                  /**< parameterized data */
+        const char*             type_name;              /**< Type name */
     }parameterized;
 }cutest_case_t;
 

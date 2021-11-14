@@ -1720,7 +1720,8 @@ static void _test_list_tests(void)
             size_t i;
             for (i = 0; i < case_data->parameterized.n_dat; i++)
             {
-                printf("  %s/%" TEST_PRIsize "  # TEST_GET_PARAM()\n", case_data->info.case_name, i);
+                printf("  %s/%" TEST_PRIsize "  # TEST_GET_PARAM() = <%s>\n",
+                    case_data->info.case_name, i, case_data->parameterized.type_name);
             }
         }
     }
