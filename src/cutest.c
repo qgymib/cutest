@@ -32,6 +32,11 @@
 #   define GET_TID()                        0
 #endif
 
+/**
+ * @brief List initializer helper
+ */
+#define TEST_LIST_INITIALIZER       { NULL, NULL, 0 }
+
 #define COLOR_GREEN(str)                    "@G" str "@D"
 #define COLOR_RED(str)                      "@R" str "@D"
 #define COLOR_YELLO(str)                    "@Y" str "@D"
@@ -617,7 +622,13 @@ static void _test_list_set_once(cutest_list_t* handler, cutest_list_node_t* node
     handler->size = 1;
 }
 
-void cutest_list_push_back(cutest_list_t* handler, cutest_list_node_t* node)
+/**
+ * @brief Insert a node to the tail of the list.TEST_LIST_INITIALIZER
+ * @warning the node must not exist in any list.
+ * @param [in] handler  Pointer to list
+ * @param [in] node     Pointer to a new node
+ */
+void _test_list_push_back(cutest_list_t* handler, cutest_list_node_t* node)
 {
     if (handler->head == NULL)
     {
@@ -632,22 +643,43 @@ void cutest_list_push_back(cutest_list_t* handler, cutest_list_node_t* node)
     handler->size++;
 }
 
-cutest_list_node_t* cutest_list_begin(const cutest_list_t* handler)
+/**
+ * @brief Get the last node.
+ * @param [in] handler  Pointer to list
+ * @return              The first node
+ */
+static cutest_list_node_t* cutest_list_begin(const cutest_list_t* handler)
 {
     return handler->head;
 }
 
-cutest_list_node_t* cutest_list_next(const cutest_list_node_t* node)
+/**
+ * @brief Get next node.
+ * @param [in] node     Current node
+ * @return              The next node
+ */
+static cutest_list_node_t* _test_list_next(const cutest_list_node_t* node)
 {
     return node->p_after;
 }
 
-size_t cutest_list_size(const cutest_list_t* handler)
+/**
+ * @brief Get the number of nodes in the list.
+ * @param [in] handler  Pointer to list
+ * @return              The number of nodes
+ */
+static size_t _test_list_size(const cutest_list_t* handler)
 {
     return handler->size;
 }
 
-void cutest_list_erase(cutest_list_t* handler, cutest_list_node_t* node)
+/**
+ * @brief Delete a exist node
+ * @warning The node must already in the list.
+ * @param [in] handler  Pointer to list
+ * @param [in] node     The node you want to delete
+ */
+static void _test_list_erase(cutest_list_t* handler, cutest_list_node_t* node)
 {
     handler->size--;
 
@@ -1506,7 +1538,7 @@ static void _test_reset_all_test(void)
     memset(&g_test_ctx.timestamp, 0, sizeof(g_test_ctx.timestamp));
 
     cutest_list_node_t* it = cutest_list_begin(&g_test_ctx.info.case_list);
-    for (; it != NULL; it = cutest_list_next(it))
+    for (; it != NULL; it = _test_list_next(it))
     {
         cutest_case_t* case_data = CONTAINER_OF(it, cutest_case_t, node.queue);
         case_data->info.mask = 0;
@@ -1518,7 +1550,7 @@ static void _test_reset_all_test(void)
 static void _test_show_report_failed(void)
 {
     cutest_list_node_t* it = cutest_list_begin(&g_test_ctx.info.case_list);
-    for (; it != NULL; it = cutest_list_next(it))
+    for (; it != NULL; it = _test_list_next(it))
     {
         cutest_case_t* case_data = CONTAINER_OF(it, cutest_case_t, node.queue);
         if (!HAS_MASK(case_data->info.mask, MASK_FAILURE))
@@ -1542,7 +1574,7 @@ static void _test_show_report(void)
     _test_print_colorful(print_green, stdout, "[==========]");
     printf(" %u/%u test case%s ran.",
         g_test_ctx.counter.result.total,
-        (unsigned)cutest_list_size(&g_test_ctx.info.case_list),
+        (unsigned)_test_list_size(&g_test_ctx.info.case_list),
         g_test_ctx.counter.result.total > 1 ? "s" : "");
     if (g_test_ctx.mask.print_time)
     {
@@ -1781,18 +1813,18 @@ static void _test_shuffle_cases(void)
 {
     cutest_list_t copy_case_list = TEST_LIST_INITIALIZER;
 
-    while (cutest_list_size(&g_test_ctx.info.case_list) != 0)
+    while (_test_list_size(&g_test_ctx.info.case_list) != 0)
     {
-        unsigned idx = _test_rand() % cutest_list_size(&g_test_ctx.info.case_list);
+        unsigned idx = _test_rand() % _test_list_size(&g_test_ctx.info.case_list);
 
         unsigned i = 0;
         cutest_list_node_t* it = cutest_list_begin(&g_test_ctx.info.case_list);
-        for (; i < idx; i++, it = cutest_list_next(it))
+        for (; i < idx; i++, it = _test_list_next(it))
         {
         }
 
-        cutest_list_erase(&g_test_ctx.info.case_list, it);
-        cutest_list_push_back(&copy_case_list, it);
+        _test_list_erase(&g_test_ctx.info.case_list, it);
+        _test_list_push_back(&copy_case_list, it);
     }
 
     g_test_ctx.info.case_list = copy_case_list;
@@ -1914,14 +1946,14 @@ static void _test_run_test_loop(void)
 
     _test_print_colorful(print_yellow, stdout, "[==========]");
     printf(" total %u test%s registered.\n",
-        (unsigned)cutest_list_size(&g_test_ctx.info.case_list),
-        cutest_list_size(&g_test_ctx.info.case_list) > 1 ? "s" : "");
+        (unsigned)_test_list_size(&g_test_ctx.info.case_list),
+        _test_list_size(&g_test_ctx.info.case_list) > 1 ? "s" : "");
 
     cutest_timestamp_get(&g_test_ctx.timestamp.tv_total_start);
 
     g_test_ctx.runtime.cur_it = cutest_list_begin(&g_test_ctx.info.case_list);
     for (; g_test_ctx.runtime.cur_it != NULL;
-        g_test_ctx.runtime.cur_it = cutest_list_next(g_test_ctx.runtime.cur_it))
+        g_test_ctx.runtime.cur_it = _test_list_next(g_test_ctx.runtime.cur_it))
     {
         g_test_ctx.runtime.cur_case = CONTAINER_OF(g_test_ctx.runtime.cur_it, cutest_case_t, node.queue);
         _test_run_case();
@@ -2096,7 +2128,7 @@ int cutest_timestamp_dif(const cutest_timestamp_t* t1, const cutest_timestamp_t*
 void cutest_register_case(cutest_case_t* data)
 {
     ASSERT(cutest_map_insert(&g_test_ctx.info.case_table, &data->node.table) == 0);
-    cutest_list_push_back(&g_test_ctx.info.case_list, &data->node.queue);
+    _test_list_push_back(&g_test_ctx.info.case_list, &data->node.queue);
 }
 
 int cutest_run_tests(int argc, char* argv[], const cutest_hook_t* hook)

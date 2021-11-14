@@ -1091,80 +1091,6 @@ int cutest_timestamp_dif(const cutest_timestamp_t* t1, const cutest_timestamp_t*
  */
 
 /************************************************************************/
-/* list                                                                 */
-/************************************************************************/
-
-/**
- * @defgroup List List
- * @{
- */
-
-/**
- * @brief List node
- */
-typedef struct cutest_list_node
-{
-    struct cutest_list_node* p_after;               /**< next node */
-    struct cutest_list_node* p_before;              /**< previous node */
-}cutest_list_node_t;
-
-/**
-* @brief List handler
-*/
-typedef struct cunittest_list
-{
-    cutest_list_node_t*     head;                   /**< Head node */
-    cutest_list_node_t*     tail;                   /**< Tail node */
-    size_t                  size;                   /**< Amount of nodes */
-}cutest_list_t;
-
-/**
- * @brief List initializer helper
- */
-#define TEST_LIST_INITIALIZER       { NULL, NULL, 0 }
-
-/**
- * @brief Get the last node.
- * @param [in] handler  Pointer to list
- * @return              The first node
- */
-cutest_list_node_t* cutest_list_begin(const cutest_list_t* handler);
-
-/**
- * @brief Get next node.
- * @param [in] node     Current node
- * @return              The next node
- */
-cutest_list_node_t* cutest_list_next(const cutest_list_node_t* node);
-
-/**
- * @brief Get the number of nodes in the list.
- * @param [in] handler  Pointer to list
- * @return              The number of nodes
- */
-size_t cutest_list_size(const cutest_list_t* handler);
-
-/**
- * @brief Delete a exist node
- * @warning The node must already in the list.
- * @param [in] handler  Pointer to list
- * @param [in] node     The node you want to delete
- */
-void cutest_list_erase(cutest_list_t* handler, cutest_list_node_t* node);
-
-/**
- * @brief Insert a node to the tail of the list.
- * @warning the node must not exist in any list.
- * @param [in] handler  Pointer to list
- * @param [in] node     Pointer to a new node
- */
-void cutest_list_push_back(cutest_list_t* handler, cutest_list_node_t* node);
-
-/**
- * @}
- */
-
-/************************************************************************/
 /* map                                                                  */
 /************************************************************************/
 
@@ -1438,6 +1364,25 @@ typedef enum cutest_case_type
     CUTEST_CASE_TYPE_FIXTURE,
     CUTEST_CASE_TYPE_PARAMETERIZED,
 }cutest_case_type_t;
+
+/**
+ * @brief List node
+ */
+typedef struct cutest_list_node
+{
+    struct cutest_list_node* p_after;               /**< next node */
+    struct cutest_list_node* p_before;              /**< previous node */
+}cutest_list_node_t;
+
+/**
+* @brief List handler
+*/
+typedef struct cunittest_list
+{
+    cutest_list_node_t* head;                   /**< Head node */
+    cutest_list_node_t* tail;                   /**< Tail node */
+    size_t                  size;                   /**< Amount of nodes */
+}cutest_list_t;
 
 typedef void(*cutest_procedure_fn)(void);
 typedef void(*cutest_parameterized_fn)(void*);
