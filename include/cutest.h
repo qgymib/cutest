@@ -1091,91 +1091,6 @@ int cutest_timestamp_dif(const cutest_timestamp_t* t1, const cutest_timestamp_t*
  */
 
 /************************************************************************/
-/* map                                                                  */
-/************************************************************************/
-
-/**
-* @defgroup Map Map
-* @{
-*/
-
-/**
- * @brief Map node
- */
-typedef struct cutest_map_node
-{
-    struct cutest_map_node*      __rb_parent_color;  /**< father node | color */
-    struct cutest_map_node*      rb_right;           /**< right child node */
-    struct cutest_map_node*      rb_left;            /**< left child node */
-}cutest_map_node_t;
-
-/**
- * @brief Compare function
- * @param [in] key1     KEY1
- * @param [in] key2     KEY2
- * @param [in] arg      User defined argument
- * @return              Compare result
- */
-typedef int(*cutest_map_cmp_fn)(const cutest_map_node_t* key1, const cutest_map_node_t* key2, void* arg);
-
-/**
- * @brief Map handler
- */
-typedef struct cunittest_map
-{
-    cutest_map_node_t*      rb_root;    /**< Root node */
-
-    struct
-    {
-        cutest_map_cmp_fn   cmp;        /**< Compare function */
-        void*               arg;        /**< User defined data for compare function */
-    }cmp;
-
-    size_t                  size;       /**< Data size */
-}cutest_map_t;
-
-/**
- * @brief Map initializer helper
- * @param [in] fn       Compare function
- * @param [in] arg      User defined argument
- */
-#define CUTEST_MAP_INITIALIZER(fn, arg)      { NULL, { fn, arg }, 0 }
-
-/**
- * @brief Insert the node into map.
- * @warning the node must not exist in any map.
- * @param [in] handler  The pointer to the map
- * @param [in] node     The node
- * @return              0 if success, -1 otherwise
- */
-int cutest_map_insert(cutest_map_t* handler, cutest_map_node_t* node);
-
-/**
- * @brief Returns an iterator to the beginning
- * @param [in] handler  The pointer to the map
- * @return              An iterator
- */
-cutest_map_node_t* cutest_map_begin(const cutest_map_t* handler);
-
-/**
- * @brief Get an iterator next to the given one.
- * @param [in] node     Current iterator
- * @return              Next iterator
- */
-cutest_map_node_t* cutest_map_next(const cutest_map_node_t* node);
-
-/**
- * @brief Get the number of nodes in the map.
- * @param [in] handler  The pointer to the map
- * @return              The number of nodes
- */
-size_t cutest_map_size(const cutest_map_t* handler);
-
-/**
-* @}
-*/
-
-/************************************************************************/
 /* internal interface                                                   */
 /************************************************************************/
 
@@ -1383,6 +1298,41 @@ typedef struct cunittest_list
     cutest_list_node_t* tail;                   /**< Tail node */
     size_t                  size;                   /**< Amount of nodes */
 }cutest_list_t;
+
+/**
+ * @brief Map node
+ */
+typedef struct cutest_map_node
+{
+    struct cutest_map_node* __rb_parent_color;  /**< father node | color */
+    struct cutest_map_node* rb_right;           /**< right child node */
+    struct cutest_map_node* rb_left;            /**< left child node */
+}cutest_map_node_t;
+
+/**
+ * @brief Compare function
+ * @param [in] key1     KEY1
+ * @param [in] key2     KEY2
+ * @param [in] arg      User defined argument
+ * @return              Compare result
+ */
+typedef int(*cutest_map_cmp_fn)(const cutest_map_node_t* key1, const cutest_map_node_t* key2, void* arg);
+
+/**
+ * @brief Map handler
+ */
+typedef struct cunittest_map
+{
+    cutest_map_node_t* rb_root;    /**< Root node */
+
+    struct
+    {
+        cutest_map_cmp_fn   cmp;        /**< Compare function */
+        void* arg;        /**< User defined data for compare function */
+    }cmp;
+
+    size_t                  size;       /**< Data size */
+}cutest_map_t;
 
 typedef void(*cutest_procedure_fn)(void);
 typedef void(*cutest_parameterized_fn)(void*);

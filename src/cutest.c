@@ -52,6 +52,13 @@
 /* map                                                                  */
 /************************************************************************/
 
+/**
+ * @brief Map initializer helper
+ * @param [in] fn       Compare function
+ * @param [in] arg      User defined argument
+ */
+#define TEST_MAP_INIT(fn, arg)      { NULL, { fn, arg }, 0 }
+
 #define RB_RED              0
 #define RB_BLACK            1
 #define __rb_color(pc)      ((uintptr_t)(pc) & 1)
@@ -246,7 +253,14 @@ static void _etest_map_insert_color(cutest_map_node_t* node, cutest_map_t* root)
     _etest_map_insert(node, root);
 }
 
-int cutest_map_insert(cutest_map_t* handler, cutest_map_node_t* node)
+/**
+ * @brief Insert the node into map.
+ * @warning the node must not exist in any map.
+ * @param [in] handler  The pointer to the map
+ * @param [in] node     The node
+ * @return              0 if success, -1 otherwise
+ */
+static int _test_map_insert(cutest_map_t* handler, cutest_map_node_t* node)
 {
     cutest_map_node_t **new_node = &(handler->rb_root), *parent = NULL;
 
@@ -277,7 +291,12 @@ int cutest_map_insert(cutest_map_t* handler, cutest_map_node_t* node)
     return 0;
 }
 
-cutest_map_node_t* cutest_map_begin(const cutest_map_t* handler)
+/**
+ * @brief Returns an iterator to the beginning
+ * @param [in] handler  The pointer to the map
+ * @return              An iterator
+ */
+static cutest_map_node_t* _test_map_begin(const cutest_map_t* handler)
 {
     cutest_map_node_t* n = handler->rb_root;
 
@@ -288,7 +307,12 @@ cutest_map_node_t* cutest_map_begin(const cutest_map_t* handler)
     return n;
 }
 
-cutest_map_node_t* cutest_map_next(const cutest_map_node_t* node)
+/**
+ * @brief Get an iterator next to the given one.
+ * @param [in] node     Current iterator
+ * @return              Next iterator
+ */
+static cutest_map_node_t* _test_map_next(const cutest_map_node_t* node)
 {
     cutest_map_node_t* parent;
 
@@ -319,7 +343,12 @@ cutest_map_node_t* cutest_map_next(const cutest_map_node_t* node)
     return parent;
 }
 
-size_t cutest_map_size(const cutest_map_t* handler)
+/**
+ * @brief Get the number of nodes in the map.
+ * @param [in] handler  The pointer to the map
+ * @return              The number of nodes
+ */
+static size_t _test_map_size(const cutest_map_t* handler)
 {
     return handler->size;
 }
@@ -859,7 +888,7 @@ typedef struct test_ctx2
 static int _test_on_cmp_case(const cutest_map_node_t* key1, const cutest_map_node_t* key2, void* arg);
 static test_ctx2_t          g_test_ctx2;                                // no need to initialize
 static test_ctx_t           g_test_ctx = {
-    { { NULL, NULL, 0 }, { NULL, { _test_on_cmp_case, NULL }, 0 }, 0 }, // .info
+    { { NULL, NULL, 0 }, TEST_MAP_INIT(_test_on_cmp_case, NULL), 0 }, // .info
     { 0, NULL, NULL, 0, stage_setup },                                  // .runtime
     { { 0, 0 }, { 0, 0 }, { 0, 0 }, { 0, 0 }, { 0, 0 } },               // .timestamp
     { { 0, 0, 0, 0, 0 }, { 1, 0 } },                                    // .counter
@@ -1685,8 +1714,8 @@ static unsigned _test_calculate_max_class_length(unsigned* number_of_fixture)
     unsigned cnt_fixture = 0;
     const char* last_class_name = "";
 
-    cutest_map_node_t* it = cutest_map_begin(&g_test_ctx.info.case_table);
-    for (; it != NULL; it = cutest_map_next(it))
+    cutest_map_node_t* it = _test_map_begin(&g_test_ctx.info.case_table);
+    for (; it != NULL; it = _test_map_next(it))
     {
         cutest_case_t* case_data = CONTAINER_OF(it, cutest_case_t, node.table);
         if (last_class_name == case_data->info.suit_name
@@ -1713,7 +1742,7 @@ static void _test_list_tests(void)
     const char* print_class_name = "";
 
     unsigned cnt_fixture = 0;
-    int cnt_test = (int)cutest_map_size(&g_test_ctx.info.case_table);
+    int cnt_test = (int)_test_map_size(&g_test_ctx.info.case_table);
     int max_fixture_length = (int)_test_calculate_max_class_length(&cnt_fixture);
     if (max_fixture_length > MAX_FIXTURE_SIZE)
     {
@@ -1739,8 +1768,8 @@ static void _test_list_tests(void)
     printf("%*.*s | case item\n", fixture_length, fixture_length, "fixture");
     printf("-------------------------------------------------------------------------------\n");
 
-    cutest_map_node_t* it = cutest_map_begin(&g_test_ctx.info.case_table);
-    for (; it != NULL; it = cutest_map_next(it))
+    cutest_map_node_t* it = _test_map_begin(&g_test_ctx.info.case_table);
+    for (; it != NULL; it = _test_map_next(it))
     {
         cutest_case_t* case_data = CONTAINER_OF(it, cutest_case_t, node.table);
         /* some compiler will make same string with different address */
@@ -2127,7 +2156,7 @@ int cutest_timestamp_dif(const cutest_timestamp_t* t1, const cutest_timestamp_t*
 
 void cutest_register_case(cutest_case_t* data)
 {
-    ASSERT(cutest_map_insert(&g_test_ctx.info.case_table, &data->node.table) == 0);
+    ASSERT(_test_map_insert(&g_test_ctx.info.case_table, &data->node.table) == 0);
     _test_list_push_back(&g_test_ctx.info.case_list, &data->node.queue);
 }
 
