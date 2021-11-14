@@ -343,16 +343,6 @@ static cutest_map_node_t* _test_map_next(const cutest_map_node_t* node)
     return parent;
 }
 
-/**
- * @brief Get the number of nodes in the map.
- * @param [in] handler  The pointer to the map
- * @return              The number of nodes
- */
-static size_t _test_map_size(const cutest_map_t* handler)
-{
-    return handler->size;
-}
-
 /************************************************************************/
 /* argument parser                                                      */
 /************************************************************************/
@@ -885,7 +875,20 @@ typedef struct test_ctx2
     jmp_buf                     jmpbuf;                         /**< Jump buffer */
 }test_ctx2_t;
 
-static int _test_on_cmp_case(const cutest_map_node_t* key1, const cutest_map_node_t* key2, void* arg);
+static int _test_on_cmp_case(const cutest_map_node_t* key1, const cutest_map_node_t* key2, void* arg)
+{
+    (void)arg;
+    const cutest_case_t* t_case_1 = CONTAINER_OF(key1, cutest_case_t, node.table);
+    const cutest_case_t* t_case_2 = CONTAINER_OF(key2, cutest_case_t, node.table);
+
+    int ret;
+    if ((ret = strcmp(t_case_1->info.suit_name, t_case_2->info.suit_name)) != 0)
+    {
+        return ret;
+    }
+    return strcmp(t_case_1->info.case_name, t_case_2->info.case_name);
+}
+
 static test_ctx2_t          g_test_ctx2;                                // no need to initialize
 static test_ctx_t           g_test_ctx = {
     { { NULL, NULL, 0 }, TEST_MAP_INIT(_test_on_cmp_case, NULL), 0 }, // .info
@@ -973,20 +976,6 @@ static WORD _test_get_new_color(print_color_t color, WORD old_color_attrs)
 }
 
 #endif
-
-static int _test_on_cmp_case(const cutest_map_node_t* key1, const cutest_map_node_t* key2, void* arg)
-{
-    (void)arg;
-    const cutest_case_t* t_case_1 = CONTAINER_OF(key1, cutest_case_t, node.table);
-    const cutest_case_t* t_case_2 = CONTAINER_OF(key2, cutest_case_t, node.table);
-
-    int ret;
-    if ((ret = strcmp(t_case_1->info.suit_name, t_case_2->info.suit_name)) != 0)
-    {
-        return ret;
-    }
-    return strcmp(t_case_1->info.case_name, t_case_2->info.case_name);
-}
 
 static void _test_srand(unsigned long long s)
 {
@@ -1707,66 +1696,9 @@ static void _test_setup_arg_pattern(const char* user_pattern)
     } while ((str_it = strchr(str_it + 1, ':')) != NULL);
 }
 
-static unsigned _test_calculate_max_class_length(unsigned* number_of_fixture)
-{
-    size_t tmp_len;
-    size_t max_length = 0;
-    unsigned cnt_fixture = 0;
-    const char* last_class_name = "";
-
-    cutest_map_node_t* it = _test_map_begin(&g_test_ctx.info.case_table);
-    for (; it != NULL; it = _test_map_next(it))
-    {
-        cutest_case_t* case_data = CONTAINER_OF(it, cutest_case_t, node.table);
-        if (last_class_name == case_data->info.suit_name
-            || strcmp(last_class_name, case_data->info.suit_name) == 0)
-        {
-            continue;
-        }
-
-        last_class_name = case_data->info.suit_name;
-        if ((tmp_len = strlen(last_class_name)) > max_length)
-        {
-            max_length = tmp_len;
-        }
-        cnt_fixture++;
-    }
-
-    *number_of_fixture = cnt_fixture;
-    return (unsigned)max_length;
-}
-
 static void _test_list_tests(void)
 {
     const char* last_class_name = "";
-    const char* print_class_name = "";
-
-    unsigned cnt_fixture = 0;
-    int cnt_test = (int)_test_map_size(&g_test_ctx.info.case_table);
-    int max_fixture_length = (int)_test_calculate_max_class_length(&cnt_fixture);
-    if (max_fixture_length > MAX_FIXTURE_SIZE)
-    {
-        max_fixture_length = MAX_FIXTURE_SIZE;
-    }
-
-    /* generate fixture info */
-    snprintf(g_test_ctx2.strbuf, sizeof(g_test_ctx2.strbuf), "%u fixture%s", cnt_fixture, cnt_fixture > 1 ? "s" : "");
-    int fixture_length = (int)strlen(g_test_ctx2.strbuf);
-    if (fixture_length > MAX_FIXTURE_SIZE)
-    {
-        fixture_length = MAX_FIXTURE_SIZE;
-    }
-
-    /* calculate fixture length and case length */
-    if (max_fixture_length > fixture_length)
-    {
-        fixture_length = max_fixture_length;
-    }
-    unsigned item_length = 80 - fixture_length - 4;
-
-    printf("===============================================================================\n");
-    printf("%*.*s | case item\n", fixture_length, fixture_length, "fixture");
-    printf("-------------------------------------------------------------------------------\n");
 
     cutest_map_node_t* it = _test_map_begin(&g_test_ctx.info.case_table);
     for (; it != NULL; it = _test_map_next(it))
@@ -1777,17 +1709,21 @@ static void _test_list_tests(void)
             && strcmp(last_class_name, case_data->info.suit_name) != 0)
         {
             last_class_name = case_data->info.suit_name;
-            print_class_name = last_class_name;
+            printf("%s.\n", last_class_name);
         }
-
-        printf("%*.*s | %-.*s\n", fixture_length, fixture_length, print_class_name, item_length, case_data->info.case_name);
-        print_class_name = "";
+        if (case_data->info.type != CUTEST_CASE_TYPE_PARAMETERIZED)
+        {
+            printf("  %s\n", case_data->info.case_name);
+        }
+        else
+        {
+            size_t i;
+            for (i = 0; i < case_data->stage.n_dat; i++)
+            {
+                printf("  %s/%" TEST_PRIsize "  # TEST_GET_PARAM()\n", case_data->info.case_name, i);
+            }
+        }
     }
-
-    printf("-------------------------------------------------------------------------------\n");
-    printf("%*.*s | %u case item%s\n", fixture_length, fixture_length, g_test_ctx2.strbuf,
-        cnt_test, cnt_test > 1 ? "s" : "");
-    printf("===============================================================================\n");
 }
 
 static void _test_setup_arg_repeat(const char* str)
