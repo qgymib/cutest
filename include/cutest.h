@@ -117,10 +117,12 @@ extern "C" {
             {\
                 TEST_FIXTURE_SETUP_##fixture_name,\
                 TEST_FIXTURE_TEARDOWN_##fixture_name,\
-                (uintptr_t)TEST_##fixture_name##_##case_name,\
-                sizeof(_parameterized_data_##fixture_name) / sizeof(_parameterized_data_##fixture_name[0]),\
-                _parameterized_data_##fixture_name,\
-            },\
+                (void*)TEST_##fixture_name##_##case_name,\
+            }, /* stage */\
+            {\
+                sizeof(_parameterized_data_##fixture_name) / sizeof(_parameterized_data_##fixture_name[0]), \
+                _parameterized_data_##fixture_name, \
+            }, /* parameterized */\
         };\
         cutest_register_case(&_case_##fixture_name##_##case_name);\
     }\
@@ -141,9 +143,11 @@ extern "C" {
             {\
                 TEST_FIXTURE_SETUP_##fixture_name,\
                 TEST_FIXTURE_TEARDOWN_##fixture_name,\
-                (uintptr_t)TEST_##fixture_name##_##case_name,\
+                (void*)TEST_##fixture_name##_##case_name,\
+            }, /* stage */\
+            {\
                 0, NULL\
-            },\
+            }, /* parameterized */\
         };\
         cutest_register_case(&_case_##fixture_name##_##case_name);\
     }\
@@ -161,8 +165,11 @@ extern "C" {
             { { NULL, NULL }, { NULL, NULL, NULL } }, /* .node */\
             { CUTEST_CASE_TYPE_SIMPLE, 0, #suit_name, #case_name }, /* .info */\
             {\
-                NULL, NULL, (uintptr_t)TEST_##suit_name##_##case_name, 0, NULL\
-            },\
+                NULL, NULL, (void*)TEST_##suit_name##_##case_name,\
+            }, /* stage */\
+            {\
+                0, NULL\
+            }, /* parameterized */\
         };\
         cutest_register_case(&_case_##suit_name##_##case_name);\
     }\
@@ -1357,12 +1364,14 @@ typedef struct cutest_case
     {
         cutest_procedure_fn     setup;                  /**< setup */
         cutest_procedure_fn     teardown;               /**< teardown */
+        void*                   body;                   /**< test body */
+    }stage;
 
-        uintptr_t               body;                   /**< test body */
-
+    struct
+    {
         size_t                  n_dat;                  /**< parameterized data size */
         void*                   p_dat;                  /**< parameterized data */
-    }stage;
+    }parameterized;
 }cutest_case_t;
 
 /**

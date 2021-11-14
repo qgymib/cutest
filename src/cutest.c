@@ -1356,7 +1356,7 @@ static void _test_hook_before_parameterized_test(cutest_case_t* test_case, unsig
         return;
     }
     g_test_ctx.hook->before_parameterized_test(test_case->info.suit_name,
-        test_case->info.case_name, index, (unsigned)test_case->stage.n_dat);
+        test_case->info.case_name, index, (unsigned)test_case->parameterized.n_dat);
 }
 
 static void _test_hook_after_parameterized_test(cutest_case_t* test_case, unsigned index, int ret)
@@ -1366,7 +1366,7 @@ static void _test_hook_after_parameterized_test(cutest_case_t* test_case, unsign
         return;
     }
     g_test_ctx.hook->after_parameterized_test(test_case->info.suit_name,
-        test_case->info.case_name, index, (unsigned)test_case->stage.n_dat, ret);
+        test_case->info.case_name, index, (unsigned)test_case->parameterized.n_dat, ret);
 }
 
 static void _test_fixture_run_body(void)
@@ -1380,11 +1380,11 @@ static void _test_fixture_run_body(void)
     else
     {
         for (g_test_ctx.runtime.cur_parameterized_idx = 0;
-            g_test_ctx.runtime.cur_parameterized_idx < g_test_ctx.runtime.cur_case->stage.n_dat;
+            g_test_ctx.runtime.cur_parameterized_idx < g_test_ctx.runtime.cur_case->parameterized.n_dat;
             g_test_ctx.runtime.cur_parameterized_idx++)
         {
             _test_hook_before_parameterized_test(g_test_ctx.runtime.cur_case, g_test_ctx.runtime.cur_parameterized_idx);
-            ((cutest_parameterized_fn)g_test_ctx.runtime.cur_case->stage.body)(g_test_ctx.runtime.cur_case->stage.p_dat);
+            ((cutest_parameterized_fn)g_test_ctx.runtime.cur_case->stage.body)(g_test_ctx.runtime.cur_case->parameterized.p_dat);
             _test_hook_after_parameterized_test(g_test_ctx.runtime.cur_case, g_test_ctx.runtime.cur_parameterized_idx, -1);
         }
     }
@@ -1718,7 +1718,7 @@ static void _test_list_tests(void)
         else
         {
             size_t i;
-            for (i = 0; i < case_data->stage.n_dat; i++)
+            for (i = 0; i < case_data->parameterized.n_dat; i++)
             {
                 printf("  %s/%" TEST_PRIsize "  # TEST_GET_PARAM()\n", case_data->info.case_name, i);
             }
