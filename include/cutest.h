@@ -79,8 +79,11 @@ extern "C" {
  */
 #define TEST_PARAMETERIZED_DEFINE(fixture_name, TYPE, ...)  \
     typedef TYPE _parameterized_type_##fixture_name;\
-    static const char* _parameterized_get_type_name_##fixture_name(void) {\
+    static const char* _parameterized_get_user_type_name_##fixture_name(void) {\
         return #TYPE;\
+    }\
+    static const char* _parameterized_get_builtin_type_name_##fixture_name(void) {\
+        return TEST_BUILTIN_TYPENAME(TYPE);\
     }\
     static unsigned _parameterized_get_type_size_##fixture_name(void) {\
         return sizeof(TYPE);\
@@ -127,7 +130,8 @@ extern "C" {
             {\
                 sizeof(_parameterized_data_##fixture_name) / sizeof(_parameterized_data_##fixture_name[0]), \
                 _parameterized_data_##fixture_name, \
-                _parameterized_get_type_name_##fixture_name,\
+                _parameterized_get_user_type_name_##fixture_name,\
+                _parameterized_get_builtin_type_name_##fixture_name,\
                 _parameterized_get_type_size_##fixture_name,\
             }, /* parameterized */\
         };\
@@ -153,7 +157,7 @@ extern "C" {
                 (void*)TEST_##fixture_name##_##case_name,\
             }, /* stage */\
             {\
-                0, NULL, NULL, 0\
+                0, NULL, NULL, NULL, 0\
             }, /* parameterized */\
         };\
         cutest_register_case(&_case_##fixture_name##_##case_name);\
@@ -175,7 +179,7 @@ extern "C" {
                 NULL, NULL, (void*)TEST_##suit_name##_##case_name,\
             }, /* stage */\
             {\
-                0, NULL, NULL, 0\
+                0, NULL, NULL,NULL,  0\
             }, /* parameterized */\
         };\
         cutest_register_case(&_case_##suit_name##_##case_name);\
@@ -1287,6 +1291,21 @@ int cutest_timestamp_dif(const cutest_timestamp_t* t1, const cutest_timestamp_t*
 #define _ASSERT_INTERNAL_HELPER_GT(a, b)        ((a) > (b))
 #define _ASSERT_INTERNAL_HELPER_GE(a, b)        ((a) >= (b))
 
+#if __STDC__==1 && __STDC_VERSION >= 201112L
+#   define TEST_BUILTIN_TYPENAME(x) _Generic((x),                                       \
+            _Bool: "_Bool",         unsigned char:          "unsigned char",            \
+             char: "char",          signed char:            "signed char",              \
+        short int: "short int",     unsigned short int:     "unsigned short int",       \
+              int: "int",           unsigned int:           "unsigned int",             \
+         long int: "long int",      unsigned long int:      "unsigned long int",        \
+    long long int: "long long int", unsigned long long int: "unsigned long long int",   \
+            float: "float",         double:                 "double",                   \
+      long double: "long double",   char *:                 "char*",                    \
+           void *: "void*",         default:                "other")
+#else
+#   define TEST_BUILTIN_TYPENAME(x) NULL
+#endif
+
 typedef enum cutest_case_type
 {
     CUTEST_CASE_TYPE_SIMPLE,
@@ -1378,7 +1397,8 @@ typedef struct cutest_case
     {
         size_t                  n_dat;                  /**< parameterized data size */
         void*                   p_dat;                  /**< parameterized data */
-        const char*             (*fn_get_type_name)(void);
+        const char*             (*fn_get_user_type_name)(void);
+        const char*             (*fn_get_builtin_type_name)(void);
         unsigned                (*fn_get_type_size)(void);
     }parameterized;
 }cutest_case_t;

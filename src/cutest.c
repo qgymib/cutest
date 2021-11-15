@@ -754,26 +754,26 @@ static void _test_list_erase(cutest_list_t* handler, cutest_list_node_t* node)
  *   +[2]: data type
  */
 #define TEST_PARAMETERIZED_MAP(XX)  \
-    XX(TEST_PARAMETERIZED_TYPE_D8,      PRId8,  int8_t)\
-    XX(TEST_PARAMETERIZED_TYPE_U8,      PRIu8,  uint8_t)\
-    XX(TEST_PARAMETERIZED_TYPE_D16,     PRId16, int16_t)\
-    XX(TEST_PARAMETERIZED_TYPE_U16,     PRIu16, uint16_t)\
-    XX(TEST_PARAMETERIZED_TYPE_D32,     PRId32, int32_t)\
-    XX(TEST_PARAMETERIZED_TYPE_U32,     PRIu32, uint32_t)\
-    XX(TEST_PARAMETERIZED_TYPE_D64,     PRId64, int64_t)\
-    XX(TEST_PARAMETERIZED_TYPE_U64,     PRIu64, uint64_t)\
-    XX(TEST_PARAMETERIZED_TYPE_PTR,     "p",    void*)\
-    XX(TEST_PARAMETERIZED_TYPE_CHAR,    "c",    char)\
-    XX(TEST_PARAMETERIZED_TYPE_FLOAT,   "f",    float)\
-    XX(TEST_PARAMETERIZED_TYPE_DOUBLE,  "f",    double)\
-    XX(TEST_PARAMETERIZED_TYPE_STRING,  "s",    const char*)\
-    XX(TEST_PARAMETERIZED_TYPE_UNKNOWN, "p",    void*)
+    XX(TEST_PARAMETERIZED_TYPE_D8,      "%" PRId8,  int8_t)\
+    XX(TEST_PARAMETERIZED_TYPE_U8,      "%" PRIu8,  uint8_t)\
+    XX(TEST_PARAMETERIZED_TYPE_D16,     "%" PRId16, int16_t)\
+    XX(TEST_PARAMETERIZED_TYPE_U16,     "%" PRIu16, uint16_t)\
+    XX(TEST_PARAMETERIZED_TYPE_D32,     "%" PRId32, int32_t)\
+    XX(TEST_PARAMETERIZED_TYPE_U32,     "%" PRIu32, uint32_t)\
+    XX(TEST_PARAMETERIZED_TYPE_D64,     "%" PRId64, int64_t)\
+    XX(TEST_PARAMETERIZED_TYPE_U64,     "%" PRIu64, uint64_t)\
+    XX(TEST_PARAMETERIZED_TYPE_PTR,     "%p",       void*)\
+    XX(TEST_PARAMETERIZED_TYPE_CHAR,    "%c",       char)\
+    XX(TEST_PARAMETERIZED_TYPE_FLOAT,   "%f",       float)\
+    XX(TEST_PARAMETERIZED_TYPE_DOUBLE,  "%f",       double)\
+    XX(TEST_PARAMETERIZED_TYPE_STRING,  "%s",       const char*)
 
 typedef enum test_parameterized_type
 {
 #define EXPAND_TEST_PARAMETERIZED_AS_ENUM(type, ign0, ign1)    type,
     TEST_PARAMETERIZED_MAP(EXPAND_TEST_PARAMETERIZED_AS_ENUM)
 #undef EXPAND_TEST_PARAMETERIZED_AS_ENUM
+    TEST_PARAMETERIZED_TYPE_UNKNOWN,
 }test_parameterized_type_t;
 
 typedef enum print_color
@@ -1725,7 +1725,7 @@ static void _test_setup_arg_pattern(const char* user_pattern)
     } while ((str_it = strchr(str_it + 1, ':')) != NULL);
 }
 
-static test_parameterized_type_t _test_get_parameterized_type(const char* type_name)
+static test_parameterized_type_t _test_get_well_known_type(const char* type_name)
 {
 #define CHECK_FIXED_SIZE_TYPE(RET, ...)   \
     do {\
@@ -1738,8 +1738,8 @@ static test_parameterized_type_t _test_get_parameterized_type(const char* type_n
         }\
     } while (0)
 #define CHECK_BUILTIN_TYPE_WITH_WIDTH(TYPE, width) \
-    CHECK_FIXED_SIZE_TYPE(TEST_PARAMETERIZED_TYPE_D##width, #TYPE, "signed " #TYPE);\
-    CHECK_FIXED_SIZE_TYPE(TEST_PARAMETERIZED_TYPE_U##width, "unsigned " #TYPE);\
+    CHECK_FIXED_SIZE_TYPE(TEST_PARAMETERIZED_TYPE_D##width, #TYPE, "signed " #TYPE, #TYPE "int");\
+    CHECK_FIXED_SIZE_TYPE(TEST_PARAMETERIZED_TYPE_U##width, "unsigned " #TYPE, "unsigned " #TYPE "int");\
     break;
 #define CHECK_BUILTIN_TYPE(TYPE)    \
     switch(sizeof(TYPE)) {\
@@ -1781,11 +1781,11 @@ static test_parameterized_type_t _test_get_parameterized_type(const char* type_n
 
 static void _test_list_tests_gen_param_info(char* buffer, size_t size, test_parameterized_type_t param_type, const cutest_case_t* case_data, size_t idx)
 {
-#define EXPAND_TEST_PARAMETERIZED_AS_SWITCH(type_enum, pri_type, TYPE)  \
+#define EXPAND_TEST_PARAMETERIZED_AS_SWITCH(type_enum, print_type, TYPE)  \
     case type_enum: {\
         TYPE* val = (TYPE*)((uintptr_t)case_data->parameterized.p_dat + case_data->parameterized.fn_get_type_size() * idx);\
-        snprintf(buffer, size, "<%s> %" pri_type,\
-            case_data->parameterized.fn_get_type_name(), *val);\
+        snprintf(buffer, size, "<%s> " print_type,\
+            case_data->parameterized.fn_get_user_type_name(), *val);\
     }\
     break;\
 
@@ -1793,7 +1793,7 @@ static void _test_list_tests_gen_param_info(char* buffer, size_t size, test_para
     {
     TEST_PARAMETERIZED_MAP(EXPAND_TEST_PARAMETERIZED_AS_SWITCH)
     default:
-        snprintf(buffer, size, "<%s>", case_data->parameterized.fn_get_type_name());
+        snprintf(buffer, size, "<%s>", case_data->parameterized.fn_get_user_type_name());
         break;
     }
 
@@ -1809,7 +1809,13 @@ static void _test_list_tests_print_name(const cutest_case_t* case_data)
         return;
     }
 
-    test_parameterized_type_t param_type = _test_get_parameterized_type(case_data->parameterized.fn_get_type_name());
+    const char* type_name = case_data->parameterized.fn_get_builtin_type_name();
+    if (type_name == NULL)
+    {
+        type_name = case_data->parameterized.fn_get_user_type_name();
+    }
+
+    test_parameterized_type_t param_type = _test_get_well_known_type(type_name);
 
     size_t i;
     for (i = 0; i < case_data->parameterized.n_dat; i++)
