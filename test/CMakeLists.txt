@@ -5,6 +5,4 @@ function(CUTEST_ADD_TEST name)
 endfunction()
 
 CUTEST_ADD_TEST(empty)
-CUTEST_ADD_TEST(simple_fixture)
-CUTEST_ADD_TEST(simple_parameterized)
-CUTEST_ADD_TEST(simple_suit)
+CUTEST_ADD_TEST(simple)

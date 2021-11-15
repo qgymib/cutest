@@ -1,7 +1,8 @@
-#undef NDEBUG
-#include <assert.h>
-
-#include "cutest.h"
+#ifndef __TEST_ASSERTION_TEMPLATE_H__
+#define __TEST_ASSERTION_TEMPLATE_H__
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #define TEST_ASSERTION      \
     ASSERT_EQ_D32(0, 0);    \
@@ -77,13 +78,7 @@
     ASSERT_EQ_STR("a", "a");\
     ASSERT_NE_STR("a", "")
 
-TEST(simple, simple)
-{
-    TEST_ASSERTION;
+#ifdef __cplusplus
 }
-
-int main(int argc, char* argv[])
-{
-    assert(cutest_run_tests(argc, argv, NULL) == 0);
-    return 0;
-}
+#endif
+#endif
