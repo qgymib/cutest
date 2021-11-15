@@ -1295,21 +1295,21 @@ int cutest_timestamp_dif(const cutest_timestamp_t* t1, const cutest_timestamp_t*
 #   define TEST_BUILTIN_TYPENAME(x) _Generic((x),                                       \
         char:                   "char", \
         unsigned char:          "unsigned char",\
-        signed char:            "signed char", \
-        short int:              "short int", \
-        unsigned short int:     "unsigned short int", \
-        int:                    "int", \
-        unsigned int:           "unsigned int", \
-        long int:               "long int", \
-        unsigned long int:      "unsigned long int", \
-        long long int:          "long long int", \
-        unsigned long long int: "unsigned long long int", \
-        float:                  "float", \
-        double:                 "double", \
-        long double:            "long double", \
-        char* :                 "char*", \
-        void* :                 "void*", \
-        default:                "other")
+        signed char:            "signed char",\
+        short int:              "short int",\
+        unsigned short int:     "unsigned short int",\
+        int:                    "int",\
+        unsigned int:           "unsigned int",\
+        long int:               "long int",\
+        unsigned long int:      "unsigned long int",\
+        long long int:          "long long int",\
+        unsigned long long int: "unsigned long long int",\
+        float:                  "float",\
+        double:                 "double",\
+        long double:            "long double",\
+        char* :                 "char*",\
+        void* :                 "void*",\
+        default:                NULL)
 #elif defined(__GNUC__) || defined(__clang__)
 #   define TEST_BUILTIN_TYPENAME(x) \
         __builtin_choose_expr(__builtin_types_compatible_p(typeof (x), char),                   "char",\
@@ -1328,7 +1328,7 @@ int cutest_timestamp_dif(const cutest_timestamp_t* t1, const cutest_timestamp_t*
         __builtin_choose_expr(__builtin_types_compatible_p(typeof (x), long double),            "long double",\
         __builtin_choose_expr(__builtin_types_compatible_p(typeof (x), char*),                  "char*",\
         __builtin_choose_expr(__builtin_types_compatible_p(typeof (x), void*),                  "void*",\
-                                                                                                "other"   ))))))))))))))))
+                                                                                                NULL   ))))))))))))))))
 #else
 #   define TEST_BUILTIN_TYPENAME(x) NULL
 #endif
