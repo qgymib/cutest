@@ -1738,8 +1738,8 @@ static test_parameterized_type_t _test_get_well_known_type(const char* type_name
         }\
     } while (0)
 #define CHECK_BUILTIN_TYPE_WITH_WIDTH(TYPE, width) \
-    CHECK_FIXED_SIZE_TYPE(TEST_PARAMETERIZED_TYPE_D##width, #TYPE, "signed " #TYPE, #TYPE "int");\
-    CHECK_FIXED_SIZE_TYPE(TEST_PARAMETERIZED_TYPE_U##width, "unsigned " #TYPE, "unsigned " #TYPE "int");\
+    CHECK_FIXED_SIZE_TYPE(TEST_PARAMETERIZED_TYPE_D##width, #TYPE, "signed " #TYPE " int", #TYPE " int");\
+    CHECK_FIXED_SIZE_TYPE(TEST_PARAMETERIZED_TYPE_U##width, "unsigned " #TYPE " int", "unsigned " #TYPE " int");\
     break;
 #define CHECK_BUILTIN_TYPE(TYPE)    \
     switch(sizeof(TYPE)) {\
@@ -1779,13 +1779,33 @@ static test_parameterized_type_t _test_get_well_known_type(const char* type_name
 #undef CHECK_FIXED_SIZE_TYPE
 }
 
+static char _test_log_ascii_to_char(char c)
+{
+    if (c >= 32 && c <= 126)
+    {
+        return c;
+    }
+    return '.';
+}
+
+static void _test_list_tests_fix_escape(char* buffer, size_t size)
+{
+    size_t idx;
+    for (idx = 0; idx < size; idx++)
+    {
+        buffer[idx] = _test_log_ascii_to_char(buffer[idx]);
+    }
+}
+
 static void _test_list_tests_gen_param_info(char* buffer, size_t size, test_parameterized_type_t param_type, const cutest_case_t* case_data, size_t idx)
 {
 #define EXPAND_TEST_PARAMETERIZED_AS_SWITCH(type_enum, print_type, TYPE)  \
     case type_enum: {\
         TYPE* val = (TYPE*)((uintptr_t)case_data->parameterized.p_dat + case_data->parameterized.fn_get_type_size() * idx);\
-        snprintf(buffer, size, "<%s> " print_type,\
+        int ret = snprintf(buffer, size, "<%s> " print_type,\
             case_data->parameterized.fn_get_user_type_name(), *val);\
+        size_t fix_len = ret >= (int)size ? size - 1 : (size_t)ret;\
+        _test_list_tests_fix_escape(buffer, fix_len);\
     }\
     break;\
 
