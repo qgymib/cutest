@@ -1,12 +1,6 @@
 /**
  * @file
  */
-#ifndef __C_UNIT_TEST_H__
-#define __C_UNIT_TEST_H__
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /**
  * @mainpage CUnitTest
  * CUnitTest is a test framework for C. It's was inspired by GoogleTest originally.
@@ -19,10 +13,16 @@ extern "C" {
  * + Tests are automatically registered when declared.
  * + Support parameterized tests.
  */
+#ifndef __C_UNIT_TEST_H__
+#define __C_UNIT_TEST_H__
 
 #include <stdint.h>
 #include <stdio.h>
 #include <inttypes.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /************************************************************************/
 /* CUnitTest                                                            */
@@ -83,7 +83,7 @@ extern "C" {
         return #TYPE;\
     }\
     static const char* _parameterized_get_builtin_type_name_##fixture_name(void) {\
-        return TEST_BUILTIN_TYPENAME(TYPE);\
+        TEST_RETURN_BUILTIN_TYPENAME(TYPE);\
     }\
     static unsigned _parameterized_get_type_size_##fixture_name(void) {\
         return sizeof(TYPE);\
@@ -1310,6 +1310,7 @@ int cutest_timestamp_dif(const cutest_timestamp_t* t1, const cutest_timestamp_t*
         char* :                 "char*",\
         void* :                 "void*",\
         default:                NULL)
+#   define TEST_RETURN_BUILTIN_TYPENAME(x)  return TEST_BUILTIN_TYPENAME(x)
 #elif defined(__GNUC__) || defined(__clang__)
 #   define TEST_BUILTIN_TYPENAME(x) \
         __builtin_choose_expr(__builtin_types_compatible_p(typeof (x), char),                   "char",\
@@ -1329,8 +1330,14 @@ int cutest_timestamp_dif(const cutest_timestamp_t* t1, const cutest_timestamp_t*
         __builtin_choose_expr(__builtin_types_compatible_p(typeof (x), char*),                  "char*",\
         __builtin_choose_expr(__builtin_types_compatible_p(typeof (x), void*),                  "void*",\
                                                                                                 NULL   ))))))))))))))))
+#   define TEST_RETURN_BUILTIN_TYPENAME(x)  return TEST_BUILTIN_TYPENAME(x)
+#elif defined(_MSC_VER) && defined(__cplusplus)
+#   define TEST_RETURN_BUILTIN_TYPENAME(x)\
+        static std::string info = typeid(x).name();\
+        return info.c_str()
 #else
 #   define TEST_BUILTIN_TYPENAME(x) NULL
+#   define TEST_RETURN_BUILTIN_TYPENAME(x)  return TEST_BUILTIN_TYPENAME(x)
 #endif
 
 typedef enum cutest_case_type
