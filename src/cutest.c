@@ -747,11 +747,34 @@ static void _test_list_erase(cutest_list_t* handler, cutest_list_node_t* node)
 #define CONTAINER_OF(ptr, TYPE, member) \
     ((TYPE*)((char*)(ptr) - (size_t)&((TYPE*)0)->member))
 
-typedef int test_bool;
-#define test_true       1
-#define test_false      0
+/**
+ * `XX` have following parameters:
+ *   +[0]: type enum
+ *   +[1]: print pattern
+ *   +[2]: data type
+ */
+#define TEST_PARAMETERIZED_MAP(XX)  \
+    XX(TEST_PARAMETERIZED_TYPE_D8,      PRId8,  int8_t)\
+    XX(TEST_PARAMETERIZED_TYPE_U8,      PRIu8,  uint8_t)\
+    XX(TEST_PARAMETERIZED_TYPE_D16,     PRId16, int16_t)\
+    XX(TEST_PARAMETERIZED_TYPE_U16,     PRIu16, uint16_t)\
+    XX(TEST_PARAMETERIZED_TYPE_D32,     PRId32, int32_t)\
+    XX(TEST_PARAMETERIZED_TYPE_U32,     PRIu32, uint32_t)\
+    XX(TEST_PARAMETERIZED_TYPE_D64,     PRId64, int64_t)\
+    XX(TEST_PARAMETERIZED_TYPE_U64,     PRIu64, uint64_t)\
+    XX(TEST_PARAMETERIZED_TYPE_PTR,     "p",    void*)\
+    XX(TEST_PARAMETERIZED_TYPE_CHAR,    "c",    char)\
+    XX(TEST_PARAMETERIZED_TYPE_FLOAT,   "f",    float)\
+    XX(TEST_PARAMETERIZED_TYPE_DOUBLE,  "f",    double)\
+    XX(TEST_PARAMETERIZED_TYPE_STRING,  "s",    const char*)\
+    XX(TEST_PARAMETERIZED_TYPE_UNKNOWN, "p",    void*)
 
-#define MAX_FIXTURE_SIZE    31
+typedef enum test_parameterized_type
+{
+#define EXPAND_TEST_PARAMETERIZED_AS_ENUM(type, ign0, ign1)    type,
+    TEST_PARAMETERIZED_MAP(EXPAND_TEST_PARAMETERIZED_AS_ENUM)
+#undef EXPAND_TEST_PARAMETERIZED_AS_ENUM
+}test_parameterized_type_t;
 
 typedef enum print_color
 {
@@ -784,89 +807,89 @@ typedef struct test_ctx
 {
     struct
     {
-        cutest_list_t        case_list;                      /**< Cases in list */
-        cutest_map_t         case_table;                     /**< Cases in map */
-        unsigned long           tid;                            /**< Thread ID */
+        cutest_list_t       case_list;                      /**< Cases in list */
+        cutest_map_t        case_table;                     /**< Cases in map */
+        unsigned long       tid;                            /**< Thread ID */
     }info;
 
     struct
     {
-        unsigned long long      seed;                           /**< Random seed */
-        cutest_list_node_t*  cur_it;                         /**< Current cursor position */
-        cutest_case_t*       cur_case;                       /**< Current running test case */
-        unsigned                cur_parameterized_idx;          /**< Current parameterized index */
-        test_case_stage_t       cur_stage;                      /**< Current running stage */
+        unsigned long long  seed;                           /**< Random seed */
+        cutest_list_node_t* cur_it;                         /**< Current cursor position */
+        cutest_case_t*      cur_case;                       /**< Current running test case */
+        unsigned            cur_parameterized_idx;          /**< Current parameterized index */
+        test_case_stage_t   cur_stage;                      /**< Current running stage */
     }runtime;
 
     struct
     {
-        cutest_timestamp_t   tv_case_start;                  /**< Test start time */
-        cutest_timestamp_t   tv_case_end;                    /**< Test end time */
+        cutest_timestamp_t  tv_case_start;                  /**< Test start time */
+        cutest_timestamp_t  tv_case_end;                    /**< Test end time */
 
-        cutest_timestamp_t   tv_total_start;                 /**< The start time of whole test */
-        cutest_timestamp_t   tv_total_end;                   /**< The end time of whole test */
+        cutest_timestamp_t  tv_total_start;                 /**< The start time of whole test */
+        cutest_timestamp_t  tv_total_end;                   /**< The end time of whole test */
 
-        cutest_timestamp_t   tv_diff;                        /**< Time diff */
+        cutest_timestamp_t  tv_diff;                        /**< Time diff */
     }timestamp;
 
     struct
     {
         struct
         {
-            unsigned            total;                          /**< The number of total running cases */
-            unsigned            disabled;                       /**< The number of disabled cases */
-            unsigned            success;                        /**< The number of successed cases */
-            unsigned            skipped;                        /**< The number of skipped cases */
-            unsigned            failed;                         /**< The number of failed cases */
+            unsigned        total;                          /**< The number of total running cases */
+            unsigned        disabled;                       /**< The number of disabled cases */
+            unsigned        success;                        /**< The number of successed cases */
+            unsigned        skipped;                        /**< The number of skipped cases */
+            unsigned        failed;                         /**< The number of failed cases */
         }result;
 
         struct
         {
-            unsigned            repeat;                         /**< How many times need to repeat */
-            unsigned            repeated;                       /**< How many times alread repeated */
+            unsigned        repeat;                         /**< How many times need to repeat */
+            unsigned        repeated;                       /**< How many times alread repeated */
         }repeat;
     }counter;
 
     struct
     {
-        unsigned                break_on_failure : 1;           /**< DebugBreak when failure */
-        unsigned                print_time : 1;                 /**< Whether to print execution cost time */
-        unsigned                also_run_disabled_tests : 1;    /**< Also run disabled tests */
-        unsigned                shuffle : 1;                    /**< Randomize running cases */
+        unsigned            break_on_failure : 1;           /**< DebugBreak when failure */
+        unsigned            print_time : 1;                 /**< Whether to print execution cost time */
+        unsigned            also_run_disabled_tests : 1;    /**< Also run disabled tests */
+        unsigned            shuffle : 1;                    /**< Randomize running cases */
     }mask;
 
     struct
     {
-        char**                  positive_patterns;              /**< positive patterns for filter */
-        char**                  negative_patterns;              /**< negative patterns for filter */
-        size_t                  n_negative;                     /**< The number of negative patterns */
-        size_t                  n_postive;                      /**< The number of positive patterns */
+        char**              positive_patterns;              /**< positive patterns for filter */
+        char**              negative_patterns;              /**< negative patterns for filter */
+        size_t              n_negative;                     /**< The number of negative patterns */
+        size_t              n_postive;                      /**< The number of positive patterns */
     }filter;
 
     struct
     {
-        size_t                  kMaxUlps;
+        size_t              kMaxUlps;
         struct
         {
-            size_t              kBitCount_64;
-            size_t              kFractionBitCount_64;
-            size_t              kExponentBitCount_64;
-            uint64_t            kSignBitMask_64;
-            uint64_t            kFractionBitMask_64;
-            uint64_t            kExponentBitMask_64;
+            size_t          kBitCount_64;
+            size_t          kFractionBitCount_64;
+            size_t          kExponentBitCount_64;
+            uint64_t        kSignBitMask_64;
+            uint64_t        kFractionBitMask_64;
+            uint64_t        kExponentBitMask_64;
         }_double;
         struct
         {
-            size_t              kBitCount_32;
-            size_t              kFractionBitCount_32;
-            size_t              kExponentBitCount_32;
-            uint32_t            kSignBitMask_32;
-            uint32_t            kFractionBitMask_32;
-            uint32_t            kExponentBitMask_32;
+            size_t          kBitCount_32;
+            size_t          kFractionBitCount_32;
+            size_t          kExponentBitCount_32;
+            uint32_t        kSignBitMask_32;
+            uint32_t        kFractionBitMask_32;
+            uint32_t        kExponentBitMask_32;
         }_float;
     }precision;                                                 /**< Context for float/double compare */
 
-    const cutest_hook_t*     hook;
+    const cutest_hook_t*    hook;
 }test_ctx_t;
 
 typedef struct test_ctx2
@@ -992,7 +1015,7 @@ static unsigned long _test_rand(void)
  * @brief Check if `str` match `pat`
  * @return bool
  */
-static test_bool _test_pattern_matches_string(const char* pat, const char* str)
+static int _test_pattern_matches_string(const char* pat, const char* str)
 {
     switch (*pat)
     {
@@ -1007,34 +1030,40 @@ static test_bool _test_pattern_matches_string(const char* pat, const char* str)
     }
 }
 
-static test_bool _test_check_pattern(const char* str)
+/**
+ * @return bool
+ */
+static int _test_check_pattern(const char* str)
 {
     size_t i;
     for (i = 0; i < g_test_ctx.filter.n_negative; i++)
     {
         if (_test_pattern_matches_string(g_test_ctx.filter.negative_patterns[i], str))
         {
-            return test_false;
+            return 0;
         }
     }
 
     if (g_test_ctx.filter.n_postive == 0)
     {
-        return test_true;
+        return 1;
     }
 
     for (i = 0; i < g_test_ctx.filter.n_postive; i++)
     {
         if (_test_pattern_matches_string(g_test_ctx.filter.positive_patterns[i], str))
         {
-            return test_true;
+            return 1;
         }
     }
 
-    return test_false;
+    return 0;
 }
 
-static test_bool _test_check_disable(const char* name)
+/**
+ * @return bool
+ */
+static int _test_check_disable(const char* name)
 {
     return !g_test_ctx.mask.also_run_disabled_tests && (strncmp("DISABLED_", name, 9) == 0);
 }
@@ -1696,6 +1725,102 @@ static void _test_setup_arg_pattern(const char* user_pattern)
     } while ((str_it = strchr(str_it + 1, ':')) != NULL);
 }
 
+static test_parameterized_type_t _test_get_parameterized_type(const char* type_name)
+{
+#define CHECK_FIXED_SIZE_TYPE(RET, ...)   \
+    do {\
+        const char* pat[] = { __VA_ARGS__ };\
+        size_t i;\
+        for (i = 0; i < ARRAY_SIZE(pat); i++) {\
+            if (strcmp(pat[i], type_name) == 0) {\
+                return RET;\
+            }\
+        }\
+    } while (0)
+#define CHECK_BUILTIN_TYPE_WITH_WIDTH(TYPE, width) \
+    CHECK_FIXED_SIZE_TYPE(TEST_PARAMETERIZED_TYPE_D##width, #TYPE, "signed " #TYPE);\
+    CHECK_FIXED_SIZE_TYPE(TEST_PARAMETERIZED_TYPE_U##width, "unsigned " #TYPE);\
+    break;
+#define CHECK_BUILTIN_TYPE(TYPE)    \
+    switch(sizeof(TYPE)) {\
+    case 2: CHECK_BUILTIN_TYPE_WITH_WIDTH(TYPE, 16)\
+    case 4: CHECK_BUILTIN_TYPE_WITH_WIDTH(TYPE, 32)\
+    case 8: CHECK_BUILTIN_TYPE_WITH_WIDTH(TYPE, 64)\
+    default: break;\
+    }
+
+    CHECK_FIXED_SIZE_TYPE(TEST_PARAMETERIZED_TYPE_D8, "signed char", "int8_t");
+    CHECK_FIXED_SIZE_TYPE(TEST_PARAMETERIZED_TYPE_U8, "unsigned char", "uint8_t");
+    CHECK_FIXED_SIZE_TYPE(TEST_PARAMETERIZED_TYPE_D16, "int16_t");
+    CHECK_FIXED_SIZE_TYPE(TEST_PARAMETERIZED_TYPE_U16, "uint16_t");
+    CHECK_FIXED_SIZE_TYPE(TEST_PARAMETERIZED_TYPE_D32, "int32_t");
+    CHECK_FIXED_SIZE_TYPE(TEST_PARAMETERIZED_TYPE_U32, "uint32_t");
+    CHECK_FIXED_SIZE_TYPE(TEST_PARAMETERIZED_TYPE_D64, "int64_t");
+    CHECK_FIXED_SIZE_TYPE(TEST_PARAMETERIZED_TYPE_U64, "uint64_t");
+    CHECK_FIXED_SIZE_TYPE(TEST_PARAMETERIZED_TYPE_CHAR, "char");
+    CHECK_FIXED_SIZE_TYPE(TEST_PARAMETERIZED_TYPE_FLOAT, "float");
+    CHECK_FIXED_SIZE_TYPE(TEST_PARAMETERIZED_TYPE_DOUBLE, "double");
+    CHECK_FIXED_SIZE_TYPE(TEST_PARAMETERIZED_TYPE_STRING, "const char*", "const char *", "char*", "char *");
+
+    CHECK_BUILTIN_TYPE(short);
+    CHECK_BUILTIN_TYPE(int);
+    CHECK_BUILTIN_TYPE(long);
+    CHECK_BUILTIN_TYPE(long long);
+
+    if (type_name[strlen(type_name) - 1] == '*')
+    {
+        return TEST_PARAMETERIZED_TYPE_PTR;
+    }
+
+    return TEST_PARAMETERIZED_TYPE_UNKNOWN;
+
+#undef CHECK_BUILTIN_TYPE
+#undef CHECK_BUILTIN_TYPE_WITH_WIDTH
+#undef CHECK_FIXED_SIZE_TYPE
+}
+
+static void _test_list_tests_gen_param_info(char* buffer, size_t size, test_parameterized_type_t param_type, const cutest_case_t* case_data, size_t idx)
+{
+#define EXPAND_TEST_PARAMETERIZED_AS_SWITCH(type_enum, pri_type, TYPE)  \
+    case type_enum: {\
+        TYPE* val = (TYPE*)((uintptr_t)case_data->parameterized.p_dat + case_data->parameterized.fn_get_type_size() * idx);\
+        snprintf(buffer, size, "<%s> %" pri_type,\
+            case_data->parameterized.fn_get_type_name(), *val);\
+    }\
+    break;\
+
+    switch (param_type)
+    {
+    TEST_PARAMETERIZED_MAP(EXPAND_TEST_PARAMETERIZED_AS_SWITCH)
+    default:
+        snprintf(buffer, size, "<%s>", case_data->parameterized.fn_get_type_name());
+        break;
+    }
+
+#undef EXPAND_TEST_PARAMETERIZED_AS_SWITCH
+}
+
+static void _test_list_tests_print_name(const cutest_case_t* case_data)
+{
+    char buffer[64];
+    if (case_data->info.type != CUTEST_CASE_TYPE_PARAMETERIZED)
+    {
+        printf("  %s\n", case_data->info.case_name);
+        return;
+    }
+
+    test_parameterized_type_t param_type = _test_get_parameterized_type(case_data->parameterized.fn_get_type_name());
+
+    size_t i;
+    for (i = 0; i < case_data->parameterized.n_dat; i++)
+    {
+        _test_list_tests_gen_param_info(buffer, sizeof(buffer), param_type, case_data, i);
+
+        printf("  %s/%" TEST_PRIsize "  # TEST_GET_PARAM() = %s\n",
+            case_data->info.case_name, i, buffer);
+    }
+}
+
 static void _test_list_tests(void)
 {
     const char* last_class_name = "";
@@ -1711,19 +1836,7 @@ static void _test_list_tests(void)
             last_class_name = case_data->info.suit_name;
             printf("%s.\n", last_class_name);
         }
-        if (case_data->info.type != CUTEST_CASE_TYPE_PARAMETERIZED)
-        {
-            printf("  %s\n", case_data->info.case_name);
-        }
-        else
-        {
-            size_t i;
-            for (i = 0; i < case_data->parameterized.n_dat; i++)
-            {
-                printf("  %s/%" TEST_PRIsize "  # TEST_GET_PARAM() = <%s>\n",
-                    case_data->info.case_name, i, case_data->parameterized.type_name);
-            }
-        }
+        _test_list_tests_print_name(case_data);
     }
 }
 

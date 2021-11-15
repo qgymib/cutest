@@ -22,7 +22,6 @@ extern "C" {
 
 #include <stdint.h>
 #include <stdio.h>
-#include <assert.h>
 #include <inttypes.h>
 
 /************************************************************************/
@@ -80,7 +79,12 @@ extern "C" {
  */
 #define TEST_PARAMETERIZED_DEFINE(fixture_name, TYPE, ...)  \
     typedef TYPE _parameterized_type_##fixture_name;\
-    static const char* const _parameterized_type_name_##fixture_name = #TYPE;\
+    static const char* _parameterized_get_type_name_##fixture_name(void) {\
+        return #TYPE;\
+    }\
+    static unsigned _parameterized_get_type_size_##fixture_name(void) {\
+        return sizeof(TYPE);\
+    }\
     static TYPE _parameterized_data_##fixture_name[] = { __VA_ARGS__ }
 
 /**
@@ -123,11 +127,10 @@ extern "C" {
             {\
                 sizeof(_parameterized_data_##fixture_name) / sizeof(_parameterized_data_##fixture_name[0]), \
                 _parameterized_data_##fixture_name, \
-                NULL,\
+                _parameterized_get_type_name_##fixture_name,\
+                _parameterized_get_type_size_##fixture_name,\
             }, /* parameterized */\
         };\
-        _case_##fixture_name##_##case_name.parameterized.type_name = \
-            _parameterized_type_name_##fixture_name;\
         cutest_register_case(&_case_##fixture_name##_##case_name);\
     }\
     void TEST_##fixture_name##_##case_name(\
@@ -150,7 +153,7 @@ extern "C" {
                 (void*)TEST_##fixture_name##_##case_name,\
             }, /* stage */\
             {\
-                0, NULL, NULL\
+                0, NULL, NULL, 0\
             }, /* parameterized */\
         };\
         cutest_register_case(&_case_##fixture_name##_##case_name);\
@@ -172,7 +175,7 @@ extern "C" {
                 NULL, NULL, (void*)TEST_##suit_name##_##case_name,\
             }, /* stage */\
             {\
-                0, NULL, NULL\
+                0, NULL, NULL, 0\
             }, /* parameterized */\
         };\
         cutest_register_case(&_case_##suit_name##_##case_name);\
@@ -1305,8 +1308,8 @@ typedef struct cutest_list_node
 */
 typedef struct cunittest_list
 {
-    cutest_list_node_t* head;                   /**< Head node */
-    cutest_list_node_t* tail;                   /**< Tail node */
+    cutest_list_node_t*     head;                   /**< Head node */
+    cutest_list_node_t*     tail;                   /**< Tail node */
     size_t                  size;                   /**< Amount of nodes */
 }cutest_list_t;
 
@@ -1334,12 +1337,12 @@ typedef int(*cutest_map_cmp_fn)(const cutest_map_node_t* key1, const cutest_map_
  */
 typedef struct cunittest_map
 {
-    cutest_map_node_t* rb_root;    /**< Root node */
+    cutest_map_node_t*      rb_root;    /**< Root node */
 
     struct
     {
         cutest_map_cmp_fn   cmp;        /**< Compare function */
-        void* arg;        /**< User defined data for compare function */
+        void*               arg;        /**< User defined data for compare function */
     }cmp;
 
     size_t                  size;       /**< Data size */
@@ -1375,7 +1378,8 @@ typedef struct cutest_case
     {
         size_t                  n_dat;                  /**< parameterized data size */
         void*                   p_dat;                  /**< parameterized data */
-        const char*             type_name;              /**< Type name */
+        const char*             (*fn_get_type_name)(void);
+        unsigned                (*fn_get_type_size)(void);
     }parameterized;
 }cutest_case_t;
 
