@@ -798,7 +798,7 @@ typedef union float_point
 
 typedef enum test_case_stage
 {
-    stage_setup,
+    stage_setup = 0,
     stage_run,
     stage_teardown,
 }test_case_stage_t;
@@ -809,11 +809,11 @@ typedef struct test_ctx
     {
         cutest_list_t       case_list;                      /**< Cases in list */
         cutest_map_t        case_table;                     /**< Cases in map */
-        unsigned long       tid;                            /**< Thread ID */
     }info;
 
     struct
     {
+        unsigned long       tid;                            /**< Thread ID */
         unsigned long long  seed;                           /**< Random seed */
         cutest_list_node_t* cur_it;                         /**< Current cursor position */
         cutest_case_t*      cur_case;                       /**< Current running test case */
@@ -853,7 +853,7 @@ typedef struct test_ctx
     struct
     {
         unsigned            break_on_failure : 1;           /**< DebugBreak when failure */
-        unsigned            print_time : 1;                 /**< Whether to print execution cost time */
+        unsigned            no_print_time : 1;              /**< Whether to print execution cost time */
         unsigned            also_run_disabled_tests : 1;    /**< Also run disabled tests */
         unsigned            shuffle : 1;                    /**< Randomize running cases */
     }mask;
@@ -919,15 +919,15 @@ static int _test_on_cmp_case(const cutest_map_node_t* key1, const cutest_map_nod
 
 static test_ctx2_t          g_test_ctx2;                                // no need to initialize
 static test_ctx_t           g_test_ctx = {
-    { { NULL, NULL, 0 }, TEST_MAP_INIT(_test_on_cmp_case, NULL), 0 }, // .info
-    { 0, NULL, NULL, 0, stage_setup },                                  // .runtime
-    { { 0, 0 }, { 0, 0 }, { 0, 0 }, { 0, 0 }, { 0, 0 } },               // .timestamp
-    { { 0, 0, 0, 0, 0 }, { 1, 0 } },                                    // .counter
-    { 0, 1, 0, 0 },                                                     // .mask
-    { NULL, NULL, 0, 0 },                                               // .filter
-    { 4, { 0, 0, 0, 0, 0, 0 }, { 0, 0, 0, 0, 0, 0 } },                  // .precision
+    { { NULL, NULL, 0 }, TEST_MAP_INIT(_test_on_cmp_case, NULL) },      /* .info */
+    { 0, 0, NULL, NULL, 0, stage_setup },                               /* .runtime */
+    { { 0, 0 }, { 0, 0 }, { 0, 0 }, { 0, 0 }, { 0, 0 } },               /* .timestamp */
+    { { 0, 0, 0, 0, 0 }, { 0, 0 } },                                    /* .counter */
+    { 0, 0, 0, 0 },                                                     /* .mask */
+    { NULL, NULL, 0, 0 },                                               /* .filter */
+    { 0, { 0, 0, 0, 0, 0, 0 }, { 0, 0, 0, 0, 0, 0 } },                  /* .precision */
     { NULL },                                                           /* .io */
-    NULL,                                                               // .hook
+    NULL,                                                               /* .hook */
 };
 
 #if defined(_MSC_VER)
@@ -1582,7 +1582,7 @@ procedure_teardown_fin:
     }
 
     _test_print_colorful(print_default, g_test_ctx.io.f_out, " %s", g_test_ctx2.strbuf);
-    if (g_test_ctx.mask.print_time)
+    if (!g_test_ctx.mask.no_print_time)
     {
         unsigned long take_time = (unsigned long)(g_test_ctx.timestamp.tv_diff.sec * 1000
             + g_test_ctx.timestamp.tv_diff.usec / 1000);
@@ -1602,8 +1602,6 @@ static void _test_reset_all_test(void)
         cutest_case_t* case_data = CONTAINER_OF(it, cutest_case_t, node.queue);
         case_data->info.mask = 0;
     }
-
-    g_test_ctx.info.tid = GET_TID();
 }
 
 static void _test_show_report_failed(void)
@@ -1635,7 +1633,7 @@ static void _test_show_report(void)
         g_test_ctx.counter.result.total,
         (unsigned)_test_list_size(&g_test_ctx.info.case_list),
         g_test_ctx.counter.result.total > 1 ? "s" : "");
-    if (g_test_ctx.mask.print_time)
+    if (!g_test_ctx.mask.no_print_time)
     {
         unsigned long take_time = (unsigned long)(g_test_ctx.timestamp.tv_diff.sec * 1000
             + g_test_ctx.timestamp.tv_diff.usec / 1000);
@@ -1890,7 +1888,7 @@ static void _test_setup_arg_print_time(const char* str)
 {
     int val = 1;
     sscanf(str, "%d", &val);
-    g_test_ctx.mask.print_time = !!val;
+    g_test_ctx.mask.no_print_time = !val;
 }
 
 static void _test_setup_arg_random_seed(const char* str)
@@ -1906,6 +1904,7 @@ static void _test_setup_precision(void)
     assert(sizeof(((double_point_t*)NULL)->bits_) == sizeof(((double_point_t*)NULL)->value_));
     assert(sizeof(((float_point_t*)NULL)->bits_) == sizeof(((float_point_t*)NULL)->value_));
 
+    g_test_ctx.precision.kMaxUlps = 4;
     // double
     {
         g_test_ctx.precision._double.kBitCount_64 = 8 * sizeof(((double_point_t*)NULL)->value_);
@@ -1948,11 +1947,20 @@ static void _test_shuffle_cases(void)
     g_test_ctx.info.case_list = copy_case_list;
 }
 
+static void _test_prepare(void)
+{
+    _test_srand(time(NULL));
+    _test_setup_precision();
+
+    g_test_ctx.runtime.tid = GET_TID();
+    g_test_ctx.io.f_out = stdout;
+    g_test_ctx.counter.repeat.repeat = 1;
+}
+
 static int _test_setup(int argc, char* argv[], const cutest_hook_t* hook)
 {
     (void)argc;
-
-    g_test_ctx.io.f_out = stdout;
+    _test_prepare();
 
     enum test_opt
     {
@@ -2048,8 +2056,6 @@ static int _test_setup(int argc, char* argv[], const cutest_hook_t* hook)
             break;
         }
     }
-
-    _test_setup_precision();
 
     /* shuffle if necessary */
     if (g_test_ctx.mask.shuffle)
@@ -2159,11 +2165,21 @@ static uint64_t _test_double_point_distance_between_sign_and_magnitude_numbers(u
 
 static void _test_cleanup(void)
 {
+    memset(&g_test_ctx.runtime, 0, sizeof(g_test_ctx.runtime));
+    memset(&g_test_ctx.timestamp, 0, sizeof(g_test_ctx.timestamp));
+    memset(&g_test_ctx.counter, 0, sizeof(g_test_ctx.counter));
+    memset(&g_test_ctx.mask, 0, sizeof(g_test_ctx.mask));
+
     if (g_test_ctx.filter.positive_patterns != NULL)
     {
         free(g_test_ctx.filter.positive_patterns);
         memset(&g_test_ctx.filter, 0, sizeof(g_test_ctx.filter));
     }
+
+    memset(&g_test_ctx.precision, 0, sizeof(g_test_ctx.precision));
+
+    g_test_ctx.io.f_out = NULL;
+    g_test_ctx.hook = NULL;
 }
 
 static void _test_run_tests_condition(void)
@@ -2291,24 +2307,24 @@ void cutest_register_case(cutest_case_t* data)
 
 int cutest_run_tests(int argc, char* argv[], const cutest_hook_t* hook)
 {
-    /* Initialize random seed */
-    _test_srand(time(NULL));
+    int ret;
 
     /* Parser parameter */
     if (_test_setup(argc, argv, hook) < 0)
     {
+        ret = 0;
         goto fin;
     }
 
     _test_hook_before_all_test(argc, argv);
     _test_run_tests_condition();
 
-    /* Cleanup */
+    ret = (int)g_test_ctx.counter.result.failed;
 fin:
     _test_hook_after_all_test();
     _test_cleanup();
 
-    return (int)g_test_ctx.counter.result.failed;
+    return ret;
 }
 
 TEST_NORETURN
@@ -2398,7 +2414,7 @@ unsigned cutest_internal_parameterized_index(void)
 TEST_NORETURN
 void cutest_internal_assert_failure(void)
 {
-    if (g_test_ctx.info.tid != GET_TID())
+    if (g_test_ctx.runtime.tid != GET_TID())
     {
         /*
         * If current thread is NOT the main thread, it is dangerous to jump back
