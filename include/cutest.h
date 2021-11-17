@@ -1175,9 +1175,20 @@ int cutest_timestamp_dif(const cutest_timestamp_t* t1, const cutest_timestamp_t*
  */
 #if defined(_MSC_VER)
 #   define TEST_DEBUGBREAK      __debugbreak()
-#elif !defined(__native_client__) \
-    && (defined(__clang__) || defined(__GNUC__)) && (defined(__x86_64__) || defined(__i386__))
-#   define TEST_DEBUGBREAK      asm("int3")
+#elif (defined(__clang__) || defined(__GNUC__)) && (defined(__x86_64__) || defined(__i386__))
+#   define TEST_DEBUGBREAK      __asm__ volatile("int $0x03")
+#elif (defined(__clang__) || defined(__GNUC__)) && defined(__thumb__)
+#   define TEST_DEBUGBREAK      __asm__ volatile(".inst 0xde01")
+#elif (defined(__clang__) || defined(__GNUC__)) && defined(__arm__) && !defined(__thumb__)
+#   define TEST_DEBUGBREAK      __asm__ volatile(".inst 0xe7f001f0")
+#elif (defined(__clang__) || defined(__GNUC__)) && defined(__aarch64__) && defined(__APPLE__)
+#   define TEST_DEBUGBREAK      __builtin_debugtrap()
+#elif (defined(__clang__) || defined(__GNUC__)) && defined(__aarch64__)
+#   define TEST_DEBUGBREAK      __asm__ volatile(".inst 0xd4200000")
+#elif (defined(__clang__) || defined(__GNUC__)) && defined(__powerpc__)
+#   define TEST_DEBUGBREAK      __asm__ volatile(".4byte 0x7d821008")
+#elif (defined(__clang__) || defined(__GNUC__)) && defined(__riscv)
+#   define TEST_DEBUGBREAK      __asm__ volatile(".4byte 0x00100073")
 #else
 #   define TEST_DEBUGBREAK      *(volatile int*)NULL = 1
 #endif
@@ -1221,7 +1232,7 @@ int cutest_timestamp_dif(const cutest_timestamp_t* t1, const cutest_timestamp_t*
 #ifdef __cplusplus
 #   define TEST_INITIALIZER(f) \
         void f(void); \
-        struct f##_t_ { f##_t_(void) { f(); } }; static f##_t_ f##_; \
+        struct f##_t_ { f##_t_(void) { f(); } }; f##_t_ f##_; \
         void f(void)
 #elif defined(_MSC_VER)
 #   pragma section(".CRT$XCU",read)
