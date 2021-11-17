@@ -17,7 +17,7 @@
 #define __C_UNIT_TEST_H__
 
 #include <stdint.h>
-#include <stdio.h>
+#include <stddef.h>
 #include <inttypes.h>
 
 #ifdef __cplusplus
@@ -1064,7 +1064,7 @@ void cutest_skip_test(void);
  * @param [in] ...      Print arguments
  */
 #define TEST_LOG(fmt, ...)  \
-    printf("[%s:%d %s] " fmt "\n", cutest_pretty_file(__FILE__), __LINE__, __FUNCTION__, ##__VA_ARGS__)
+    cutest_printf("[%s:%d %s] " fmt "\n", cutest_pretty_file(__FILE__), __LINE__, __FUNCTION__, ##__VA_ARGS__)
 
 /**
  * @}
@@ -1261,7 +1261,7 @@ int cutest_timestamp_dif(const cutest_timestamp_t* t1, const cutest_timestamp_t*
         if (CMP(_a, _b)) {\
             break;\
         }\
-        printf("%s:%d:failure:" u_fmt "\n"\
+        cutest_printf("%s:%d:failure:" u_fmt "\n"\
             "            expected:    `%s' %s `%s'\n"\
             "              actual:    " FMT " vs " FMT "\n",\
             __FILE__, __LINE__, ##__VA_ARGS__, #a, #OP, #b, _a, _b);\
@@ -1462,7 +1462,7 @@ int cutest_internal_assert_helper_double_eq(double a, double b);
 int cutest_internal_assert_helper_double_le(double a, double b);
 int cutest_internal_assert_helper_double_ge(double a, double b);
 unsigned cutest_internal_parameterized_index(void);
-
+int cutest_printf(const char* fmt, ...);
 const char* cutest_pretty_file(const char* file);
 
 /**

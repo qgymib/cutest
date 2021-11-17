@@ -889,6 +889,11 @@ typedef struct test_ctx
         }_float;
     }precision;                                                 /**< Context for float/double compare */
 
+    struct
+    {
+        FILE*               f_out;                              /**< Output file */
+    }io;
+
     const cutest_hook_t*    hook;
 }test_ctx_t;
 
@@ -921,6 +926,7 @@ static test_ctx_t           g_test_ctx = {
     { 0, 1, 0, 0 },                                                     // .mask
     { NULL, NULL, 0, 0 },                                               // .filter
     { 4, { 0, 0, 0, 0, 0, 0 }, { 0, 0, 0, 0, 0, 0 } },                  // .precision
+    { NULL },                                                           /* .io */
     NULL,                                                               // .hook
 };
 
@@ -1210,19 +1216,15 @@ static int _should_use_color(int is_tty)
 #endif
 }
 
-static int _test_print_colorful(print_color_t color, FILE* stream, const char* fmt, ...)
+static int _test_print_colorful_ap(print_color_t color, FILE* stream, const char* fmt, va_list ap)
 {
-    int ret;
-    va_list args;
-    va_start(args, fmt);
-
     int stream_fd = fileno(stream);
     if (!_should_use_color(isatty(stream_fd)) || (color == print_default))
     {
-        ret = vfprintf(stream, fmt, args);
-        goto fin;
+        return vfprintf(stream, fmt, ap);
     }
 
+    int ret;
 #if defined(_WIN32)
     const HANDLE stdout_handle = (HANDLE)_get_osfhandle(stream_fd);
 
@@ -1238,18 +1240,28 @@ static int _test_print_colorful(print_color_t color, FILE* stream, const char* f
     fflush(stream);
     SetConsoleTextAttribute(stdout_handle, new_color);
 
-    ret = vfprintf(stream, fmt, args);
+    ret = vfprintf(stream, fmt, ap);
 
     fflush(stream);
     // Restores the text color.
     SetConsoleTextAttribute(stdout_handle, old_color_attrs);
 #else
     fprintf(stream, "\033[0;%sm", _get_ansi_color_code_fg(color));
-    ret = vfprintf(stream, fmt, args);
+    ret = vfprintf(stream, fmt, ap);
     fprintf(stream, "\033[m");  // Resets the terminal to default.
 #endif
 
-fin:
+    return ret;
+}
+
+static int _test_print_colorful(print_color_t color, FILE* stream, const char* fmt, ...)
+{
+    int ret;
+    va_list args;
+    va_start(args, fmt);
+
+    ret = _test_print_colorful_ap(color, stream, fmt, args);
+
     va_end(args);
     return ret;
 }
@@ -1496,8 +1508,8 @@ static void _test_run_case(void)
         return;
     }
 
-    _test_print_colorful(print_green, stdout, "[ RUN      ]");
-    _test_print_colorful(print_default, stdout, " %s\n", g_test_ctx2.strbuf);
+    _test_print_colorful(print_green, g_test_ctx.io.f_out, "[ RUN      ]");
+    _test_print_colorful(print_default, g_test_ctx.io.f_out, " %s\n", g_test_ctx2.strbuf);
 
     int ret;
     if ((ret = setjmp(g_test_ctx2.jmpbuf)) != 0)
@@ -1556,27 +1568,27 @@ procedure_teardown_fin:
     if (HAS_MASK(g_test_ctx.runtime.cur_case->info.mask, MASK_FAILURE))
     {
         g_test_ctx.counter.result.failed++;
-        _test_print_colorful(print_red, stdout, "[  FAILED  ]");
+        _test_print_colorful(print_red, g_test_ctx.io.f_out, "[  FAILED  ]");
     }
     else if (HAS_MASK(g_test_ctx.runtime.cur_case->info.mask, MASK_SKIPPED))
     {
         g_test_ctx.counter.result.skipped++;
-        _test_print_colorful(print_yellow, stdout, "[   SKIP   ]");
+        _test_print_colorful(print_yellow, g_test_ctx.io.f_out, "[   SKIP   ]");
     }
     else
     {
         g_test_ctx.counter.result.success++;
-        _test_print_colorful(print_green, stdout, "[       OK ]");
+        _test_print_colorful(print_green, g_test_ctx.io.f_out, "[       OK ]");
     }
 
-    printf(" %s", g_test_ctx2.strbuf);
+    _test_print_colorful(print_default, g_test_ctx.io.f_out, " %s", g_test_ctx2.strbuf);
     if (g_test_ctx.mask.print_time)
     {
         unsigned long take_time = (unsigned long)(g_test_ctx.timestamp.tv_diff.sec * 1000
             + g_test_ctx.timestamp.tv_diff.usec / 1000);
-        printf(" (%lu ms)", take_time);
+        _test_print_colorful(print_default, g_test_ctx.io.f_out, " (%lu ms)", take_time);
     }
-    printf("\n");
+    _test_print_colorful(print_default, g_test_ctx.io.f_out, "\n");
 }
 
 static void _test_reset_all_test(void)
@@ -1608,8 +1620,8 @@ static void _test_show_report_failed(void)
         snprintf(g_test_ctx2.strbuf, sizeof(g_test_ctx2.strbuf), "%s.%s",
             case_data->info.suit_name, case_data->info.case_name);
 
-        _test_print_colorful(print_red, stdout, "[  FAILED  ]");
-        printf(" %s\n", g_test_ctx2.strbuf);
+        _test_print_colorful(print_red, g_test_ctx.io.f_out, "[  FAILED  ]");
+        _test_print_colorful(print_default, g_test_ctx.io.f_out, " %s\n", g_test_ctx2.strbuf);
     }
 }
 
@@ -1618,8 +1630,8 @@ static void _test_show_report(void)
     cutest_timestamp_dif(&g_test_ctx.timestamp.tv_total_start,
         &g_test_ctx.timestamp.tv_total_end, &g_test_ctx.timestamp.tv_diff);
 
-    _test_print_colorful(print_green, stdout, "[==========]");
-    printf(" %u/%u test case%s ran.",
+    _test_print_colorful(print_green, g_test_ctx.io.f_out, "[==========]");
+    _test_print_colorful(print_default, g_test_ctx.io.f_out, " %u/%u test case%s ran.",
         g_test_ctx.counter.result.total,
         (unsigned)_test_list_size(&g_test_ctx.info.case_list),
         g_test_ctx.counter.result.total > 1 ? "s" : "");
@@ -1627,28 +1639,28 @@ static void _test_show_report(void)
     {
         unsigned long take_time = (unsigned long)(g_test_ctx.timestamp.tv_diff.sec * 1000
             + g_test_ctx.timestamp.tv_diff.usec / 1000);
-        printf(" (%lu ms total)", take_time);
+        _test_print_colorful(print_default, g_test_ctx.io.f_out, " (%lu ms total)", take_time);
     }
-    printf("\n");
+    _test_print_colorful(print_default, g_test_ctx.io.f_out, "\n");
 
     if (g_test_ctx.counter.result.disabled != 0)
     {
-        _test_print_colorful(print_green, stdout, "[ DISABLED ]");
-        printf(" %u test%s.\n",
+        _test_print_colorful(print_green, g_test_ctx.io.f_out, "[ DISABLED ]");
+        _test_print_colorful(print_default, g_test_ctx.io.f_out, " %u test%s.\n",
             g_test_ctx.counter.result.disabled,
             g_test_ctx.counter.result.disabled > 1 ? "s" : "");
     }
     if (g_test_ctx.counter.result.skipped != 0)
     {
-        _test_print_colorful(print_yellow, stdout, "[ BYPASSED ]");
-        printf(" %u test%s.\n",
+        _test_print_colorful(print_yellow, g_test_ctx.io.f_out, "[ BYPASSED ]");
+        _test_print_colorful(print_default, g_test_ctx.io.f_out, " %u test%s.\n",
             g_test_ctx.counter.result.skipped,
             g_test_ctx.counter.result.skipped > 1 ? "s" : "");
     }
     if (g_test_ctx.counter.result.success != 0)
     {
-        _test_print_colorful(print_green, stdout, "[  PASSED  ]");
-        printf(" %u test%s.\n",
+        _test_print_colorful(print_green, g_test_ctx.io.f_out, "[  PASSED  ]");
+        _test_print_colorful(print_default, g_test_ctx.io.f_out, " %u test%s.\n",
             g_test_ctx.counter.result.success,
             g_test_ctx.counter.result.success > 1 ? "s" : "");
     }
@@ -1659,8 +1671,9 @@ static void _test_show_report(void)
         return;
     }
 
-    _test_print_colorful(print_red, stdout, "[  FAILED  ]");
-    printf(" %u test%s, listed below:\n", g_test_ctx.counter.result.failed, g_test_ctx.counter.result.failed > 1 ? "s" : "");
+    _test_print_colorful(print_red, g_test_ctx.io.f_out, "[  FAILED  ]");
+    _test_print_colorful(print_default, g_test_ctx.io.f_out,
+        " %u test%s, listed below:\n", g_test_ctx.counter.result.failed, g_test_ctx.counter.result.failed > 1 ? "s" : "");
     _test_show_report_failed();
 }
 
@@ -1825,7 +1838,7 @@ static void _test_list_tests_print_name(const cutest_case_t* case_data)
     char buffer[64];
     if (case_data->info.type != CUTEST_CASE_TYPE_PARAMETERIZED)
     {
-        printf("  %s\n", case_data->info.case_name);
+        _test_print_colorful(print_default, g_test_ctx.io.f_out, "  %s\n", case_data->info.case_name);
         return;
     }
 
@@ -1842,7 +1855,7 @@ static void _test_list_tests_print_name(const cutest_case_t* case_data)
     {
         _test_list_tests_gen_param_info(buffer, sizeof(buffer), param_type, case_data, i);
 
-        printf("  %s/%" TEST_PRIsize "  # TEST_GET_PARAM() = %s\n",
+        _test_print_colorful(print_default, g_test_ctx.io.f_out, "  %s/%" TEST_PRIsize "  # TEST_GET_PARAM() = %s\n",
             case_data->info.case_name, i, buffer);
     }
 }
@@ -1860,7 +1873,7 @@ static void _test_list_tests(void)
             && strcmp(last_class_name, case_data->info.suit_name) != 0)
         {
             last_class_name = case_data->info.suit_name;
-            printf("%s.\n", last_class_name);
+            _test_print_colorful(print_default, g_test_ctx.io.f_out, "%s.\n", last_class_name);
         }
         _test_list_tests_print_name(case_data);
     }
@@ -1938,6 +1951,9 @@ static void _test_shuffle_cases(void)
 static int _test_setup(int argc, char* argv[], const cutest_hook_t* hook)
 {
     (void)argc;
+
+    g_test_ctx.io.f_out = stdout;
+
     enum test_opt
     {
         test_list_tests = 1,
@@ -1995,7 +2011,7 @@ static int _test_setup(int argc, char* argv[], const cutest_hook_t* hook)
             g_test_ctx.mask.break_on_failure = 1;
             break;
         case help:
-            _print_encoded(stdout,
+            _print_encoded(g_test_ctx.io.f_out,
                 "This program contains tests written using cutest. You can use the\n"
                 "following command line flags to control its behavior:\n"
                 "\n"
@@ -2049,8 +2065,8 @@ static void _test_run_test_loop(void)
 {
     _test_reset_all_test();
 
-    _test_print_colorful(print_yellow, stdout, "[==========]");
-    printf(" total %u test%s registered.\n",
+    _test_print_colorful(print_yellow, g_test_ctx.io.f_out, "[==========]");
+    _test_print_colorful(print_default, g_test_ctx.io.f_out, " total %u test%s registered.\n",
         (unsigned)_test_list_size(&g_test_ctx.info.case_list),
         _test_list_size(&g_test_ctx.info.case_list) > 1 ? "s" : "");
 
@@ -2139,6 +2155,43 @@ static uint64_t _test_double_point_distance_between_sign_and_magnitude_numbers(u
     const uint64_t biased2 = _test_double_point_sign_and_magnitude_to_biased(sam2);
 
     return (biased1 >= biased2) ? (biased1 - biased2) : (biased2 - biased1);
+}
+
+static void _test_cleanup(void)
+{
+    if (g_test_ctx.filter.positive_patterns != NULL)
+    {
+        free(g_test_ctx.filter.positive_patterns);
+        memset(&g_test_ctx.filter, 0, sizeof(g_test_ctx.filter));
+    }
+}
+
+static void _test_run_tests_condition(void)
+{
+    for (g_test_ctx.counter.repeat.repeated = 0;
+        g_test_ctx.counter.repeat.repeated < g_test_ctx.counter.repeat.repeat;
+        g_test_ctx.counter.repeat.repeated++)
+    {
+        if (g_test_ctx.counter.repeat.repeat > 1)
+        {
+            _test_print_colorful(print_yellow, g_test_ctx.io.f_out, "[==========]");
+            _test_print_colorful(print_default, g_test_ctx.io.f_out, " start loop: %u/%u\n",
+                g_test_ctx.counter.repeat.repeated + 1, g_test_ctx.counter.repeat.repeat);
+        }
+
+        _test_run_test_loop();
+
+        if (g_test_ctx.counter.repeat.repeat > 1)
+        {
+            _test_print_colorful(print_yellow, g_test_ctx.io.f_out, "[==========]");
+            _test_print_colorful(print_default, g_test_ctx.io.f_out, " end loop (%u/%u)\n",
+                g_test_ctx.counter.repeat.repeated + 1, g_test_ctx.counter.repeat.repeat);
+            if (g_test_ctx.counter.repeat.repeated < g_test_ctx.counter.repeat.repeat - 1)
+            {
+                _test_print_colorful(print_default, g_test_ctx.io.f_out, "\n");
+            }
+        }
+    }
 }
 
 int cutest_timestamp_get(cutest_timestamp_t* ts)
@@ -2248,41 +2301,12 @@ int cutest_run_tests(int argc, char* argv[], const cutest_hook_t* hook)
     }
 
     _test_hook_before_all_test(argc, argv);
-
-    for (g_test_ctx.counter.repeat.repeated = 0;
-        g_test_ctx.counter.repeat.repeated < g_test_ctx.counter.repeat.repeat;
-        g_test_ctx.counter.repeat.repeated++)
-    {
-        if (g_test_ctx.counter.repeat.repeat > 1)
-        {
-            _test_print_colorful(print_yellow, stdout, "[==========]");
-            printf(" start loop: %u/%u\n",
-                g_test_ctx.counter.repeat.repeated + 1, g_test_ctx.counter.repeat.repeat);
-        }
-
-        _test_run_test_loop();
-
-        if (g_test_ctx.counter.repeat.repeat > 1)
-        {
-            _test_print_colorful(print_yellow, stdout, "[==========]");
-            printf(" end loop (%u/%u)\n",
-                g_test_ctx.counter.repeat.repeated + 1, g_test_ctx.counter.repeat.repeat);
-            if (g_test_ctx.counter.repeat.repeated < g_test_ctx.counter.repeat.repeat - 1)
-            {
-                printf("\n");
-            }
-        }
-    }
+    _test_run_tests_condition();
 
     /* Cleanup */
 fin:
-    if (g_test_ctx.filter.positive_patterns != NULL)
-    {
-        free(g_test_ctx.filter.positive_patterns);
-        memset(&g_test_ctx.filter, 0, sizeof(g_test_ctx.filter));
-    }
-
     _test_hook_after_all_test();
+    _test_cleanup();
 
     return (int)g_test_ctx.counter.result.failed;
 }
@@ -2421,4 +2445,16 @@ const char* cutest_pretty_file(const char* file)
         }
     }
     return pos;
+}
+
+int cutest_printf(const char* fmt, ...)
+{
+    int ret;
+    va_list ap;
+
+    va_start(ap, fmt);
+    ret = _test_print_colorful_ap(print_default, g_test_ctx.io.f_out, fmt, ap);
+    va_end(ap);
+
+    return ret;
 }
