@@ -1268,14 +1268,14 @@ int cutest_timestamp_dif(const cutest_timestamp_t* t1, const cutest_timestamp_t*
  */
 #define ASSERT_TEMPLATE(TYPE, FMT, OP, CMP, a, b, u_fmt, ...)   \
     do {\
-        TYPE _a = (TYPE)(a); TYPE _b = (TYPE)(b);\
-        if (CMP(_a, _b)) {\
+        TYPE _1 = (TYPE)(a); TYPE _2 = (TYPE)(b);\
+        if (CMP(_1, _2)) {\
             break;\
         }\
         cutest_printf("%s:%d:failure:" u_fmt "\n"\
             "            expected:    `%s' %s `%s'\n"\
             "              actual:    " FMT " vs " FMT "\n",\
-            __FILE__, __LINE__, ##__VA_ARGS__, #a, #OP, #b, _a, _b);\
+            __FILE__, __LINE__, ##__VA_ARGS__, #a, #OP, #b, _1, _2);\
         cutest_internal_flush();\
         if (cutest_internal_break_on_failure()) {\
             TEST_DEBUGBREAK;\
