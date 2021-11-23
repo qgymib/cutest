@@ -778,10 +778,10 @@ typedef enum test_parameterized_type
 
 typedef enum print_color
 {
-    print_default   = 0,
-    print_red       = 1,
-    print_green     = 2,
-    print_yellow    = 4,
+    PRINT_DEFAULT   = 0,
+    PRINT_RED       = 1,
+    PRINT_GREEN     = 2,
+    PRINT_YELLOW    = 4,
 }print_color_t;
 
 typedef union double_point
@@ -958,11 +958,11 @@ static WORD _test_get_color_attribute(print_color_t color)
 {
     switch (color)
     {
-    case print_red:
+    case PRINT_RED:
         return FOREGROUND_RED;
-    case print_green:
+    case PRINT_GREEN:
         return FOREGROUND_GREEN;
-    case print_yellow:
+    case PRINT_YELLOW:
         return FOREGROUND_RED | FOREGROUND_GREEN;
     default:
         return 0;
@@ -1093,11 +1093,11 @@ static WORD _get_color_attribute(print_color_t color)
 {
     switch (color)
     {
-    case print_red:
+    case PRINT_RED:
         return FOREGROUND_RED;
-    case print_green:
+    case PRINT_GREEN:
         return FOREGROUND_GREEN;
-    case print_yellow:
+    case PRINT_YELLOW:
         return FOREGROUND_RED | FOREGROUND_GREEN;
     default:
         return 0;
@@ -1185,11 +1185,11 @@ static const char* _get_ansi_color_code_fg(print_color_t color)
 {
     switch (color)
     {
-    case print_red:
+    case PRINT_RED:
         return "31";
-    case print_green:
+    case PRINT_GREEN:
         return "32";
-    case print_yellow:
+    case PRINT_YELLOW:
         return "33";
     default:
         break;
@@ -1219,7 +1219,7 @@ static int _should_use_color(int is_tty)
 static int _test_print_colorful_ap(print_color_t color, FILE* stream, const char* fmt, va_list ap)
 {
     int stream_fd = fileno(stream);
-    if (!_should_use_color(isatty(stream_fd)) || (color == print_default))
+    if (!_should_use_color(isatty(stream_fd)) || (color == PRINT_DEFAULT))
     {
         return vfprintf(stream, fmt, ap);
     }
@@ -1270,7 +1270,7 @@ static int _print_encoded(FILE* stream, const char* str)
 {
     char* str_tmp;
     int ret = 0;
-    print_color_t color = print_default;
+    print_color_t color = PRINT_DEFAULT;
 
     for (;;)
     {
@@ -1297,13 +1297,13 @@ static int _print_encoded(FILE* stream, const char* str)
             color = 0;
             break;
         case 'R':
-            color = print_red;
+            color = PRINT_RED;
             break;
         case 'G':
-            color = print_green;
+            color = PRINT_GREEN;
             break;
         case 'Y':
-            color = print_yellow;
+            color = PRINT_YELLOW;
             break;
         default:
             --str;
@@ -1508,8 +1508,8 @@ static void _test_run_case(void)
         return;
     }
 
-    _test_print_colorful(print_green, g_test_ctx.io.f_out, "[ RUN      ]");
-    _test_print_colorful(print_default, g_test_ctx.io.f_out, " %s\n", g_test_ctx2.strbuf);
+    _test_print_colorful(PRINT_GREEN, g_test_ctx.io.f_out, "[ RUN      ]");
+    _test_print_colorful(PRINT_DEFAULT, g_test_ctx.io.f_out, " %s\n", g_test_ctx2.strbuf);
 
     int ret;
     if ((ret = setjmp(g_test_ctx2.jmpbuf)) != 0)
@@ -1568,27 +1568,27 @@ procedure_teardown_fin:
     if (HAS_MASK(g_test_ctx.runtime.cur_case->info.mask, MASK_FAILURE))
     {
         g_test_ctx.counter.result.failed++;
-        _test_print_colorful(print_red, g_test_ctx.io.f_out, "[  FAILED  ]");
+        _test_print_colorful(PRINT_RED, g_test_ctx.io.f_out, "[  FAILED  ]");
     }
     else if (HAS_MASK(g_test_ctx.runtime.cur_case->info.mask, MASK_SKIPPED))
     {
         g_test_ctx.counter.result.skipped++;
-        _test_print_colorful(print_yellow, g_test_ctx.io.f_out, "[   SKIP   ]");
+        _test_print_colorful(PRINT_YELLOW, g_test_ctx.io.f_out, "[   SKIP   ]");
     }
     else
     {
         g_test_ctx.counter.result.success++;
-        _test_print_colorful(print_green, g_test_ctx.io.f_out, "[       OK ]");
+        _test_print_colorful(PRINT_GREEN, g_test_ctx.io.f_out, "[       OK ]");
     }
 
-    _test_print_colorful(print_default, g_test_ctx.io.f_out, " %s", g_test_ctx2.strbuf);
+    _test_print_colorful(PRINT_DEFAULT, g_test_ctx.io.f_out, " %s", g_test_ctx2.strbuf);
     if (!g_test_ctx.mask.no_print_time)
     {
         unsigned long take_time = (unsigned long)(g_test_ctx.timestamp.tv_diff.sec * 1000
             + g_test_ctx.timestamp.tv_diff.usec / 1000);
-        _test_print_colorful(print_default, g_test_ctx.io.f_out, " (%lu ms)", take_time);
+        _test_print_colorful(PRINT_DEFAULT, g_test_ctx.io.f_out, " (%lu ms)", take_time);
     }
-    _test_print_colorful(print_default, g_test_ctx.io.f_out, "\n");
+    _test_print_colorful(PRINT_DEFAULT, g_test_ctx.io.f_out, "\n");
 }
 
 static void _test_reset_all_test(void)
@@ -1618,8 +1618,8 @@ static void _test_show_report_failed(void)
         snprintf(g_test_ctx2.strbuf, sizeof(g_test_ctx2.strbuf), "%s.%s",
             case_data->info.suit_name, case_data->info.case_name);
 
-        _test_print_colorful(print_red, g_test_ctx.io.f_out, "[  FAILED  ]");
-        _test_print_colorful(print_default, g_test_ctx.io.f_out, " %s\n", g_test_ctx2.strbuf);
+        _test_print_colorful(PRINT_RED, g_test_ctx.io.f_out, "[  FAILED  ]");
+        _test_print_colorful(PRINT_DEFAULT, g_test_ctx.io.f_out, " %s\n", g_test_ctx2.strbuf);
     }
 }
 
@@ -1628,8 +1628,8 @@ static void _test_show_report(void)
     cutest_timestamp_dif(&g_test_ctx.timestamp.tv_total_start,
         &g_test_ctx.timestamp.tv_total_end, &g_test_ctx.timestamp.tv_diff);
 
-    _test_print_colorful(print_green, g_test_ctx.io.f_out, "[==========]");
-    _test_print_colorful(print_default, g_test_ctx.io.f_out, " %u/%u test case%s ran.",
+    _test_print_colorful(PRINT_DEFAULT, g_test_ctx.io.f_out, "[==========]");
+    _test_print_colorful(PRINT_DEFAULT, g_test_ctx.io.f_out, " %u/%u test case%s ran.",
         g_test_ctx.counter.result.total,
         (unsigned)_test_list_size(&g_test_ctx.info.case_list),
         g_test_ctx.counter.result.total > 1 ? "s" : "");
@@ -1637,28 +1637,28 @@ static void _test_show_report(void)
     {
         unsigned long take_time = (unsigned long)(g_test_ctx.timestamp.tv_diff.sec * 1000
             + g_test_ctx.timestamp.tv_diff.usec / 1000);
-        _test_print_colorful(print_default, g_test_ctx.io.f_out, " (%lu ms total)", take_time);
+        _test_print_colorful(PRINT_DEFAULT, g_test_ctx.io.f_out, " (%lu ms total)", take_time);
     }
-    _test_print_colorful(print_default, g_test_ctx.io.f_out, "\n");
+    _test_print_colorful(PRINT_DEFAULT, g_test_ctx.io.f_out, "\n");
 
     if (g_test_ctx.counter.result.disabled != 0)
     {
-        _test_print_colorful(print_green, g_test_ctx.io.f_out, "[ DISABLED ]");
-        _test_print_colorful(print_default, g_test_ctx.io.f_out, " %u test%s.\n",
+        _test_print_colorful(PRINT_GREEN, g_test_ctx.io.f_out, "[ DISABLED ]");
+        _test_print_colorful(PRINT_DEFAULT, g_test_ctx.io.f_out, " %u test%s.\n",
             g_test_ctx.counter.result.disabled,
             g_test_ctx.counter.result.disabled > 1 ? "s" : "");
     }
     if (g_test_ctx.counter.result.skipped != 0)
     {
-        _test_print_colorful(print_yellow, g_test_ctx.io.f_out, "[ BYPASSED ]");
-        _test_print_colorful(print_default, g_test_ctx.io.f_out, " %u test%s.\n",
+        _test_print_colorful(PRINT_YELLOW, g_test_ctx.io.f_out, "[ BYPASSED ]");
+        _test_print_colorful(PRINT_DEFAULT, g_test_ctx.io.f_out, " %u test%s.\n",
             g_test_ctx.counter.result.skipped,
             g_test_ctx.counter.result.skipped > 1 ? "s" : "");
     }
     if (g_test_ctx.counter.result.success != 0)
     {
-        _test_print_colorful(print_green, g_test_ctx.io.f_out, "[  PASSED  ]");
-        _test_print_colorful(print_default, g_test_ctx.io.f_out, " %u test%s.\n",
+        _test_print_colorful(PRINT_GREEN, g_test_ctx.io.f_out, "[  PASSED  ]");
+        _test_print_colorful(PRINT_DEFAULT, g_test_ctx.io.f_out, " %u test%s.\n",
             g_test_ctx.counter.result.success,
             g_test_ctx.counter.result.success > 1 ? "s" : "");
     }
@@ -1669,8 +1669,8 @@ static void _test_show_report(void)
         return;
     }
 
-    _test_print_colorful(print_red, g_test_ctx.io.f_out, "[  FAILED  ]");
-    _test_print_colorful(print_default, g_test_ctx.io.f_out,
+    _test_print_colorful(PRINT_RED, g_test_ctx.io.f_out, "[  FAILED  ]");
+    _test_print_colorful(PRINT_DEFAULT, g_test_ctx.io.f_out,
         " %u test%s, listed below:\n", g_test_ctx.counter.result.failed, g_test_ctx.counter.result.failed > 1 ? "s" : "");
     _test_show_report_failed();
 }
@@ -1836,7 +1836,7 @@ static void _test_list_tests_print_name(const cutest_case_t* case_data)
     char buffer[64];
     if (case_data->info.type != CUTEST_CASE_TYPE_PARAMETERIZED)
     {
-        _test_print_colorful(print_default, g_test_ctx.io.f_out, "  %s\n", case_data->info.case_name);
+        _test_print_colorful(PRINT_DEFAULT, g_test_ctx.io.f_out, "  %s\n", case_data->info.case_name);
         return;
     }
 
@@ -1853,7 +1853,7 @@ static void _test_list_tests_print_name(const cutest_case_t* case_data)
     {
         _test_list_tests_gen_param_info(buffer, sizeof(buffer), param_type, case_data, i);
 
-        _test_print_colorful(print_default, g_test_ctx.io.f_out, "  %s/%" TEST_PRIsize "  # TEST_GET_PARAM() = %s\n",
+        _test_print_colorful(PRINT_DEFAULT, g_test_ctx.io.f_out, "  %s/%" TEST_PRIsize "  # TEST_GET_PARAM() = %s\n",
             case_data->info.case_name, i, buffer);
     }
 }
@@ -1871,7 +1871,7 @@ static void _test_list_tests(void)
             && strcmp(last_class_name, case_data->info.suit_name) != 0)
         {
             last_class_name = case_data->info.suit_name;
-            _test_print_colorful(print_default, g_test_ctx.io.f_out, "%s.\n", last_class_name);
+            _test_print_colorful(PRINT_DEFAULT, g_test_ctx.io.f_out, "%s.\n", last_class_name);
         }
         _test_list_tests_print_name(case_data);
     }
@@ -2071,8 +2071,8 @@ static void _test_run_test_loop(void)
 {
     _test_reset_all_test();
 
-    _test_print_colorful(print_yellow, g_test_ctx.io.f_out, "[==========]");
-    _test_print_colorful(print_default, g_test_ctx.io.f_out, " total %u test%s registered.\n",
+    _test_print_colorful(PRINT_DEFAULT, g_test_ctx.io.f_out, "[==========]");
+    _test_print_colorful(PRINT_DEFAULT, g_test_ctx.io.f_out, " total %u test%s registered.\n",
         (unsigned)_test_list_size(&g_test_ctx.info.case_list),
         _test_list_size(&g_test_ctx.info.case_list) > 1 ? "s" : "");
 
@@ -2190,8 +2190,8 @@ static void _test_run_tests_condition(void)
     {
         if (g_test_ctx.counter.repeat.repeat > 1)
         {
-            _test_print_colorful(print_yellow, g_test_ctx.io.f_out, "[==========]");
-            _test_print_colorful(print_default, g_test_ctx.io.f_out, " start loop: %u/%u\n",
+            _test_print_colorful(PRINT_YELLOW, g_test_ctx.io.f_out, "[==========]");
+            _test_print_colorful(PRINT_DEFAULT, g_test_ctx.io.f_out, " start loop: %u/%u\n",
                 g_test_ctx.counter.repeat.repeated + 1, g_test_ctx.counter.repeat.repeat);
         }
 
@@ -2199,12 +2199,12 @@ static void _test_run_tests_condition(void)
 
         if (g_test_ctx.counter.repeat.repeat > 1)
         {
-            _test_print_colorful(print_yellow, g_test_ctx.io.f_out, "[==========]");
-            _test_print_colorful(print_default, g_test_ctx.io.f_out, " end loop (%u/%u)\n",
+            _test_print_colorful(PRINT_YELLOW, g_test_ctx.io.f_out, "[==========]");
+            _test_print_colorful(PRINT_DEFAULT, g_test_ctx.io.f_out, " end loop (%u/%u)\n",
                 g_test_ctx.counter.repeat.repeated + 1, g_test_ctx.counter.repeat.repeat);
             if (g_test_ctx.counter.repeat.repeated < g_test_ctx.counter.repeat.repeat - 1)
             {
-                _test_print_colorful(print_default, g_test_ctx.io.f_out, "\n");
+                _test_print_colorful(PRINT_DEFAULT, g_test_ctx.io.f_out, "\n");
             }
         }
     }
@@ -2469,7 +2469,7 @@ int cutest_printf(const char* fmt, ...)
     va_list ap;
 
     va_start(ap, fmt);
-    ret = _test_print_colorful_ap(print_default, g_test_ctx.io.f_out, fmt, ap);
+    ret = _test_print_colorful_ap(PRINT_DEFAULT, g_test_ctx.io.f_out, fmt, ap);
     va_end(ap);
 
     return ret;
