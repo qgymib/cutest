@@ -1279,8 +1279,9 @@ int cutest_timestamp_dif(const cutest_timestamp_t* t1, const cutest_timestamp_t*
         cutest_internal_flush();\
         if (cutest_internal_break_on_failure()) {\
             TEST_DEBUGBREAK;\
+        } else {\
+            cutest_internal_assert_failure();\
         }\
-        cutest_internal_assert_failure();\
     } TEST_MSVC_WARNNING_GUARD(while (0), 4127)
 
 #define ASSERT_TEMPLATE_VA(...)                                 TEST_JOIN(ASSERT_TEMPLATE_VA_, TEST_ARG_COUNT(__VA_ARGS__))
