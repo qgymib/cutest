@@ -171,7 +171,7 @@ extern "C" {
  */
 #define TEST(suit_name, case_name)  \
     void TEST_##suit_name##_##case_name(void);\
-    TEST_INITIALIZER(TEST_INIT_##case_name) {\
+    TEST_INITIALIZER(TEST_INIT_##suit_name##_##case_name) {\
         static cutest_case_t _case_##suit_name##_##case_name = {\
             { { NULL, NULL }, { NULL, NULL, NULL } }, /* .node */\
             { CUTEST_CASE_TYPE_SIMPLE, 0, #suit_name, #case_name }, /* .info */\
