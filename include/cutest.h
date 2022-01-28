@@ -117,7 +117,7 @@ extern "C" {
  * @see TEST_PARAMETERIZED_SUPPRESS_UNUSED
  */
 #define TEST_P(fixture_name, case_name) \
-    void TEST_##fixture_name##_##case_name(_parameterized_type_##fixture_name*);\
+    void TEST_BODY_##fixture_name##_##case_name(_parameterized_type_##fixture_name*);\
     TEST_INITIALIZER(TEST_INIT_##fixture_name##_##case_name) {\
         static cutest_case_t _case_##fixture_name##_##case_name = {\
             { { NULL, NULL }, { NULL, NULL, NULL } }, /* .node */\
@@ -125,7 +125,7 @@ extern "C" {
             {\
                 TEST_FIXTURE_SETUP_##fixture_name,\
                 TEST_FIXTURE_TEARDOWN_##fixture_name,\
-                (void*)TEST_##fixture_name##_##case_name,\
+                (void*)TEST_BODY_##fixture_name##_##case_name,\
             }, /* stage */\
             {\
                 sizeof(_parameterized_data_##fixture_name) / sizeof(_parameterized_data_##fixture_name[0]), \
@@ -137,7 +137,7 @@ extern "C" {
         };\
         cutest_register_case(&_case_##fixture_name##_##case_name);\
     }\
-    void TEST_##fixture_name##_##case_name(\
+    void TEST_BODY_##fixture_name##_##case_name(\
         _parameterized_type_##fixture_name* _test_parameterized_data)
 
 /**
@@ -146,7 +146,7 @@ extern "C" {
  * @param [in] case_name        The name of test case
  */
 #define TEST_F(fixture_name, case_name) \
-    void TEST_##fixture_name##_##case_name(void);\
+    void TEST_BODY_##fixture_name##_##case_name(void);\
     TEST_INITIALIZER(TEST_INIT_##fixture_name##_##case_name) {\
         static cutest_case_t _case_##fixture_name##_##case_name = {\
             { { NULL, NULL }, { NULL, NULL, NULL } }, /* .node */\
@@ -154,7 +154,7 @@ extern "C" {
             {\
                 TEST_FIXTURE_SETUP_##fixture_name,\
                 TEST_FIXTURE_TEARDOWN_##fixture_name,\
-                (void*)TEST_##fixture_name##_##case_name,\
+                (void*)TEST_BODY_##fixture_name##_##case_name,\
             }, /* stage */\
             {\
                 0, NULL, NULL, NULL, 0\
@@ -162,7 +162,7 @@ extern "C" {
         };\
         cutest_register_case(&_case_##fixture_name##_##case_name);\
     }\
-    void TEST_##fixture_name##_##case_name(void)
+    void TEST_BODY_##fixture_name##_##case_name(void)
 
 /**
  * @brief Simple Test
@@ -170,13 +170,13 @@ extern "C" {
  * @param [in] case_name        case name
  */
 #define TEST(suit_name, case_name)  \
-    void TEST_##suit_name##_##case_name(void);\
+    void TEST_BODY_##suit_name##_##case_name(void);\
     TEST_INITIALIZER(TEST_INIT_##suit_name##_##case_name) {\
         static cutest_case_t _case_##suit_name##_##case_name = {\
             { { NULL, NULL }, { NULL, NULL, NULL } }, /* .node */\
             { CUTEST_CASE_TYPE_SIMPLE, 0, #suit_name, #case_name }, /* .info */\
             {\
-                NULL, NULL, (void*)TEST_##suit_name##_##case_name,\
+                NULL, NULL, (void*)TEST_BODY_##suit_name##_##case_name,\
             }, /* stage */\
             {\
                 0, NULL, NULL,NULL,  0\
@@ -184,7 +184,7 @@ extern "C" {
         };\
         cutest_register_case(&_case_##suit_name##_##case_name);\
     }\
-    void TEST_##suit_name##_##case_name(void)
+    void TEST_BODY_##suit_name##_##case_name(void)
 
 /**
  * Group: DefineTest
