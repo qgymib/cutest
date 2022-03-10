@@ -77,18 +77,18 @@ extern "C" {
  * @param [in] TYPE             Data type
  * @param [in] ...              Data values
  */
-#define TEST_PARAMETERIZED_DEFINE(fixture_name, TYPE, ...)  \
-    typedef TYPE _parameterized_type_##fixture_name;\
-    static const char* _parameterized_get_user_type_name_##fixture_name(void) {\
+#define TEST_PARAMETERIZED_DEFINE(fixture_name, case_name, TYPE, ...)  \
+    typedef TYPE _parameterized_type_##fixture_name##_##case_name;\
+    static const char* _parameterized_get_user_type_name_##fixture_name##_##case_name(void) {\
         return #TYPE;\
     }\
-    static const char* _parameterized_get_builtin_type_name_##fixture_name(void) {\
+    static const char* _parameterized_get_builtin_type_name_##fixture_name##_##case_name(void) {\
         TEST_RETURN_BUILTIN_TYPENAME(TYPE);\
     }\
-    static unsigned _parameterized_get_type_size_##fixture_name(void) {\
+    static unsigned _parameterized_get_type_size_##fixture_name##_##case_name(void) {\
         return sizeof(TYPE);\
     }\
-    static TYPE _parameterized_data_##fixture_name[] = { __VA_ARGS__ }
+    static TYPE _parameterized_data_##fixture_name##_##case_name[] = { __VA_ARGS__ }
 
 /**
  * @brief Suppress unused parameter warning if #TEST_GET_PARAM() is not used.
@@ -117,7 +117,7 @@ extern "C" {
  * @see TEST_PARAMETERIZED_SUPPRESS_UNUSED
  */
 #define TEST_P(fixture_name, case_name) \
-    void TEST_BODY_##fixture_name##_##case_name(_parameterized_type_##fixture_name*);\
+    void TEST_BODY_##fixture_name##_##case_name(_parameterized_type_##fixture_name##_##case_name*);\
     TEST_INITIALIZER(TEST_INIT_##fixture_name##_##case_name) {\
         static cutest_case_t _case_##fixture_name##_##case_name = {\
             { { NULL, NULL }, { NULL, NULL, NULL } }, /* .node */\
@@ -128,17 +128,18 @@ extern "C" {
                 (void*)TEST_BODY_##fixture_name##_##case_name,\
             }, /* stage */\
             {\
-                sizeof(_parameterized_data_##fixture_name) / sizeof(_parameterized_data_##fixture_name[0]), \
-                _parameterized_data_##fixture_name, \
-                _parameterized_get_user_type_name_##fixture_name,\
-                _parameterized_get_builtin_type_name_##fixture_name,\
-                _parameterized_get_type_size_##fixture_name,\
+                sizeof(_parameterized_data_##fixture_name##_##case_name)\
+                    / sizeof(_parameterized_data_##fixture_name##_##case_name[0]), \
+                _parameterized_data_##fixture_name##_##case_name, \
+                _parameterized_get_user_type_name_##fixture_name##_##case_name,\
+                _parameterized_get_builtin_type_name_##fixture_name##_##case_name,\
+                _parameterized_get_type_size_##fixture_name##_##case_name,\
             }, /* parameterized */\
         };\
         cutest_register_case(&_case_##fixture_name##_##case_name);\
     }\
     void TEST_BODY_##fixture_name##_##case_name(\
-        _parameterized_type_##fixture_name* _test_parameterized_data)
+        _parameterized_type_##fixture_name##_##case_name* _test_parameterized_data)
 
 /**
  * @brief Test Fixture
