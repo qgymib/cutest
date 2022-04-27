@@ -67,9 +67,18 @@ dkms.conf
 # Temporary build files
 /build
 /build.*
-/.vs
-/.vscode
-/out
 
 # Html document files
 /docs/html
+
+# Eclipse project files
+/.project
+/.cproject
+
+# Visual studio code files
+/.vscode
+
+# Visual studio
+/.vs
+/out
+/CMakeSettings.json
