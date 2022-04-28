@@ -776,14 +776,6 @@ typedef enum test_parameterized_type
     TEST_PARAMETERIZED_TYPE_UNKNOWN,
 }test_parameterized_type_t;
 
-typedef enum print_color
-{
-    PRINT_DEFAULT   = 0,
-    PRINT_RED       = 1,
-    PRINT_GREEN     = 2,
-    PRINT_YELLOW    = 4,
-}print_color_t;
-
 typedef union double_point
 {
     double                  value_;
@@ -930,6 +922,39 @@ static test_ctx_t           g_test_ctx = {
     NULL,                                                               /* .hook */
 };
 
+static const char* s_test_help_encoded =
+"This program contains tests written using cutest. You can use the\n"
+"following command line flags to control its behavior:\n"
+"\n"
+"Test Selection:\n"
+"  "COLOR_GREEN("--test_list_tests")"\n"
+"      List the names of all tests instead of running them. The name of\n"
+"      TEST(Foo, Bar) is \"Foo.Bar\".\n"
+"  "COLOR_GREEN("--test_filter=") COLOR_YELLO("POSTIVE_PATTERNS[") COLOR_GREEN("-") COLOR_YELLO("NEGATIVE_PATTERNS]")"\n"
+"      Run only the tests whose name matches one of the positive patterns but\n"
+"      none of the negative patterns. '?' matches any single character; '*'\n"
+"      matches any substring; ':' separates two patterns.\n"
+"  "COLOR_GREEN("--test_also_run_disabled_tests")"\n"
+"      Run all disabled tests too.\n"
+"\n"
+"Test Execution:\n"
+"  "COLOR_GREEN("--test_repeat=")COLOR_YELLO("[COUNT]")"\n"
+"      Run the tests repeatedly; use a negative count to repeat forever.\n"
+"  "COLOR_GREEN("--test_shuffle")"\n"
+"      Randomize tests' orders on every iteration.\n"
+"  "COLOR_GREEN("--test_random_seed=") COLOR_YELLO("[NUMBER]") "\n"
+"      Random number seed to use for shuffling test orders (between 0 and\n"
+"      99999. By default a seed based on the current time is used for shuffle).\n"
+"\n"
+"Test Output:\n"
+"  "COLOR_GREEN("--test_print_time=") COLOR_YELLO("(") COLOR_GREEN("0") COLOR_YELLO("|") COLOR_GREEN("1") COLOR_YELLO(")") "\n"
+"      Don't print the elapsed time of each test.\n"
+"\n"
+"Assertion Behavior:\n"
+"  "COLOR_GREEN("--test_break_on_failure")"\n"
+"      Turn assertion failures into debugger break-points.\n"
+;
+
 #if defined(_MSC_VER)
 
 static LARGE_INTEGER _test_get_file_time_offset(void)
@@ -954,15 +979,15 @@ static LARGE_INTEGER _test_get_file_time_offset(void)
 }
 
 // Returns the character attribute for the given color.
-static WORD _test_get_color_attribute(print_color_t color)
+static WORD _test_get_color_attribute(cutest_print_color_t color)
 {
     switch (color)
     {
-    case PRINT_RED:
+    case CUTEST_PRINT_COLOR_RED:
         return FOREGROUND_RED;
-    case PRINT_GREEN:
+    case CUTEST_PRINT_COLOR_GREEN:
         return FOREGROUND_GREEN;
-    case PRINT_YELLOW:
+    case CUTEST_PRINT_COLOR_YELLOW:
         return FOREGROUND_RED | FOREGROUND_GREEN;
     default:
         return 0;
@@ -982,7 +1007,7 @@ static int _test_get_bit_offset(WORD color_mask)
     return bitOffset;
 }
 
-static WORD _test_get_new_color(print_color_t color, WORD old_color_attrs)
+static WORD _test_get_new_color(cutest_print_color_t color, WORD old_color_attrs)
 {
     // Let's reuse the BG
     static const WORD background_mask = BACKGROUND_BLUE | BACKGROUND_GREEN |
@@ -1089,22 +1114,22 @@ static int _get_bit_offset(WORD color_mask)
     return bitOffset;
 }
 
-static WORD _get_color_attribute(print_color_t color)
+static WORD _get_color_attribute(cutest_print_color_t color)
 {
     switch (color)
     {
-    case PRINT_RED:
+    case CUTEST_PRINT_COLOR_RED:
         return FOREGROUND_RED;
-    case PRINT_GREEN:
+    case CUTEST_PRINT_COLOR_GREEN:
         return FOREGROUND_GREEN;
-    case PRINT_YELLOW:
+    case CUTEST_PRINT_COLOR_YELLOW:
         return FOREGROUND_RED | FOREGROUND_GREEN;
     default:
         return 0;
     }
 }
 
-static WORD _get_new_color(print_color_t color, WORD old_color_attrs)
+static WORD _get_new_color(cutest_print_color_t color, WORD old_color_attrs)
 {
     // Let's reuse the BG
     static const WORD background_mask = BACKGROUND_BLUE | BACKGROUND_GREEN |
@@ -1181,15 +1206,15 @@ static void _initlize_color_unix(void)
     }
 }
 
-static const char* _get_ansi_color_code_fg(print_color_t color)
+static const char* _get_ansi_color_code_fg(cutest_print_color_t color)
 {
     switch (color)
     {
-    case PRINT_RED:
+    case CUTEST_PRINT_COLOR_RED:
         return "31";
-    case PRINT_GREEN:
+    case CUTEST_PRINT_COLOR_GREEN:
         return "32";
-    case PRINT_YELLOW:
+    case CUTEST_PRINT_COLOR_YELLOW:
         return "33";
     default:
         break;
@@ -1216,73 +1241,23 @@ static int _should_use_color(int is_tty)
 #endif
 }
 
-static int _test_print_colorful_ap(print_color_t color, FILE* stream, const char* fmt, va_list ap)
-{
-    int stream_fd = fileno(stream);
-    if (!_should_use_color(isatty(stream_fd)) || (color == PRINT_DEFAULT))
-    {
-        return vfprintf(stream, fmt, ap);
-    }
-
-    int ret;
-#if defined(_WIN32)
-    const HANDLE stdout_handle = (HANDLE)_get_osfhandle(stream_fd);
-
-    // Gets the current text color.
-    CONSOLE_SCREEN_BUFFER_INFO buffer_info;
-    GetConsoleScreenBufferInfo(stdout_handle, &buffer_info);
-    const WORD old_color_attrs = buffer_info.wAttributes;
-    const WORD new_color = _get_new_color(color, old_color_attrs);
-
-    // We need to flush the stream buffers into the console before each
-    // SetConsoleTextAttribute call lest it affect the text that is already
-    // printed but has not yet reached the console.
-    fflush(stream);
-    SetConsoleTextAttribute(stdout_handle, new_color);
-
-    ret = vfprintf(stream, fmt, ap);
-
-    fflush(stream);
-    // Restores the text color.
-    SetConsoleTextAttribute(stdout_handle, old_color_attrs);
-#else
-    fprintf(stream, "\033[0;%sm", _get_ansi_color_code_fg(color));
-    ret = vfprintf(stream, fmt, ap);
-    fprintf(stream, "\033[m");  // Resets the terminal to default.
-#endif
-
-    return ret;
-}
-
-static int _test_print_colorful(print_color_t color, FILE* stream, const char* fmt, ...)
-{
-    int ret;
-    va_list args;
-    va_start(args, fmt);
-
-    ret = _test_print_colorful_ap(color, stream, fmt, args);
-
-    va_end(args);
-    return ret;
-}
-
 static int _print_encoded(FILE* stream, const char* str)
 {
     char* str_tmp;
     int ret = 0;
-    print_color_t color = PRINT_DEFAULT;
+    cutest_print_color_t color = CUTEST_PRINT_COLOR_DEFAULT;
 
     for (;;)
     {
         const char* p = strchr(str, '@');
         if (p == NULL)
         {
-            ret += _test_print_colorful(color, stream, "%s", str);
+            ret += cutest_color_fprintf(color, stream, "%s", str);
             return ret;
         }
 
         str_tmp = strndup(str, p - str);
-        ret += _test_print_colorful(color, stream, "%s", str_tmp);
+        ret += cutest_color_fprintf(color, stream, "%s", str_tmp);
         free(str_tmp);
 
         const char ch = p[1];
@@ -1291,19 +1266,19 @@ static int _print_encoded(FILE* stream, const char* str)
         switch (ch)
         {
         case '@':
-            ret += _test_print_colorful(color, stream, "@");
+            ret += cutest_color_fprintf(color, stream, "@");
             break;
         case 'D':
             color = 0;
             break;
         case 'R':
-            color = PRINT_RED;
+            color = CUTEST_PRINT_COLOR_RED;
             break;
         case 'G':
-            color = PRINT_GREEN;
+            color = CUTEST_PRINT_COLOR_GREEN;
             break;
         case 'Y':
-            color = PRINT_YELLOW;
+            color = CUTEST_PRINT_COLOR_YELLOW;
             break;
         default:
             --str;
@@ -1508,8 +1483,8 @@ static void _test_run_case(void)
         return;
     }
 
-    _test_print_colorful(PRINT_GREEN, g_test_ctx.io.f_out, "[ RUN      ]");
-    _test_print_colorful(PRINT_DEFAULT, g_test_ctx.io.f_out, " %s\n", g_test_ctx2.strbuf);
+    cutest_color_fprintf(CUTEST_PRINT_COLOR_GREEN, g_test_ctx.io.f_out, "[ RUN      ]");
+    cutest_color_fprintf(CUTEST_PRINT_COLOR_DEFAULT, g_test_ctx.io.f_out, " %s\n", g_test_ctx2.strbuf);
 
     int ret;
     if ((ret = setjmp(g_test_ctx2.jmpbuf)) != 0)
@@ -1568,27 +1543,27 @@ procedure_teardown_fin:
     if (HAS_MASK(g_test_ctx.runtime.cur_case->info.mask, MASK_FAILURE))
     {
         g_test_ctx.counter.result.failed++;
-        _test_print_colorful(PRINT_RED, g_test_ctx.io.f_out, "[  FAILED  ]");
+        cutest_color_fprintf(CUTEST_PRINT_COLOR_RED, g_test_ctx.io.f_out, "[  FAILED  ]");
     }
     else if (HAS_MASK(g_test_ctx.runtime.cur_case->info.mask, MASK_SKIPPED))
     {
         g_test_ctx.counter.result.skipped++;
-        _test_print_colorful(PRINT_YELLOW, g_test_ctx.io.f_out, "[   SKIP   ]");
+        cutest_color_fprintf(CUTEST_PRINT_COLOR_YELLOW, g_test_ctx.io.f_out, "[   SKIP   ]");
     }
     else
     {
         g_test_ctx.counter.result.success++;
-        _test_print_colorful(PRINT_GREEN, g_test_ctx.io.f_out, "[       OK ]");
+        cutest_color_fprintf(CUTEST_PRINT_COLOR_GREEN, g_test_ctx.io.f_out, "[       OK ]");
     }
 
-    _test_print_colorful(PRINT_DEFAULT, g_test_ctx.io.f_out, " %s", g_test_ctx2.strbuf);
+    cutest_color_fprintf(CUTEST_PRINT_COLOR_DEFAULT, g_test_ctx.io.f_out, " %s", g_test_ctx2.strbuf);
     if (!g_test_ctx.mask.no_print_time)
     {
         unsigned long take_time = (unsigned long)(g_test_ctx.timestamp.tv_diff.sec * 1000
             + g_test_ctx.timestamp.tv_diff.usec / 1000);
-        _test_print_colorful(PRINT_DEFAULT, g_test_ctx.io.f_out, " (%lu ms)", take_time);
+        cutest_color_fprintf(CUTEST_PRINT_COLOR_DEFAULT, g_test_ctx.io.f_out, " (%lu ms)", take_time);
     }
-    _test_print_colorful(PRINT_DEFAULT, g_test_ctx.io.f_out, "\n");
+    cutest_color_fprintf(CUTEST_PRINT_COLOR_DEFAULT, g_test_ctx.io.f_out, "\n");
 }
 
 static void _test_reset_all_test(void)
@@ -1618,8 +1593,8 @@ static void _test_show_report_failed(void)
         snprintf(g_test_ctx2.strbuf, sizeof(g_test_ctx2.strbuf), "%s.%s",
             case_data->info.suit_name, case_data->info.case_name);
 
-        _test_print_colorful(PRINT_RED, g_test_ctx.io.f_out, "[  FAILED  ]");
-        _test_print_colorful(PRINT_DEFAULT, g_test_ctx.io.f_out, " %s\n", g_test_ctx2.strbuf);
+        cutest_color_fprintf(CUTEST_PRINT_COLOR_RED, g_test_ctx.io.f_out, "[  FAILED  ]");
+        cutest_color_fprintf(CUTEST_PRINT_COLOR_DEFAULT, g_test_ctx.io.f_out, " %s\n", g_test_ctx2.strbuf);
     }
 }
 
@@ -1628,8 +1603,8 @@ static void _test_show_report(void)
     cutest_timestamp_dif(&g_test_ctx.timestamp.tv_total_start,
         &g_test_ctx.timestamp.tv_total_end, &g_test_ctx.timestamp.tv_diff);
 
-    _test_print_colorful(PRINT_DEFAULT, g_test_ctx.io.f_out, "[==========]");
-    _test_print_colorful(PRINT_DEFAULT, g_test_ctx.io.f_out, " %u/%u test case%s ran.",
+    cutest_color_fprintf(CUTEST_PRINT_COLOR_DEFAULT, g_test_ctx.io.f_out, "[==========]");
+    cutest_color_fprintf(CUTEST_PRINT_COLOR_DEFAULT, g_test_ctx.io.f_out, " %u/%u test case%s ran.",
         g_test_ctx.counter.result.total,
         (unsigned)_test_list_size(&g_test_ctx.info.case_list),
         g_test_ctx.counter.result.total > 1 ? "s" : "");
@@ -1637,28 +1612,28 @@ static void _test_show_report(void)
     {
         unsigned long take_time = (unsigned long)(g_test_ctx.timestamp.tv_diff.sec * 1000
             + g_test_ctx.timestamp.tv_diff.usec / 1000);
-        _test_print_colorful(PRINT_DEFAULT, g_test_ctx.io.f_out, " (%lu ms total)", take_time);
+        cutest_color_fprintf(CUTEST_PRINT_COLOR_DEFAULT, g_test_ctx.io.f_out, " (%lu ms total)", take_time);
     }
-    _test_print_colorful(PRINT_DEFAULT, g_test_ctx.io.f_out, "\n");
+    cutest_color_fprintf(CUTEST_PRINT_COLOR_DEFAULT, g_test_ctx.io.f_out, "\n");
 
     if (g_test_ctx.counter.result.disabled != 0)
     {
-        _test_print_colorful(PRINT_GREEN, g_test_ctx.io.f_out, "[ DISABLED ]");
-        _test_print_colorful(PRINT_DEFAULT, g_test_ctx.io.f_out, " %u test%s.\n",
+        cutest_color_fprintf(CUTEST_PRINT_COLOR_GREEN, g_test_ctx.io.f_out, "[ DISABLED ]");
+        cutest_color_fprintf(CUTEST_PRINT_COLOR_DEFAULT, g_test_ctx.io.f_out, " %u test%s.\n",
             g_test_ctx.counter.result.disabled,
             g_test_ctx.counter.result.disabled > 1 ? "s" : "");
     }
     if (g_test_ctx.counter.result.skipped != 0)
     {
-        _test_print_colorful(PRINT_YELLOW, g_test_ctx.io.f_out, "[ BYPASSED ]");
-        _test_print_colorful(PRINT_DEFAULT, g_test_ctx.io.f_out, " %u test%s.\n",
+        cutest_color_fprintf(CUTEST_PRINT_COLOR_YELLOW, g_test_ctx.io.f_out, "[ BYPASSED ]");
+        cutest_color_fprintf(CUTEST_PRINT_COLOR_DEFAULT, g_test_ctx.io.f_out, " %u test%s.\n",
             g_test_ctx.counter.result.skipped,
             g_test_ctx.counter.result.skipped > 1 ? "s" : "");
     }
     if (g_test_ctx.counter.result.success != 0)
     {
-        _test_print_colorful(PRINT_GREEN, g_test_ctx.io.f_out, "[  PASSED  ]");
-        _test_print_colorful(PRINT_DEFAULT, g_test_ctx.io.f_out, " %u test%s.\n",
+        cutest_color_fprintf(CUTEST_PRINT_COLOR_GREEN, g_test_ctx.io.f_out, "[  PASSED  ]");
+        cutest_color_fprintf(CUTEST_PRINT_COLOR_DEFAULT, g_test_ctx.io.f_out, " %u test%s.\n",
             g_test_ctx.counter.result.success,
             g_test_ctx.counter.result.success > 1 ? "s" : "");
     }
@@ -1669,8 +1644,8 @@ static void _test_show_report(void)
         return;
     }
 
-    _test_print_colorful(PRINT_RED, g_test_ctx.io.f_out, "[  FAILED  ]");
-    _test_print_colorful(PRINT_DEFAULT, g_test_ctx.io.f_out,
+    cutest_color_fprintf(CUTEST_PRINT_COLOR_RED, g_test_ctx.io.f_out, "[  FAILED  ]");
+    cutest_color_fprintf(CUTEST_PRINT_COLOR_DEFAULT, g_test_ctx.io.f_out,
         " %u test%s, listed below:\n", g_test_ctx.counter.result.failed, g_test_ctx.counter.result.failed > 1 ? "s" : "");
     _test_show_report_failed();
 }
@@ -1836,7 +1811,7 @@ static void _test_list_tests_print_name(const cutest_case_t* case_data)
     char buffer[64];
     if (case_data->info.type != CUTEST_CASE_TYPE_PARAMETERIZED)
     {
-        _test_print_colorful(PRINT_DEFAULT, g_test_ctx.io.f_out, "  %s\n", case_data->info.case_name);
+        cutest_color_fprintf(CUTEST_PRINT_COLOR_DEFAULT, g_test_ctx.io.f_out, "  %s\n", case_data->info.case_name);
         return;
     }
 
@@ -1853,7 +1828,7 @@ static void _test_list_tests_print_name(const cutest_case_t* case_data)
     {
         _test_list_tests_gen_param_info(buffer, sizeof(buffer), param_type, case_data, i);
 
-        _test_print_colorful(PRINT_DEFAULT, g_test_ctx.io.f_out, "  %s/%" TEST_PRIsize "  # TEST_GET_PARAM() = %s\n",
+        cutest_color_fprintf(CUTEST_PRINT_COLOR_DEFAULT, g_test_ctx.io.f_out, "  %s/%" TEST_PRIsize "  # TEST_GET_PARAM() = %s\n",
             case_data->info.case_name, i, buffer);
     }
 }
@@ -1871,7 +1846,7 @@ static void _test_list_tests(void)
             && strcmp(last_class_name, case_data->info.suit_name) != 0)
         {
             last_class_name = case_data->info.suit_name;
-            _test_print_colorful(PRINT_DEFAULT, g_test_ctx.io.f_out, "%s.\n", last_class_name);
+            cutest_color_fprintf(CUTEST_PRINT_COLOR_DEFAULT, g_test_ctx.io.f_out, "%s.\n", last_class_name);
         }
         _test_list_tests_print_name(case_data);
     }
@@ -2019,38 +1994,7 @@ static int _test_setup(int argc, char* argv[], const cutest_hook_t* hook)
             g_test_ctx.mask.break_on_failure = 1;
             break;
         case help:
-            _print_encoded(g_test_ctx.io.f_out,
-                "This program contains tests written using cutest. You can use the\n"
-                "following command line flags to control its behavior:\n"
-                "\n"
-                "Test Selection:\n"
-                "  "COLOR_GREEN("--test_list_tests")"\n"
-                "      List the names of all tests instead of running them. The name of\n"
-                "      TEST(Foo, Bar) is \"Foo.Bar\".\n"
-                "  "COLOR_GREEN("--test_filter=") COLOR_YELLO("POSTIVE_PATTERNS[") COLOR_GREEN("-") COLOR_YELLO("NEGATIVE_PATTERNS]")"\n"
-                "      Run only the tests whose name matches one of the positive patterns but\n"
-                "      none of the negative patterns. '?' matches any single character; '*'\n"
-                "      matches any substring; ':' separates two patterns.\n"
-                "  "COLOR_GREEN("--test_also_run_disabled_tests")"\n"
-                "      Run all disabled tests too.\n"
-                "\n"
-                "Test Execution:\n"
-                "  "COLOR_GREEN("--test_repeat=")COLOR_YELLO("[COUNT]")"\n"
-                "      Run the tests repeatedly; use a negative count to repeat forever.\n"
-                "  "COLOR_GREEN("--test_shuffle")"\n"
-                "      Randomize tests' orders on every iteration.\n"
-                "  "COLOR_GREEN("--test_random_seed=") COLOR_YELLO("[NUMBER]") "\n"
-                "      Random number seed to use for shuffling test orders (between 0 and\n"
-                "      99999. By default a seed based on the current time is used for shuffle).\n"
-                "\n"
-                "Test Output:\n"
-                "  "COLOR_GREEN("--test_print_time=") COLOR_YELLO("(") COLOR_GREEN("0") COLOR_YELLO("|") COLOR_GREEN("1") COLOR_YELLO(")") "\n"
-                "      Don't print the elapsed time of each test.\n"
-                "\n"
-                "Assertion Behavior:\n"
-                "  "COLOR_GREEN("--test_break_on_failure")"\n"
-                "      Turn assertion failures into debugger break-points.\n"
-                );
+            _print_encoded(g_test_ctx.io.f_out, s_test_help_encoded);
             return -1;
         default:
             break;
@@ -2071,8 +2015,8 @@ static void _test_run_test_loop(void)
 {
     _test_reset_all_test();
 
-    _test_print_colorful(PRINT_DEFAULT, g_test_ctx.io.f_out, "[==========]");
-    _test_print_colorful(PRINT_DEFAULT, g_test_ctx.io.f_out, " total %u test%s registered.\n",
+    cutest_color_fprintf(CUTEST_PRINT_COLOR_DEFAULT, g_test_ctx.io.f_out, "[==========]");
+    cutest_color_fprintf(CUTEST_PRINT_COLOR_DEFAULT, g_test_ctx.io.f_out, " total %u test%s registered.\n",
         (unsigned)_test_list_size(&g_test_ctx.info.case_list),
         _test_list_size(&g_test_ctx.info.case_list) > 1 ? "s" : "");
 
@@ -2190,8 +2134,8 @@ static void _test_run_tests_condition(void)
     {
         if (g_test_ctx.counter.repeat.repeat > 1)
         {
-            _test_print_colorful(PRINT_YELLOW, g_test_ctx.io.f_out, "[==========]");
-            _test_print_colorful(PRINT_DEFAULT, g_test_ctx.io.f_out, " start loop: %u/%u\n",
+            cutest_color_fprintf(CUTEST_PRINT_COLOR_YELLOW, g_test_ctx.io.f_out, "[==========]");
+            cutest_color_fprintf(CUTEST_PRINT_COLOR_DEFAULT, g_test_ctx.io.f_out, " start loop: %u/%u\n",
                 g_test_ctx.counter.repeat.repeated + 1, g_test_ctx.counter.repeat.repeat);
         }
 
@@ -2199,15 +2143,43 @@ static void _test_run_tests_condition(void)
 
         if (g_test_ctx.counter.repeat.repeat > 1)
         {
-            _test_print_colorful(PRINT_YELLOW, g_test_ctx.io.f_out, "[==========]");
-            _test_print_colorful(PRINT_DEFAULT, g_test_ctx.io.f_out, " end loop (%u/%u)\n",
+            cutest_color_fprintf(CUTEST_PRINT_COLOR_YELLOW, g_test_ctx.io.f_out, "[==========]");
+            cutest_color_fprintf(CUTEST_PRINT_COLOR_DEFAULT, g_test_ctx.io.f_out, " end loop (%u/%u)\n",
                 g_test_ctx.counter.repeat.repeated + 1, g_test_ctx.counter.repeat.repeat);
             if (g_test_ctx.counter.repeat.repeated < g_test_ctx.counter.repeat.repeat - 1)
             {
-                _test_print_colorful(PRINT_DEFAULT, g_test_ctx.io.f_out, "\n");
+                cutest_color_fprintf(CUTEST_PRINT_COLOR_DEFAULT, g_test_ctx.io.f_out, "\n");
             }
         }
     }
+}
+
+static const char* _cutest_get_log_level_str(cutest_log_level_t level)
+{
+    switch(level)
+    {
+    case CUTEST_LOG_DEBUG:
+        return "D";
+    case CUTEST_LOG_INFO:
+        return "I";
+    case CUTEST_LOG_WARN:
+        return "W";
+    case CUTEST_LOG_ERROR:
+        return "E";
+    case CUTEST_LOG_FATAL:
+        return "F";
+    default:
+        break;
+    }
+    return "U";
+}
+
+static void _cutest_default_log(cutest_log_meta_t* info, const char* fmt, va_list ap, FILE* out)
+{
+    cutest_color_fprintf(CUTEST_PRINT_COLOR_DEFAULT, out, "[%s %s:%d] ",
+            _cutest_get_log_level_str(info->leve), info->file, info->line);
+    cutest_color_vfprintf(CUTEST_PRINT_COLOR_DEFAULT, out, fmt, ap);
+    cutest_color_fprintf(CUTEST_PRINT_COLOR_DEFAULT, out, "\n");
 }
 
 int cutest_timestamp_get(cutest_timestamp_t* ts)
@@ -2469,8 +2441,77 @@ int cutest_printf(const char* fmt, ...)
     va_list ap;
 
     va_start(ap, fmt);
-    ret = _test_print_colorful_ap(PRINT_DEFAULT, g_test_ctx.io.f_out, fmt, ap);
+    ret = cutest_color_vfprintf(CUTEST_PRINT_COLOR_DEFAULT, g_test_ctx.io.f_out, fmt, ap);
     va_end(ap);
 
     return ret;
+}
+
+int cutest_color_fprintf(cutest_print_color_t color, FILE* stream, const char* fmt, ...)
+{
+    int ret;
+    va_list ap;
+
+    va_start(ap, fmt);
+    ret = cutest_color_vfprintf(color, stream, fmt, ap);
+    va_end(ap);
+
+    return ret;
+}
+
+int cutest_color_vfprintf(cutest_print_color_t color, FILE* stream, const char* fmt, va_list ap)
+{
+    assert(stream != NULL);
+
+    int stream_fd = fileno(stream);
+    if (!_should_use_color(isatty(stream_fd)) || (color == CUTEST_PRINT_COLOR_DEFAULT))
+    {
+        return vfprintf(stream, fmt, ap);
+    }
+
+    int ret;
+#if defined(_WIN32)
+    const HANDLE stdout_handle = (HANDLE)_get_osfhandle(stream_fd);
+
+    // Gets the current text color.
+    CONSOLE_SCREEN_BUFFER_INFO buffer_info;
+    GetConsoleScreenBufferInfo(stdout_handle, &buffer_info);
+    const WORD old_color_attrs = buffer_info.wAttributes;
+    const WORD new_color = _get_new_color(color, old_color_attrs);
+
+    // We need to flush the stream buffers into the console before each
+    // SetConsoleTextAttribute call lest it affect the text that is already
+    // printed but has not yet reached the console.
+    fflush(stream);
+    SetConsoleTextAttribute(stdout_handle, new_color);
+
+    ret = vfprintf(stream, fmt, ap);
+
+    fflush(stream);
+    // Restores the text color.
+    SetConsoleTextAttribute(stdout_handle, old_color_attrs);
+#else
+    fprintf(stream, "\033[0;%sm", _get_ansi_color_code_fg(color));
+    ret = vfprintf(stream, fmt, ap);
+    fprintf(stream, "\033[m");  // Resets the terminal to default.
+    fflush(stream);
+#endif
+
+    return ret;
+}
+
+void cutest_log(cutest_log_meta_t* info, const char* fmt, ...)
+{
+    va_list ap;
+
+    va_start(ap, fmt);
+    if (g_test_ctx.hook->on_log_print != NULL)
+    {
+        g_test_ctx.hook->on_log_print(info, fmt, ap, g_test_ctx.io.f_out);
+    }
+    else
+    {
+        _cutest_default_log(info, fmt, ap, g_test_ctx.io.f_out);
+    }
+    va_end(ap);
 }
