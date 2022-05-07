@@ -1047,6 +1047,21 @@ const char* cutest_get_current_case_name(void);
 void cutest_skip_test(void);
 
 /**
+ * @brief Enable timeout for current test case.
+ *
+ * A test case with timeout enabled will be running in separate process.
+ *
+ * @note You can call this function in following context:
+ * + #TEST_FIXTURE_SETUP()
+ * + #cutest_hook_t::after_fixture_setup()
+ *
+ * Any call to this function besides above contexts have no affect.
+ *
+ * @param[in] timeout   Timeout in milliseconds.
+ */
+void cutest_set_current_case_timeout(unsigned timeout);
+
+/**
  * Group: CUnitTest
  * @}
  */
