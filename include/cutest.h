@@ -40,7 +40,7 @@
 /**
  * @brief Development version.
  */
-#define CUTEST_VERSION_PREREL       1
+#define CUTEST_VERSION_PREREL       2
 
 #ifdef __cplusplus
 extern "C" {
@@ -1586,6 +1586,51 @@ int cutest_color_vfprintf(cutest_print_color_t color, FILE* stream, const char* 
 const char* cutest_pretty_file(const char* file);
 
 void cutest_log(cutest_log_meta_t* info, const char* fmt, ...);
+
+/**
+ * @brief Map initializer helper
+ * @param [in] fn       Compare function
+ * @param [in] arg      User defined argument
+ */
+#define CUTEST_MAP_INIT(fn, arg)      { NULL, { fn, arg }, 0 }
+cutest_map_node_t* cutest_map_begin(const cutest_map_t* handler);
+cutest_map_node_t* cutest_map_next(const cutest_map_node_t* node);
+int cutest_map_insert(cutest_map_t* handler, cutest_map_node_t* node);
+
+cutest_list_node_t* cutest_list_begin(const cutest_list_t* handler);
+cutest_list_node_t* cutest_list_next(const cutest_list_node_t* node);
+size_t cutest_list_size(const cutest_list_t* handler);
+void cutest_list_erase(cutest_list_t* handler, cutest_list_node_t* node);
+void cutest_list_push_back(cutest_list_t* handler, cutest_list_node_t* node);
+
+typedef enum cutest_optparse_argtype
+{
+    CUTEST_OPTPARSE_NONE,
+    CUTEST_OPTPARSE_REQUIRED,
+    CUTEST_OPTPARSE_OPTIONAL,
+} cutest_optparse_argtype_t;
+
+typedef struct cutest_optparse_long_opt
+{
+    const char*                 longname;
+    int                         shortname;
+    cutest_optparse_argtype_t   argtype;
+} cutest_optparse_long_opt_t;
+
+typedef struct cutest_optparse
+{
+    char**                      argv;
+    int                         permute;
+    int                         optind;
+    int                         optopt;
+    char*                       optarg;
+    char                        errmsg[64];
+    size_t                      subopt;
+} cutest_optparse_t;
+
+void cutest_optparse_init(cutest_optparse_t *options, char **argv);
+int cutest_optparse_long(cutest_optparse_t *options,
+        const cutest_optparse_long_opt_t *longopts, int *longindex);
 
 /** @endcond */
 

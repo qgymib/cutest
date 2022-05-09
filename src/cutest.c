@@ -62,686 +62,6 @@
 #endif
 
 /************************************************************************/
-/* map                                                                  */
-/************************************************************************/
-
-/**
- * @brief Map initializer helper
- * @param [in] fn       Compare function
- * @param [in] arg      User defined argument
- */
-#define TEST_MAP_INIT(fn, arg)      { NULL, { fn, arg }, 0 }
-
-#define RB_RED              0
-#define RB_BLACK            1
-#define __rb_color(pc)      ((uintptr_t)(pc) & 1)
-#define __rb_is_black(pc)   __rb_color(pc)
-#define __rb_is_red(pc)     (!__rb_color(pc))
-#define __rb_parent(pc)     ((cutest_map_node_t*)(pc & ~3))
-#define rb_color(rb)        __rb_color((rb)->__rb_parent_color)
-#define rb_is_red(rb)       __rb_is_red((rb)->__rb_parent_color)
-#define rb_is_black(rb)     __rb_is_black((rb)->__rb_parent_color)
-#define rb_parent(r)        ((cutest_map_node_t*)((uintptr_t)((r)->__rb_parent_color) & ~3))
-
-/* 'empty' nodes are nodes that are known not to be inserted in an rbtree */
-#define RB_EMPTY_NODE(node)  \
-    ((node)->__rb_parent_color == (cutest_map_node_t*)(node))
-
-static void _etest_map_link_node(cutest_map_node_t* node, cutest_map_node_t* parent, cutest_map_node_t** rb_link)
-{
-    node->__rb_parent_color = parent;
-    node->rb_left = node->rb_right = NULL;
-
-    *rb_link = node;
-    return;
-}
-
-static cutest_map_node_t* rb_red_parent(cutest_map_node_t *red)
-{
-    return red->__rb_parent_color;
-}
-
-static void rb_set_parent_color(cutest_map_node_t *rb, cutest_map_node_t *p, int color)
-{
-    rb->__rb_parent_color = (cutest_map_node_t*)((uintptr_t)p | color);
-}
-
-static void __rb_change_child(cutest_map_node_t* old_node, cutest_map_node_t* new_node,
-    cutest_map_node_t* parent, cutest_map_t* root)
-{
-    if (parent)
-    {
-        if (parent->rb_left == old_node)
-        {
-            parent->rb_left = new_node;
-        }
-        else
-        {
-            parent->rb_right = new_node;
-        }
-    }
-    else
-    {
-        root->rb_root = new_node;
-    }
-}
-
-/*
-* Helper function for rotations:
-* - old's parent and color get assigned to new
-* - old gets assigned new as a parent and 'color' as a color.
-*/
-static void __rb_rotate_set_parents(cutest_map_node_t* old, cutest_map_node_t* new_node,
-    cutest_map_t* root, int color)
-{
-    cutest_map_node_t* parent = rb_parent(old);
-    new_node->__rb_parent_color = old->__rb_parent_color;
-    rb_set_parent_color(old, new_node, color);
-    __rb_change_child(old, new_node, parent, root);
-}
-
-static void _etest_map_insert(cutest_map_node_t* node, cutest_map_t* root)
-{
-    cutest_map_node_t* parent = rb_red_parent(node), *gparent, *tmp;
-
-    while (1) {
-        /*
-        * Loop invariant: node is red
-        *
-        * If there is a black parent, we are done.
-        * Otherwise, take some corrective action as we don't
-        * want a red root or two consecutive red nodes.
-        */
-        if (!parent) {
-            rb_set_parent_color(node, NULL, RB_BLACK);
-            break;
-        }
-        else if (rb_is_black(parent))
-            break;
-
-        gparent = rb_red_parent(parent);
-
-        tmp = gparent->rb_right;
-        if (parent != tmp) {    /* parent == gparent->rb_left */
-            if (tmp && rb_is_red(tmp)) {
-                /*
-                * Case 1 - color flips
-                *
-                *       G            g
-                *      / \          / \
-                *     p   u  -->   P   U
-                *    /            /
-                *   n            n
-                *
-                * However, since g's parent might be red, and
-                * 4) does not allow this, we need to recurse
-                * at g.
-                */
-                rb_set_parent_color(tmp, gparent, RB_BLACK);
-                rb_set_parent_color(parent, gparent, RB_BLACK);
-                node = gparent;
-                parent = rb_parent(node);
-                rb_set_parent_color(node, parent, RB_RED);
-                continue;
-            }
-
-            tmp = parent->rb_right;
-            if (node == tmp) {
-                /*
-                * Case 2 - left rotate at parent
-                *
-                *      G             G
-                *     / \           / \
-                *    p   U  -->    n   U
-                *     \           /
-                *      n         p
-                *
-                * This still leaves us in violation of 4), the
-                * continuation into Case 3 will fix that.
-                */
-                parent->rb_right = tmp = node->rb_left;
-                node->rb_left = parent;
-                if (tmp)
-                    rb_set_parent_color(tmp, parent,
-                    RB_BLACK);
-                rb_set_parent_color(parent, node, RB_RED);
-                parent = node;
-                tmp = node->rb_right;
-            }
-
-            /*
-            * Case 3 - right rotate at gparent
-            *
-            *        G           P
-            *       / \         / \
-            *      p   U  -->  n   g
-            *     /                 \
-            *    n                   U
-            */
-            gparent->rb_left = tmp;  /* == parent->rb_right */
-            parent->rb_right = gparent;
-            if (tmp)
-                rb_set_parent_color(tmp, gparent, RB_BLACK);
-            __rb_rotate_set_parents(gparent, parent, root, RB_RED);
-            break;
-        }
-        else {
-            tmp = gparent->rb_left;
-            if (tmp && rb_is_red(tmp)) {
-                /* Case 1 - color flips */
-                rb_set_parent_color(tmp, gparent, RB_BLACK);
-                rb_set_parent_color(parent, gparent, RB_BLACK);
-                node = gparent;
-                parent = rb_parent(node);
-                rb_set_parent_color(node, parent, RB_RED);
-                continue;
-            }
-
-            tmp = parent->rb_left;
-            if (node == tmp) {
-                /* Case 2 - right rotate at parent */
-                parent->rb_left = tmp = node->rb_right;
-                node->rb_right = parent;
-                if (tmp)
-                    rb_set_parent_color(tmp, parent,
-                    RB_BLACK);
-                rb_set_parent_color(parent, node, RB_RED);
-                parent = node;
-                tmp = node->rb_left;
-            }
-
-            /* Case 3 - left rotate at gparent */
-            gparent->rb_right = tmp;  /* == parent->rb_left */
-            parent->rb_left = gparent;
-            if (tmp)
-                rb_set_parent_color(tmp, gparent, RB_BLACK);
-            __rb_rotate_set_parents(gparent, parent, root, RB_RED);
-            break;
-        }
-    }
-}
-
-static void _etest_map_insert_color(cutest_map_node_t* node, cutest_map_t* root)
-{
-    _etest_map_insert(node, root);
-}
-
-/**
- * @brief Insert the node into map.
- * @warning the node must not exist in any map.
- * @param [in] handler  The pointer to the map
- * @param [in] node     The node
- * @return              0 if success, -1 otherwise
- */
-static int _test_map_insert(cutest_map_t* handler, cutest_map_node_t* node)
-{
-    cutest_map_node_t **new_node = &(handler->rb_root), *parent = NULL;
-
-    /* Figure out where to put new node */
-    while (*new_node)
-    {
-        int result = handler->cmp.cmp(node, *new_node, handler->cmp.arg);
-
-        parent = *new_node;
-        if (result < 0)
-        {
-            new_node = &((*new_node)->rb_left);
-        }
-        else if (result > 0)
-        {
-            new_node = &((*new_node)->rb_right);
-        }
-        else
-        {
-            return -1;
-        }
-    }
-
-    handler->size++;
-    _etest_map_link_node(node, parent, new_node);
-    _etest_map_insert_color(node, handler);
-
-    return 0;
-}
-
-/**
- * @brief Returns an iterator to the beginning
- * @param [in] handler  The pointer to the map
- * @return              An iterator
- */
-static cutest_map_node_t* _test_map_begin(const cutest_map_t* handler)
-{
-    cutest_map_node_t* n = handler->rb_root;
-
-    if (!n)
-        return NULL;
-    while (n->rb_left)
-        n = n->rb_left;
-    return n;
-}
-
-/**
- * @brief Get an iterator next to the given one.
- * @param [in] node     Current iterator
- * @return              Next iterator
- */
-static cutest_map_node_t* _test_map_next(const cutest_map_node_t* node)
-{
-    cutest_map_node_t* parent;
-
-    if (RB_EMPTY_NODE(node))
-        return NULL;
-
-    /*
-    * If we have a right-hand child, go down and then left as far
-    * as we can.
-    */
-    if (node->rb_right) {
-        node = node->rb_right;
-        while (node->rb_left)
-            node = node->rb_left;
-        return (cutest_map_node_t *)node;
-    }
-
-    /*
-    * No right-hand children. Everything down and left is smaller than us,
-    * so any 'next' node must be in the general direction of our parent.
-    * Go up the tree; any time the ancestor is a right-hand child of its
-    * parent, keep going up. First time it's a left-hand child of its
-    * parent, said parent is our 'next' node.
-    */
-    while ((parent = rb_parent(node)) != NULL && node == parent->rb_right)
-        node = parent;
-
-    return parent;
-}
-
-/************************************************************************/
-/* argument parser                                                      */
-/************************************************************************/
-
-#define OPTPARSE_MSG_INVALID "invalid option"
-#define OPTPARSE_MSG_MISSING "option requires an argument"
-#define OPTPARSE_MSG_TOOMANY "option takes no arguments"
-
-typedef enum test_optparse_argtype {
-    OPTPARSE_NONE,
-    OPTPARSE_REQUIRED,
-    OPTPARSE_OPTIONAL
-}test_optparse_argtype_t;
-
-typedef struct test_optparse_long_opt {
-    const char*             longname;
-    int                     shortname;
-    test_optparse_argtype_t argtype;
-}test_optparse_long_opt_t;
-
-typedef struct test_optparse {
-    char**                  argv;
-    int                     permute;
-    int                     optind;
-    int                     optopt;
-    char*                   optarg;
-    char                    errmsg[64];
-    size_t                  subopt;
-}test_optparse_t;
-
-static int _test_optparse_is_dashdash(const char *arg)
-{
-    return arg != 0 && arg[0] == '-' && arg[1] == '-' && arg[2] == '\0';
-}
-
-static int _test_optparse_is_shortopt(const char *arg)
-{
-    return arg != 0 && arg[0] == '-' && arg[1] != '-' && arg[1] != '\0';
-}
-
-static int _test_optparse_is_longopt(const char *arg)
-{
-    return arg != 0 && arg[0] == '-' && arg[1] == '-' && arg[2] != '\0';
-}
-
-static int _test_optparse_longopts_end(const test_optparse_long_opt_t *longopts, int i)
-{
-    return !longopts[i].longname && !longopts[i].shortname;
-}
-
-static int _test_optparse_longopts_match(const char *longname, const char *option)
-{
-    const char *a = option, *n = longname;
-    if (longname == 0)
-        return 0;
-    for (; *a && *n && *a != '='; a++, n++)
-        if (*a != *n)
-            return 0;
-    return *n == '\0' && (*a == '\0' || *a == '=');
-}
-
-static char* _test_optparse_longopts_arg(char *option)
-{
-    for (; *option && *option != '='; option++);
-    if (*option == '=')
-        return option + 1;
-    else
-        return 0;
-}
-
-static void _test_optparse_from_long(const test_optparse_long_opt_t *longopts, char *optstring)
-{
-    char *p = optstring;
-    int i;
-    for (i = 0; !_test_optparse_longopts_end(longopts, i); i++) {
-        if (longopts[i].shortname) {
-            int a;
-            *p++ = (char)(longopts[i].shortname);
-            for (a = 0; a < (int)longopts[i].argtype; a++)
-                *p++ = ':';
-        }
-    }
-    *p = '\0';
-}
-
-static void _test_optparse_permute(test_optparse_t *options, int index)
-{
-    char *nonoption = options->argv[index];
-    int i;
-    for (i = index; i < options->optind - 1; i++)
-        options->argv[i] = options->argv[i + 1];
-    options->argv[options->optind - 1] = nonoption;
-}
-
-static int _test_optparse_argtype(const char *optstring, char c)
-{
-    int count = OPTPARSE_NONE;
-    if (c == ':')
-        return -1;
-    for (; *optstring && c != *optstring; optstring++);
-    if (!*optstring)
-        return -1;
-    if (optstring[1] == ':')
-        count += optstring[2] == ':' ? 2 : 1;
-    return count;
-}
-
-static int _test_optparse_error(test_optparse_t *options, const char *msg, const char *data)
-{
-    unsigned p = 0;
-    const char *sep = " -- '";
-    while (*msg)
-        options->errmsg[p++] = *msg++;
-    while (*sep)
-        options->errmsg[p++] = *sep++;
-    while (p < sizeof(options->errmsg) - 2 && *data)
-        options->errmsg[p++] = *data++;
-    options->errmsg[p++] = '\'';
-    options->errmsg[p++] = '\0';
-    return '?';
-}
-
-static int _test_optparse(test_optparse_t *options, const char *optstring)
-{
-    int type;
-    char *next;
-    char *option = options->argv[options->optind];
-    options->errmsg[0] = '\0';
-    options->optopt = 0;
-    options->optarg = 0;
-    if (option == 0) {
-        return -1;
-    }
-    else if (_test_optparse_is_dashdash(option)) {
-        options->optind++; /* consume "--" */
-        return -1;
-    }
-    else if (!_test_optparse_is_shortopt(option)) {
-        if (options->permute) {
-            int index = options->optind++;
-            int r = _test_optparse(options, optstring);
-            _test_optparse_permute(options, index);
-            options->optind--;
-            return r;
-        }
-        else {
-            return -1;
-        }
-    }
-    option += (options->subopt + 1);
-    options->optopt = option[0];
-    type = _test_optparse_argtype(optstring, option[0]);
-    next = options->argv[options->optind + 1];
-    switch (type) {
-    case -1: {
-        char str[2] = { 0, 0 };
-        str[0] = option[0];
-        options->optind++;
-        return _test_optparse_error(options, OPTPARSE_MSG_INVALID, str);
-    }
-    case OPTPARSE_NONE:
-        if (option[1]) {
-            options->subopt++;
-        }
-        else {
-            options->subopt = 0;
-            options->optind++;
-        }
-        return option[0];
-    case OPTPARSE_REQUIRED:
-        options->subopt = 0;
-        options->optind++;
-        if (option[1]) {
-            options->optarg = option + 1;
-        }
-        else if (next != 0) {
-            options->optarg = next;
-            options->optind++;
-        }
-        else {
-            char str[2] = { 0, 0 };
-            str[0] = option[0];
-            options->optarg = 0;
-            return _test_optparse_error(options, OPTPARSE_MSG_MISSING, str);
-        }
-        return option[0];
-    case OPTPARSE_OPTIONAL:
-        options->subopt = 0;
-        options->optind++;
-        if (option[1])
-            options->optarg = option + 1;
-        else
-            options->optarg = 0;
-        return option[0];
-    }
-    return 0;
-}
-
-static int _test_optparse_long_fallback(test_optparse_t *options, const test_optparse_long_opt_t *longopts, int *longindex)
-{
-    int result;
-    char optstring[96 * 3 + 1]; /* 96 ASCII printable characters */
-    _test_optparse_from_long(longopts, optstring);
-    result = _test_optparse(options, optstring);
-    if (longindex != 0) {
-        *longindex = -1;
-        if (result != -1) {
-            int i;
-            for (i = 0; !_test_optparse_longopts_end(longopts, i); i++)
-                if (longopts[i].shortname == options->optopt)
-                    *longindex = i;
-        }
-    }
-    return result;
-}
-
-static int test_optparse_long(test_optparse_t *options, const test_optparse_long_opt_t *longopts, int *longindex)
-{
-    int i;
-    char *option = options->argv[options->optind];
-    if (option == 0) {
-        return -1;
-    }
-    else if (_test_optparse_is_dashdash(option)) {
-        options->optind++; /* consume "--" */
-        return -1;
-    }
-    else if (_test_optparse_is_shortopt(option)) {
-        return _test_optparse_long_fallback(options, longopts, longindex);
-    }
-    else if (!_test_optparse_is_longopt(option)) {
-        if (options->permute) {
-            int index = options->optind++;
-            int r = test_optparse_long(options, longopts, longindex);
-            _test_optparse_permute(options, index);
-            options->optind--;
-            return r;
-        }
-        else {
-            return -1;
-        }
-    }
-
-    /* Parse as long option. */
-    options->errmsg[0] = '\0';
-    options->optopt = 0;
-    options->optarg = 0;
-    option += 2; /* skip "--" */
-    options->optind++;
-    for (i = 0; !_test_optparse_longopts_end(longopts, i); i++) {
-        const char *name = longopts[i].longname;
-        if (_test_optparse_longopts_match(name, option)) {
-            char *arg;
-            if (longindex)
-                *longindex = i;
-            options->optopt = longopts[i].shortname;
-            arg = _test_optparse_longopts_arg(option);
-            if (longopts[i].argtype == OPTPARSE_NONE && arg != 0) {
-                return _test_optparse_error(options, OPTPARSE_MSG_TOOMANY, name);
-            } if (arg != 0) {
-                options->optarg = arg;
-            }
-            else if (longopts[i].argtype == OPTPARSE_REQUIRED) {
-                options->optarg = options->argv[options->optind];
-                if (options->optarg == 0)
-                    return _test_optparse_error(options, OPTPARSE_MSG_MISSING, name);
-                else
-                    options->optind++;
-            }
-            return options->optopt;
-        }
-    }
-    return _test_optparse_error(options, OPTPARSE_MSG_INVALID, option);
-}
-
-static void test_optparse_init(test_optparse_t *options, char **argv)
-{
-    options->argv = argv;
-    options->permute = 1;
-    options->optind = 1;
-    options->subopt = 0;
-    options->optarg = 0;
-    options->errmsg[0] = '\0';
-}
-
-/************************************************************************/
-/* list                                                                 */
-/************************************************************************/
-
-static void _test_list_set_once(cutest_list_t* handler, cutest_list_node_t* node)
-{
-    handler->head = node;
-    handler->tail = node;
-    node->p_after = NULL;
-    node->p_before = NULL;
-    handler->size = 1;
-}
-
-/**
- * @brief Insert a node to the tail of the list.TEST_LIST_INITIALIZER
- * @warning the node must not exist in any list.
- * @param [in] handler  Pointer to list
- * @param [in] node     Pointer to a new node
- */
-void _test_list_push_back(cutest_list_t* handler, cutest_list_node_t* node)
-{
-    if (handler->head == NULL)
-    {
-        _test_list_set_once(handler, node);
-        return;
-    }
-
-    node->p_after = NULL;
-    node->p_before = handler->tail;
-    handler->tail->p_after = node;
-    handler->tail = node;
-    handler->size++;
-}
-
-/**
- * @brief Get the last node.
- * @param [in] handler  Pointer to list
- * @return              The first node
- */
-static cutest_list_node_t* cutest_list_begin(const cutest_list_t* handler)
-{
-    return handler->head;
-}
-
-/**
- * @brief Get next node.
- * @param [in] node     Current node
- * @return              The next node
- */
-static cutest_list_node_t* _test_list_next(const cutest_list_node_t* node)
-{
-    return node->p_after;
-}
-
-/**
- * @brief Get the number of nodes in the list.
- * @param [in] handler  Pointer to list
- * @return              The number of nodes
- */
-static size_t _test_list_size(const cutest_list_t* handler)
-{
-    return handler->size;
-}
-
-/**
- * @brief Delete a exist node
- * @warning The node must already in the list.
- * @param [in] handler  Pointer to list
- * @param [in] node     The node you want to delete
- */
-static void _test_list_erase(cutest_list_t* handler, cutest_list_node_t* node)
-{
-    handler->size--;
-
-    if (handler->head == node && handler->tail == node)
-    {
-        handler->head = NULL;
-        handler->tail = NULL;
-        return;
-    }
-
-    if (handler->head == node)
-    {
-        node->p_after->p_before = NULL;
-        handler->head = node->p_after;
-        return;
-    }
-
-    if (handler->tail == node)
-    {
-        node->p_before->p_after = NULL;
-        handler->tail = node->p_before;
-        return;
-    }
-
-    node->p_before->p_after = node->p_after;
-    node->p_after->p_before = node->p_before;
-    return;
-}
-
-/************************************************************************/
 /* test                                                                 */
 /************************************************************************/
 
@@ -925,7 +245,7 @@ static int _test_on_cmp_case(const cutest_map_node_t* key1, const cutest_map_nod
 
 static test_ctx2_t          g_test_ctx2;                                // no need to initialize
 static test_ctx_t           g_test_ctx = {
-    { { NULL, NULL, 0 }, TEST_MAP_INIT(_test_on_cmp_case, NULL) },      /* .info */
+    { { NULL, NULL, 0 }, CUTEST_MAP_INIT(_test_on_cmp_case, NULL) },    /* .info */
     { 0, 0, NULL, NULL, 0, stage_setup },                               /* .runtime */
     { { 0, 0 }, { 0, 0 }, { 0, 0 }, { 0, 0 }, { 0, 0 } },               /* .timestamp */
     { { 0, 0, 0, 0, 0 }, { 0, 0 } },                                    /* .counter */
@@ -1605,7 +925,7 @@ static void _test_reset_all_test(void)
     memset(&g_test_ctx.timestamp, 0, sizeof(g_test_ctx.timestamp));
 
     cutest_list_node_t* it = cutest_list_begin(&g_test_ctx.info.case_list);
-    for (; it != NULL; it = _test_list_next(it))
+    for (; it != NULL; it = cutest_list_next(it))
     {
         cutest_case_t* case_data = CONTAINER_OF(it, cutest_case_t, node.queue);
         case_data->info.mask = 0;
@@ -1615,7 +935,7 @@ static void _test_reset_all_test(void)
 static void _test_show_report_failed(void)
 {
     cutest_list_node_t* it = cutest_list_begin(&g_test_ctx.info.case_list);
-    for (; it != NULL; it = _test_list_next(it))
+    for (; it != NULL; it = cutest_list_next(it))
     {
         cutest_case_t* case_data = CONTAINER_OF(it, cutest_case_t, node.queue);
         if (!HAS_MASK(case_data->info.mask, MASK_FAILURE))
@@ -1639,7 +959,7 @@ static void _test_show_report(void)
     _cutest_color_printf(CUTEST_PRINT_COLOR_DEFAULT, "[==========]");
     _cutest_color_printf(CUTEST_PRINT_COLOR_DEFAULT, " %u/%u test case%s ran.",
         g_test_ctx.counter.result.total,
-        (unsigned)_test_list_size(&g_test_ctx.info.case_list),
+        (unsigned)cutest_list_size(&g_test_ctx.info.case_list),
         g_test_ctx.counter.result.total > 1 ? "s" : "");
     if (!g_test_ctx.mask.no_print_time)
     {
@@ -1870,8 +1190,8 @@ static void _test_list_tests(void)
 {
     const char* last_class_name = "";
 
-    cutest_map_node_t* it = _test_map_begin(&g_test_ctx.info.case_table);
-    for (; it != NULL; it = _test_map_next(it))
+    cutest_map_node_t* it = cutest_map_begin(&g_test_ctx.info.case_table);
+    for (; it != NULL; it = cutest_map_next(it))
     {
         cutest_case_t* case_data = CONTAINER_OF(it, cutest_case_t, node.table);
         /* some compiler will make same string with different address */
@@ -1939,18 +1259,18 @@ static void _test_shuffle_cases(void)
 {
     cutest_list_t copy_case_list = TEST_LIST_INITIALIZER;
 
-    while (_test_list_size(&g_test_ctx.info.case_list) != 0)
+    while (cutest_list_size(&g_test_ctx.info.case_list) != 0)
     {
-        unsigned idx = _test_rand() % _test_list_size(&g_test_ctx.info.case_list);
+        unsigned idx = _test_rand() % cutest_list_size(&g_test_ctx.info.case_list);
 
         unsigned i = 0;
         cutest_list_node_t* it = cutest_list_begin(&g_test_ctx.info.case_list);
-        for (; i < idx; i++, it = _test_list_next(it))
+        for (; i < idx; i++, it = cutest_list_next(it))
         {
         }
 
-        _test_list_erase(&g_test_ctx.info.case_list, it);
-        _test_list_push_back(&copy_case_list, it);
+        cutest_list_erase(&g_test_ctx.info.case_list, it);
+        cutest_list_push_back(&copy_case_list, it);
     }
 
     g_test_ctx.info.case_list = copy_case_list;
@@ -2046,25 +1366,25 @@ static int _test_setup(int argc, char* argv[], const cutest_hook_t* hook)
         help,
     };
 
-    test_optparse_long_opt_t longopts[] = {
-        { "test_list_tests",                test_list_tests,                OPTPARSE_NONE },
-        { "test_filter",                    test_filter,                    OPTPARSE_REQUIRED },
-        { "test_also_run_disabled_tests",   test_also_run_disabled_tests,   OPTPARSE_NONE },
-        { "test_repeat",                    test_repeat,                    OPTPARSE_REQUIRED },
-        { "test_shuffle",                   test_shuffle,                   OPTPARSE_NONE },
-        { "test_random_seed",               test_random_seed,               OPTPARSE_REQUIRED },
-        { "test_print_time",                test_print_time,                OPTPARSE_REQUIRED },
-        { "test_break_on_failure",          test_break_on_failure,          OPTPARSE_NONE },
-        { "test_logfile",                   test_logfile,                   OPTPARSE_REQUIRED },
-        { "help",                           help,                           OPTPARSE_NONE },
+    cutest_optparse_long_opt_t longopts[] = {
+        { "test_list_tests",                test_list_tests,                CUTEST_OPTPARSE_NONE },
+        { "test_filter",                    test_filter,                    CUTEST_OPTPARSE_REQUIRED },
+        { "test_also_run_disabled_tests",   test_also_run_disabled_tests,   CUTEST_OPTPARSE_NONE },
+        { "test_repeat",                    test_repeat,                    CUTEST_OPTPARSE_REQUIRED },
+        { "test_shuffle",                   test_shuffle,                   CUTEST_OPTPARSE_NONE },
+        { "test_random_seed",               test_random_seed,               CUTEST_OPTPARSE_REQUIRED },
+        { "test_print_time",                test_print_time,                CUTEST_OPTPARSE_REQUIRED },
+        { "test_break_on_failure",          test_break_on_failure,          CUTEST_OPTPARSE_NONE },
+        { "test_logfile",                   test_logfile,                   CUTEST_OPTPARSE_REQUIRED },
+        { "help",                           help,                           CUTEST_OPTPARSE_NONE },
         { 0,                                0,                              0 },
     };
 
-    test_optparse_t options;
-    test_optparse_init(&options, argv);
+    cutest_optparse_t options;
+    cutest_optparse_init(&options, argv);
 
     int option;
-    while ((option = test_optparse_long(&options, longopts, NULL)) != -1) {
+    while ((option = cutest_optparse_long(&options, longopts, NULL)) != -1) {
         switch (option) {
         case test_list_tests:
             _test_list_tests();
@@ -2117,14 +1437,14 @@ static void _test_run_test_loop(void)
 
     _cutest_color_printf(CUTEST_PRINT_COLOR_DEFAULT, "[==========]");
     _cutest_color_printf(CUTEST_PRINT_COLOR_DEFAULT, " total %u test%s registered.\n",
-        (unsigned)_test_list_size(&g_test_ctx.info.case_list),
-        _test_list_size(&g_test_ctx.info.case_list) > 1 ? "s" : "");
+        (unsigned)cutest_list_size(&g_test_ctx.info.case_list),
+        cutest_list_size(&g_test_ctx.info.case_list) > 1 ? "s" : "");
 
     cutest_timestamp_get(&g_test_ctx.timestamp.tv_total_start);
 
     g_test_ctx.runtime.cur_it = cutest_list_begin(&g_test_ctx.info.case_list);
     for (; g_test_ctx.runtime.cur_it != NULL;
-        g_test_ctx.runtime.cur_it = _test_list_next(g_test_ctx.runtime.cur_it))
+        g_test_ctx.runtime.cur_it = cutest_list_next(g_test_ctx.runtime.cur_it))
     {
         g_test_ctx.runtime.cur_case = CONTAINER_OF(g_test_ctx.runtime.cur_it, cutest_case_t, node.queue);
         _test_run_case();
@@ -2371,8 +1691,8 @@ int cutest_timestamp_dif(const cutest_timestamp_t* t1, const cutest_timestamp_t*
 
 void cutest_register_case(cutest_case_t* data)
 {
-    ASSERT(_test_map_insert(&g_test_ctx.info.case_table, &data->node.table) == 0);
-    _test_list_push_back(&g_test_ctx.info.case_list, &data->node.queue);
+    ASSERT(cutest_map_insert(&g_test_ctx.info.case_table, &data->node.table) == 0);
+    cutest_list_push_back(&g_test_ctx.info.case_list, &data->node.queue);
 }
 
 int cutest_run_tests(int argc, char* argv[], const cutest_hook_t* hook)
@@ -2613,4 +1933,656 @@ void cutest_log(cutest_log_meta_t* info, const char* fmt, ...)
         _cutest_default_log(info, fmt, ap, _get_logfile());
     }
     va_end(ap);
+}
+
+/************************************************************************/
+/* map                                                                  */
+/************************************************************************/
+
+#define RB_RED              0
+#define RB_BLACK            1
+#define __rb_color(pc)      ((uintptr_t)(pc) & 1)
+#define __rb_is_black(pc)   __rb_color(pc)
+#define __rb_is_red(pc)     (!__rb_color(pc))
+#define __rb_parent(pc)     ((cutest_map_node_t*)(pc & ~3))
+#define rb_color(rb)        __rb_color((rb)->__rb_parent_color)
+#define rb_is_red(rb)       __rb_is_red((rb)->__rb_parent_color)
+#define rb_is_black(rb)     __rb_is_black((rb)->__rb_parent_color)
+#define rb_parent(r)        ((cutest_map_node_t*)((uintptr_t)((r)->__rb_parent_color) & ~3))
+
+/* 'empty' nodes are nodes that are known not to be inserted in an rbtree */
+#define RB_EMPTY_NODE(node)  \
+    ((node)->__rb_parent_color == (cutest_map_node_t*)(node))
+
+static void _etest_map_link_node(cutest_map_node_t* node, cutest_map_node_t* parent, cutest_map_node_t** rb_link)
+{
+    node->__rb_parent_color = parent;
+    node->rb_left = node->rb_right = NULL;
+
+    *rb_link = node;
+    return;
+}
+
+static cutest_map_node_t* rb_red_parent(cutest_map_node_t *red)
+{
+    return red->__rb_parent_color;
+}
+
+static void rb_set_parent_color(cutest_map_node_t *rb, cutest_map_node_t *p, int color)
+{
+    rb->__rb_parent_color = (cutest_map_node_t*)((uintptr_t)p | color);
+}
+
+static void __rb_change_child(cutest_map_node_t* old_node, cutest_map_node_t* new_node,
+    cutest_map_node_t* parent, cutest_map_t* root)
+{
+    if (parent)
+    {
+        if (parent->rb_left == old_node)
+        {
+            parent->rb_left = new_node;
+        }
+        else
+        {
+            parent->rb_right = new_node;
+        }
+    }
+    else
+    {
+        root->rb_root = new_node;
+    }
+}
+
+/*
+* Helper function for rotations:
+* - old's parent and color get assigned to new
+* - old gets assigned new as a parent and 'color' as a color.
+*/
+static void __rb_rotate_set_parents(cutest_map_node_t* old, cutest_map_node_t* new_node,
+    cutest_map_t* root, int color)
+{
+    cutest_map_node_t* parent = rb_parent(old);
+    new_node->__rb_parent_color = old->__rb_parent_color;
+    rb_set_parent_color(old, new_node, color);
+    __rb_change_child(old, new_node, parent, root);
+}
+
+static void _etest_map_insert(cutest_map_node_t* node, cutest_map_t* root)
+{
+    cutest_map_node_t* parent = rb_red_parent(node), *gparent, *tmp;
+
+    while (1) {
+        /*
+        * Loop invariant: node is red
+        *
+        * If there is a black parent, we are done.
+        * Otherwise, take some corrective action as we don't
+        * want a red root or two consecutive red nodes.
+        */
+        if (!parent) {
+            rb_set_parent_color(node, NULL, RB_BLACK);
+            break;
+        }
+        else if (rb_is_black(parent))
+            break;
+
+        gparent = rb_red_parent(parent);
+
+        tmp = gparent->rb_right;
+        if (parent != tmp) {    /* parent == gparent->rb_left */
+            if (tmp && rb_is_red(tmp)) {
+                /*
+                * Case 1 - color flips
+                *
+                *       G            g
+                *      / \          / \
+                *     p   u  -->   P   U
+                *    /            /
+                *   n            n
+                *
+                * However, since g's parent might be red, and
+                * 4) does not allow this, we need to recurse
+                * at g.
+                */
+                rb_set_parent_color(tmp, gparent, RB_BLACK);
+                rb_set_parent_color(parent, gparent, RB_BLACK);
+                node = gparent;
+                parent = rb_parent(node);
+                rb_set_parent_color(node, parent, RB_RED);
+                continue;
+            }
+
+            tmp = parent->rb_right;
+            if (node == tmp) {
+                /*
+                * Case 2 - left rotate at parent
+                *
+                *      G             G
+                *     / \           / \
+                *    p   U  -->    n   U
+                *     \           /
+                *      n         p
+                *
+                * This still leaves us in violation of 4), the
+                * continuation into Case 3 will fix that.
+                */
+                parent->rb_right = tmp = node->rb_left;
+                node->rb_left = parent;
+                if (tmp)
+                    rb_set_parent_color(tmp, parent,
+                    RB_BLACK);
+                rb_set_parent_color(parent, node, RB_RED);
+                parent = node;
+                tmp = node->rb_right;
+            }
+
+            /*
+            * Case 3 - right rotate at gparent
+            *
+            *        G           P
+            *       / \         / \
+            *      p   U  -->  n   g
+            *     /                 \
+            *    n                   U
+            */
+            gparent->rb_left = tmp;  /* == parent->rb_right */
+            parent->rb_right = gparent;
+            if (tmp)
+                rb_set_parent_color(tmp, gparent, RB_BLACK);
+            __rb_rotate_set_parents(gparent, parent, root, RB_RED);
+            break;
+        }
+        else {
+            tmp = gparent->rb_left;
+            if (tmp && rb_is_red(tmp)) {
+                /* Case 1 - color flips */
+                rb_set_parent_color(tmp, gparent, RB_BLACK);
+                rb_set_parent_color(parent, gparent, RB_BLACK);
+                node = gparent;
+                parent = rb_parent(node);
+                rb_set_parent_color(node, parent, RB_RED);
+                continue;
+            }
+
+            tmp = parent->rb_left;
+            if (node == tmp) {
+                /* Case 2 - right rotate at parent */
+                parent->rb_left = tmp = node->rb_right;
+                node->rb_right = parent;
+                if (tmp)
+                    rb_set_parent_color(tmp, parent,
+                    RB_BLACK);
+                rb_set_parent_color(parent, node, RB_RED);
+                parent = node;
+                tmp = node->rb_left;
+            }
+
+            /* Case 3 - left rotate at gparent */
+            gparent->rb_right = tmp;  /* == parent->rb_left */
+            parent->rb_left = gparent;
+            if (tmp)
+                rb_set_parent_color(tmp, gparent, RB_BLACK);
+            __rb_rotate_set_parents(gparent, parent, root, RB_RED);
+            break;
+        }
+    }
+}
+
+static void _etest_map_insert_color(cutest_map_node_t* node, cutest_map_t* root)
+{
+    _etest_map_insert(node, root);
+}
+
+/**
+ * @brief Insert the node into map.
+ * @warning the node must not exist in any map.
+ * @param [in] handler  The pointer to the map
+ * @param [in] node     The node
+ * @return              0 if success, -1 otherwise
+ */
+int cutest_map_insert(cutest_map_t* handler, cutest_map_node_t* node)
+{
+    cutest_map_node_t **new_node = &(handler->rb_root), *parent = NULL;
+
+    /* Figure out where to put new node */
+    while (*new_node)
+    {
+        int result = handler->cmp.cmp(node, *new_node, handler->cmp.arg);
+
+        parent = *new_node;
+        if (result < 0)
+        {
+            new_node = &((*new_node)->rb_left);
+        }
+        else if (result > 0)
+        {
+            new_node = &((*new_node)->rb_right);
+        }
+        else
+        {
+            return -1;
+        }
+    }
+
+    handler->size++;
+    _etest_map_link_node(node, parent, new_node);
+    _etest_map_insert_color(node, handler);
+
+    return 0;
+}
+
+/**
+ * @brief Returns an iterator to the beginning
+ * @param [in] handler  The pointer to the map
+ * @return              An iterator
+ */
+cutest_map_node_t* cutest_map_begin(const cutest_map_t* handler)
+{
+    cutest_map_node_t* n = handler->rb_root;
+
+    if (!n)
+        return NULL;
+    while (n->rb_left)
+        n = n->rb_left;
+    return n;
+}
+
+/**
+ * @brief Get an iterator next to the given one.
+ * @param [in] node     Current iterator
+ * @return              Next iterator
+ */
+cutest_map_node_t* cutest_map_next(const cutest_map_node_t* node)
+{
+    cutest_map_node_t* parent;
+
+    if (RB_EMPTY_NODE(node))
+        return NULL;
+
+    /*
+    * If we have a right-hand child, go down and then left as far
+    * as we can.
+    */
+    if (node->rb_right) {
+        node = node->rb_right;
+        while (node->rb_left)
+            node = node->rb_left;
+        return (cutest_map_node_t *)node;
+    }
+
+    /*
+    * No right-hand children. Everything down and left is smaller than us,
+    * so any 'next' node must be in the general direction of our parent.
+    * Go up the tree; any time the ancestor is a right-hand child of its
+    * parent, keep going up. First time it's a left-hand child of its
+    * parent, said parent is our 'next' node.
+    */
+    while ((parent = rb_parent(node)) != NULL && node == parent->rb_right)
+        node = parent;
+
+    return parent;
+}
+
+/************************************************************************/
+/* list                                                                 */
+/************************************************************************/
+
+static void _test_list_set_once(cutest_list_t* handler, cutest_list_node_t* node)
+{
+    handler->head = node;
+    handler->tail = node;
+    node->p_after = NULL;
+    node->p_before = NULL;
+    handler->size = 1;
+}
+
+/**
+ * @brief Insert a node to the tail of the list.TEST_LIST_INITIALIZER
+ * @warning the node must not exist in any list.
+ * @param [in] handler  Pointer to list
+ * @param [in] node     Pointer to a new node
+ */
+void cutest_list_push_back(cutest_list_t* handler, cutest_list_node_t* node)
+{
+    if (handler->head == NULL)
+    {
+        _test_list_set_once(handler, node);
+        return;
+    }
+
+    node->p_after = NULL;
+    node->p_before = handler->tail;
+    handler->tail->p_after = node;
+    handler->tail = node;
+    handler->size++;
+}
+
+/**
+ * @brief Get the last node.
+ * @param [in] handler  Pointer to list
+ * @return              The first node
+ */
+cutest_list_node_t* cutest_list_begin(const cutest_list_t* handler)
+{
+    return handler->head;
+}
+
+/**
+ * @brief Get next node.
+ * @param [in] node     Current node
+ * @return              The next node
+ */
+cutest_list_node_t* cutest_list_next(const cutest_list_node_t* node)
+{
+    return node->p_after;
+}
+
+/**
+ * @brief Get the number of nodes in the list.
+ * @param [in] handler  Pointer to list
+ * @return              The number of nodes
+ */
+size_t cutest_list_size(const cutest_list_t* handler)
+{
+    return handler->size;
+}
+
+/**
+ * @brief Delete a exist node
+ * @warning The node must already in the list.
+ * @param [in] handler  Pointer to list
+ * @param [in] node     The node you want to delete
+ */
+void cutest_list_erase(cutest_list_t* handler, cutest_list_node_t* node)
+{
+    handler->size--;
+
+    if (handler->head == node && handler->tail == node)
+    {
+        handler->head = NULL;
+        handler->tail = NULL;
+        return;
+    }
+
+    if (handler->head == node)
+    {
+        node->p_after->p_before = NULL;
+        handler->head = node->p_after;
+        return;
+    }
+
+    if (handler->tail == node)
+    {
+        node->p_before->p_after = NULL;
+        handler->tail = node->p_before;
+        return;
+    }
+
+    node->p_before->p_after = node->p_after;
+    node->p_after->p_before = node->p_before;
+    return;
+}
+
+/************************************************************************/
+/* argument parser                                                      */
+/************************************************************************/
+
+#define OPTPARSE_MSG_INVALID "invalid option"
+#define OPTPARSE_MSG_MISSING "option requires an argument"
+#define OPTPARSE_MSG_TOOMANY "option takes no arguments"
+
+static int _test_optparse_is_dashdash(const char *arg)
+{
+    return arg != 0 && arg[0] == '-' && arg[1] == '-' && arg[2] == '\0';
+}
+
+static int _test_optparse_is_shortopt(const char *arg)
+{
+    return arg != 0 && arg[0] == '-' && arg[1] != '-' && arg[1] != '\0';
+}
+
+static int _test_optparse_is_longopt(const char *arg)
+{
+    return arg != 0 && arg[0] == '-' && arg[1] == '-' && arg[2] != '\0';
+}
+
+static int _test_optparse_longopts_end(const cutest_optparse_long_opt_t *longopts, int i)
+{
+    return !longopts[i].longname && !longopts[i].shortname;
+}
+
+static int _test_optparse_longopts_match(const char *longname, const char *option)
+{
+    const char *a = option, *n = longname;
+    if (longname == 0)
+        return 0;
+    for (; *a && *n && *a != '='; a++, n++)
+        if (*a != *n)
+            return 0;
+    return *n == '\0' && (*a == '\0' || *a == '=');
+}
+
+static char* _test_optparse_longopts_arg(char *option)
+{
+    for (; *option && *option != '='; option++);
+    if (*option == '=')
+        return option + 1;
+    else
+        return 0;
+}
+
+static void _test_optparse_from_long(const cutest_optparse_long_opt_t *longopts, char *optstring)
+{
+    char *p = optstring;
+    int i;
+    for (i = 0; !_test_optparse_longopts_end(longopts, i); i++) {
+        if (longopts[i].shortname) {
+            int a;
+            *p++ = (char)(longopts[i].shortname);
+            for (a = 0; a < (int)longopts[i].argtype; a++)
+                *p++ = ':';
+        }
+    }
+    *p = '\0';
+}
+
+static void _test_optparse_permute(cutest_optparse_t *options, int index)
+{
+    char *nonoption = options->argv[index];
+    int i;
+    for (i = index; i < options->optind - 1; i++)
+        options->argv[i] = options->argv[i + 1];
+    options->argv[options->optind - 1] = nonoption;
+}
+
+static int _test_optparse_argtype(const char *optstring, char c)
+{
+    int count = CUTEST_OPTPARSE_NONE;
+    if (c == ':')
+        return -1;
+    for (; *optstring && c != *optstring; optstring++);
+    if (!*optstring)
+        return -1;
+    if (optstring[1] == ':')
+        count += optstring[2] == ':' ? 2 : 1;
+    return count;
+}
+
+static int _test_optparse_error(cutest_optparse_t *options, const char *msg, const char *data)
+{
+    unsigned p = 0;
+    const char *sep = " -- '";
+    while (*msg)
+        options->errmsg[p++] = *msg++;
+    while (*sep)
+        options->errmsg[p++] = *sep++;
+    while (p < sizeof(options->errmsg) - 2 && *data)
+        options->errmsg[p++] = *data++;
+    options->errmsg[p++] = '\'';
+    options->errmsg[p++] = '\0';
+    return '?';
+}
+
+static int _test_optparse(cutest_optparse_t *options, const char *optstring)
+{
+    int type;
+    char *next;
+    char *option = options->argv[options->optind];
+    options->errmsg[0] = '\0';
+    options->optopt = 0;
+    options->optarg = 0;
+    if (option == 0) {
+        return -1;
+    }
+    else if (_test_optparse_is_dashdash(option)) {
+        options->optind++; /* consume "--" */
+        return -1;
+    }
+    else if (!_test_optparse_is_shortopt(option)) {
+        if (options->permute) {
+            int index = options->optind++;
+            int r = _test_optparse(options, optstring);
+            _test_optparse_permute(options, index);
+            options->optind--;
+            return r;
+        }
+        else {
+            return -1;
+        }
+    }
+    option += (options->subopt + 1);
+    options->optopt = option[0];
+    type = _test_optparse_argtype(optstring, option[0]);
+    next = options->argv[options->optind + 1];
+    switch (type) {
+    case -1: {
+        char str[2] = { 0, 0 };
+        str[0] = option[0];
+        options->optind++;
+        return _test_optparse_error(options, OPTPARSE_MSG_INVALID, str);
+    }
+    case CUTEST_OPTPARSE_NONE:
+        if (option[1]) {
+            options->subopt++;
+        }
+        else {
+            options->subopt = 0;
+            options->optind++;
+        }
+        return option[0];
+    case CUTEST_OPTPARSE_REQUIRED:
+        options->subopt = 0;
+        options->optind++;
+        if (option[1]) {
+            options->optarg = option + 1;
+        }
+        else if (next != 0) {
+            options->optarg = next;
+            options->optind++;
+        }
+        else {
+            char str[2] = { 0, 0 };
+            str[0] = option[0];
+            options->optarg = 0;
+            return _test_optparse_error(options, OPTPARSE_MSG_MISSING, str);
+        }
+        return option[0];
+    case CUTEST_OPTPARSE_OPTIONAL:
+        options->subopt = 0;
+        options->optind++;
+        if (option[1])
+            options->optarg = option + 1;
+        else
+            options->optarg = 0;
+        return option[0];
+    }
+    return 0;
+}
+
+static int _test_optparse_long_fallback(cutest_optparse_t *options, const cutest_optparse_long_opt_t *longopts, int *longindex)
+{
+    int result;
+    char optstring[96 * 3 + 1]; /* 96 ASCII printable characters */
+    _test_optparse_from_long(longopts, optstring);
+    result = _test_optparse(options, optstring);
+    if (longindex != 0) {
+        *longindex = -1;
+        if (result != -1) {
+            int i;
+            for (i = 0; !_test_optparse_longopts_end(longopts, i); i++)
+                if (longopts[i].shortname == options->optopt)
+                    *longindex = i;
+        }
+    }
+    return result;
+}
+
+int cutest_optparse_long(cutest_optparse_t *options,
+        const cutest_optparse_long_opt_t *longopts, int *longindex)
+{
+    int i;
+    char *option = options->argv[options->optind];
+    if (option == 0) {
+        return -1;
+    }
+    else if (_test_optparse_is_dashdash(option)) {
+        options->optind++; /* consume "--" */
+        return -1;
+    }
+    else if (_test_optparse_is_shortopt(option)) {
+        return _test_optparse_long_fallback(options, longopts, longindex);
+    }
+    else if (!_test_optparse_is_longopt(option)) {
+        if (options->permute) {
+            int index = options->optind++;
+            int r = cutest_optparse_long(options, longopts, longindex);
+            _test_optparse_permute(options, index);
+            options->optind--;
+            return r;
+        }
+        else {
+            return -1;
+        }
+    }
+
+    /* Parse as long option. */
+    options->errmsg[0] = '\0';
+    options->optopt = 0;
+    options->optarg = 0;
+    option += 2; /* skip "--" */
+    options->optind++;
+    for (i = 0; !_test_optparse_longopts_end(longopts, i); i++) {
+        const char *name = longopts[i].longname;
+        if (_test_optparse_longopts_match(name, option)) {
+            char *arg;
+            if (longindex)
+                *longindex = i;
+            options->optopt = longopts[i].shortname;
+            arg = _test_optparse_longopts_arg(option);
+            if (longopts[i].argtype == CUTEST_OPTPARSE_NONE && arg != 0) {
+                return _test_optparse_error(options, OPTPARSE_MSG_TOOMANY, name);
+            } if (arg != 0) {
+                options->optarg = arg;
+            }
+            else if (longopts[i].argtype == CUTEST_OPTPARSE_REQUIRED) {
+                options->optarg = options->argv[options->optind];
+                if (options->optarg == 0)
+                    return _test_optparse_error(options, OPTPARSE_MSG_MISSING, name);
+                else
+                    options->optind++;
+            }
+            return options->optopt;
+        }
+    }
+    return _test_optparse_error(options, OPTPARSE_MSG_INVALID, option);
+}
+
+void cutest_optparse_init(cutest_optparse_t *options, char **argv)
+{
+    options->argv = argv;
+    options->permute = 1;
+    options->optind = 1;
+    options->subopt = 0;
+    options->optarg = 0;
+    options->errmsg[0] = '\0';
 }
