@@ -143,7 +143,13 @@ extern "C" {
     TEST_INITIALIZER(TEST_INIT_##fixture_name##_##case_name) {\
         static cutest_case_t _case_##fixture_name##_##case_name = {\
             { { NULL, NULL }, { NULL, NULL, NULL } }, /* .node */\
-            { CUTEST_CASE_TYPE_PARAMETERIZED, 0, #fixture_name, #case_name }, /* .info */\
+            {\
+                CUTEST_CASE_TYPE_PARAMETERIZED,\
+                0,\
+                #fixture_name,\
+                #case_name,\
+                #fixture_name "." #case_name,\
+            }, /* .info */\
             {\
                 TEST_FIXTURE_SETUP_##fixture_name,\
                 TEST_FIXTURE_TEARDOWN_##fixture_name,\
@@ -158,7 +164,7 @@ extern "C" {
                 _parameterized_get_type_size_##fixture_name##_##case_name,\
             }, /* parameterized */\
         };\
-        cutest_register_case(&_case_##fixture_name##_##case_name);\
+        TEST_REGISTER_TEST_CASE(&_case_##fixture_name##_##case_name);\
     }\
     void TEST_BODY_##fixture_name##_##case_name(\
         _parameterized_type_##fixture_name##_##case_name* _test_parameterized_data)
@@ -173,7 +179,13 @@ extern "C" {
     TEST_INITIALIZER(TEST_INIT_##fixture_name##_##case_name) {\
         static cutest_case_t _case_##fixture_name##_##case_name = {\
             { { NULL, NULL }, { NULL, NULL, NULL } }, /* .node */\
-            { CUTEST_CASE_TYPE_FIXTURE, 0, #fixture_name, #case_name }, /* .info */\
+            {\
+                CUTEST_CASE_TYPE_FIXTURE,\
+                0,\
+                #fixture_name,\
+                #case_name,\
+                #fixture_name "." #case_name,\
+            }, /* .info */\
             {\
                 TEST_FIXTURE_SETUP_##fixture_name,\
                 TEST_FIXTURE_TEARDOWN_##fixture_name,\
@@ -183,7 +195,7 @@ extern "C" {
                 0, NULL, NULL, NULL, 0\
             }, /* parameterized */\
         };\
-        cutest_register_case(&_case_##fixture_name##_##case_name);\
+        TEST_REGISTER_TEST_CASE(&_case_##fixture_name##_##case_name);\
     }\
     void TEST_BODY_##fixture_name##_##case_name(void)
 
@@ -197,7 +209,13 @@ extern "C" {
     TEST_INITIALIZER(TEST_INIT_##suit_name##_##case_name) {\
         static cutest_case_t _case_##suit_name##_##case_name = {\
             { { NULL, NULL }, { NULL, NULL, NULL } }, /* .node */\
-            { CUTEST_CASE_TYPE_SIMPLE, 0, #suit_name, #case_name }, /* .info */\
+            {\
+                CUTEST_CASE_TYPE_SIMPLE,\
+                0,\
+                #suit_name,\
+                #case_name,\
+                #suit_name "." #case_name,\
+            }, /* .info */\
             {\
                 NULL, NULL, (void*)TEST_BODY_##suit_name##_##case_name,\
             }, /* stage */\
@@ -205,7 +223,7 @@ extern "C" {
                 0, NULL, NULL,NULL,  0\
             }, /* parameterized */\
         };\
-        cutest_register_case(&_case_##suit_name##_##case_name);\
+        TEST_REGISTER_TEST_CASE(&_case_##suit_name##_##case_name);\
     }\
     void TEST_BODY_##suit_name##_##case_name(void)
 
@@ -1390,6 +1408,22 @@ int cutest_timestamp_dif(const cutest_timestamp_t* t1, const cutest_timestamp_t*
         }\
     } TEST_MSVC_WARNNING_GUARD(while (0), 4127)
 
+/**
+ * @brief Register test case
+ */
+#define TEST_REGISTER_TEST_CASE(p_case)\
+    do {\
+        cutest_case_t* _p_case = p_case;\
+        if (cutest_register_case(_p_case) != 0) {\
+            fprintf(stderr, "[%s:%d] register %s failed: duplicate name.\n",\
+                cutest_pretty_file(__FILE__),\
+                __LINE__,\
+                _p_case->info.full_name);\
+            cutest_internal_flush();\
+            TEST_DEBUGBREAK;\
+        }\
+    } TEST_MSVC_WARNNING_GUARD(while (0), 4127)
+
 #define ASSERT_TEMPLATE_VA(...)                                 TEST_JOIN(ASSERT_TEMPLATE_VA_, TEST_ARG_COUNT(__VA_ARGS__))
 #define ASSERT_TEMPLATE_VA_0(TYPE, FMT, OP, CMP, a, b, ...)     TEST_EXPAND(ASSERT_TEMPLATE(TYPE, FMT, OP, CMP, a, b, __VA_ARGS__))
 #define ASSERT_TEMPLATE_VA_1(TYPE, FMT, OP, CMP, a, b, ...)     TEST_EXPAND(ASSERT_TEMPLATE(TYPE, FMT, OP, CMP, a, b, __VA_ARGS__))
@@ -1536,6 +1570,7 @@ typedef struct cutest_case
         unsigned                mask;                   /**< internal mask */
         const char*             suit_name;              /**< suit name */
         const char*             case_name;              /**< case name */
+        const char*             full_name;              /**< full name */
     }info;
 
     struct
@@ -1556,11 +1591,11 @@ typedef struct cutest_case
 }cutest_case_t;
 
 /**
- * @internal
  * @brief Register test case
  * @param[in] test_case     Test case
+ * @return                  0 for success, -1 for failure.
  */
-void cutest_register_case(cutest_case_t* test_case);
+int cutest_register_case(cutest_case_t* test_case);
 
 /**
  * @internal

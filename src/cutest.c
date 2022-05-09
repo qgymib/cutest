@@ -128,12 +128,39 @@ typedef enum test_case_stage
     stage_teardown,
 }test_case_stage_t;
 
+typedef struct test_nature_s
+{
+    cutest_map_t            case_table;                     /**< Cases in map */
+
+    struct
+    {
+        size_t              kMaxUlps;
+        struct
+        {
+            size_t          kBitCount_64;
+            size_t          kFractionBitCount_64;
+            size_t          kExponentBitCount_64;
+            uint64_t        kSignBitMask_64;
+            uint64_t        kFractionBitMask_64;
+            uint64_t        kExponentBitMask_64;
+        }_double;
+        struct
+        {
+            size_t          kBitCount_32;
+            size_t          kFractionBitCount_32;
+            size_t          kExponentBitCount_32;
+            uint32_t        kSignBitMask_32;
+            uint32_t        kFractionBitMask_32;
+            uint32_t        kExponentBitMask_32;
+        }_float;
+    }precision;
+} test_nature_t;
+
 typedef struct test_ctx
 {
     struct
     {
         cutest_list_t       case_list;                      /**< Cases in list */
-        cutest_map_t        case_table;                     /**< Cases in map */
     }info;
 
     struct
@@ -189,30 +216,7 @@ typedef struct test_ctx
         char**              negative_patterns;              /**< negative patterns for filter */
         size_t              n_negative;                     /**< The number of negative patterns */
         size_t              n_postive;                      /**< The number of positive patterns */
-    }filter;
-
-    struct
-    {
-        size_t              kMaxUlps;
-        struct
-        {
-            size_t          kBitCount_64;
-            size_t          kFractionBitCount_64;
-            size_t          kExponentBitCount_64;
-            uint64_t        kSignBitMask_64;
-            uint64_t        kFractionBitMask_64;
-            uint64_t        kExponentBitMask_64;
-        }_double;
-        struct
-        {
-            size_t          kBitCount_32;
-            size_t          kFractionBitCount_32;
-            size_t          kExponentBitCount_32;
-            uint32_t        kSignBitMask_32;
-            uint32_t        kFractionBitMask_32;
-            uint32_t        kExponentBitMask_32;
-        }_float;
-    }precision;                                                 /**< Context for float/double compare */
+    }filter;                                                /**< Context for float/double compare */
 
     struct
     {
@@ -235,25 +239,23 @@ static int _test_on_cmp_case(const cutest_map_node_t* key1, const cutest_map_nod
     const cutest_case_t* t_case_1 = CONTAINER_OF(key1, cutest_case_t, node.table);
     const cutest_case_t* t_case_2 = CONTAINER_OF(key2, cutest_case_t, node.table);
 
-    int ret;
-    if ((ret = strcmp(t_case_1->info.suit_name, t_case_2->info.suit_name)) != 0)
-    {
-        return ret;
-    }
-    return strcmp(t_case_1->info.case_name, t_case_2->info.case_name);
+    return strcmp(t_case_1->info.full_name, t_case_2->info.full_name);
 }
 
 static test_ctx2_t          g_test_ctx2;                                // no need to initialize
 static test_ctx_t           g_test_ctx = {
-    { { NULL, NULL, 0 }, CUTEST_MAP_INIT(_test_on_cmp_case, NULL) },    /* .info */
+    { { NULL, NULL, 0 }, },                                             /* .info */
     { 0, 0, NULL, NULL, 0, stage_setup },                               /* .runtime */
     { { 0, 0 }, { 0, 0 }, { 0, 0 }, { 0, 0 }, { 0, 0 } },               /* .timestamp */
     { { 0, 0, 0, 0, 0 }, { 0, 0 } },                                    /* .counter */
     { 0, 0, 0, 0 },                                                     /* .mask */
     { NULL, NULL, 0, 0 },                                               /* .filter */
-    { 0, { 0, 0, 0, 0, 0, 0 }, { 0, 0, 0, 0, 0, 0 } },                  /* .precision */
     { NULL, 0 },                                                        /* .io */
     NULL,                                                               /* .hook */
+};
+static test_nature_t        g_test_nature = {
+    CUTEST_MAP_INIT(_test_on_cmp_case, NULL),                           /* .case_table */
+    { 0, { 0, 0, 0, 0, 0, 0 }, { 0, 0, 0, 0, 0, 0 } },                  /* .precision */
 };
 
 static const char* s_test_help_encoded =
@@ -284,7 +286,7 @@ static const char* s_test_help_encoded =
 "  " COLOR_GREEN("--test_print_time=") COLOR_YELLO("(") COLOR_GREEN("0") COLOR_YELLO("|") COLOR_GREEN("1") COLOR_YELLO(")") "\n"
 "      Don't print the elapsed time of each test.\n"
 "  " COLOR_GREEN("--test_logfile=") COLOR_YELLO("[PATH]") "\n"
-"      Redirect console output to file.\n"
+"      Redirect console output to file. The file will be truncate to zero first.\n"
 "\n"
 "Assertion Behavior:\n"
 "  " COLOR_GREEN("--test_break_on_failure") "\n"
@@ -1190,7 +1192,7 @@ static void _test_list_tests(void)
 {
     const char* last_class_name = "";
 
-    cutest_map_node_t* it = cutest_map_begin(&g_test_ctx.info.case_table);
+    cutest_map_node_t* it = cutest_map_begin(&g_test_nature.case_table);
     for (; it != NULL; it = cutest_map_next(it))
     {
         cutest_case_t* case_data = CONTAINER_OF(it, cutest_case_t, node.table);
@@ -1233,25 +1235,25 @@ static void _test_setup_precision(void)
     assert(sizeof(((double_point_t*)NULL)->bits_) == sizeof(((double_point_t*)NULL)->value_));
     assert(sizeof(((float_point_t*)NULL)->bits_) == sizeof(((float_point_t*)NULL)->value_));
 
-    g_test_ctx.precision.kMaxUlps = 4;
+    g_test_nature.precision.kMaxUlps = 4;
     // double
     {
-        g_test_ctx.precision._double.kBitCount_64 = 8 * sizeof(((double_point_t*)NULL)->value_);
-        g_test_ctx.precision._double.kSignBitMask_64 = (uint64_t)1 << (g_test_ctx.precision._double.kBitCount_64 - 1);
-        g_test_ctx.precision._double.kFractionBitCount_64 = DBL_MANT_DIG - 1;
-        g_test_ctx.precision._double.kExponentBitCount_64 = g_test_ctx.precision._double.kBitCount_64 - 1 - g_test_ctx.precision._double.kFractionBitCount_64;
-        g_test_ctx.precision._double.kFractionBitMask_64 = (~(uint64_t)0) >> (g_test_ctx.precision._double.kExponentBitCount_64 + 1);
-        g_test_ctx.precision._double.kExponentBitMask_64 = ~(g_test_ctx.precision._double.kSignBitMask_64 | g_test_ctx.precision._double.kFractionBitMask_64);
+        g_test_nature.precision._double.kBitCount_64 = 8 * sizeof(((double_point_t*)NULL)->value_);
+        g_test_nature.precision._double.kSignBitMask_64 = (uint64_t)1 << (g_test_nature.precision._double.kBitCount_64 - 1);
+        g_test_nature.precision._double.kFractionBitCount_64 = DBL_MANT_DIG - 1;
+        g_test_nature.precision._double.kExponentBitCount_64 = g_test_nature.precision._double.kBitCount_64 - 1 - g_test_nature.precision._double.kFractionBitCount_64;
+        g_test_nature.precision._double.kFractionBitMask_64 = (~(uint64_t)0) >> (g_test_nature.precision._double.kExponentBitCount_64 + 1);
+        g_test_nature.precision._double.kExponentBitMask_64 = ~(g_test_nature.precision._double.kSignBitMask_64 | g_test_nature.precision._double.kFractionBitMask_64);
     }
 
     // float
     {
-        g_test_ctx.precision._float.kBitCount_32 = 8 * sizeof(((float_point_t*)NULL)->value_);
-        g_test_ctx.precision._float.kSignBitMask_32 = (uint32_t)1 << (g_test_ctx.precision._float.kBitCount_32 - 1);
-        g_test_ctx.precision._float.kFractionBitCount_32 = FLT_MANT_DIG - 1;
-        g_test_ctx.precision._float.kExponentBitCount_32 = g_test_ctx.precision._float.kBitCount_32 - 1 - g_test_ctx.precision._float.kFractionBitCount_32;
-        g_test_ctx.precision._float.kFractionBitMask_32 = (~(uint32_t)0) >> (g_test_ctx.precision._float.kExponentBitCount_32 + 1);
-        g_test_ctx.precision._float.kExponentBitMask_32 = ~(g_test_ctx.precision._float.kSignBitMask_32 | g_test_ctx.precision._float.kFractionBitMask_32);
+        g_test_nature.precision._float.kBitCount_32 = 8 * sizeof(((float_point_t*)NULL)->value_);
+        g_test_nature.precision._float.kSignBitMask_32 = (uint32_t)1 << (g_test_nature.precision._float.kBitCount_32 - 1);
+        g_test_nature.precision._float.kFractionBitCount_32 = FLT_MANT_DIG - 1;
+        g_test_nature.precision._float.kExponentBitCount_32 = g_test_nature.precision._float.kBitCount_32 - 1 - g_test_nature.precision._float.kFractionBitCount_32;
+        g_test_nature.precision._float.kFractionBitMask_32 = (~(uint32_t)0) >> (g_test_nature.precision._float.kExponentBitCount_32 + 1);
+        g_test_nature.precision._float.kExponentBitMask_32 = ~(g_test_nature.precision._float.kSignBitMask_32 | g_test_nature.precision._float.kFractionBitMask_32);
     }
 }
 
@@ -1344,13 +1346,26 @@ static int _test_setup_arg_logfile(const char* path)
     return 0;
 }
 
+static void _test_prepare(void)
+{
+    g_test_ctx.runtime.tid = GET_TID();
+    g_test_ctx.counter.repeat.repeat = 1;
+
+    cutest_map_node_t* it = cutest_map_begin(&g_test_nature.case_table);
+    for (; it != NULL; it = cutest_map_next(it))
+    {
+        cutest_case_t* p_case = CONTAINER_OF(it, cutest_case_t, node.table);
+        cutest_list_push_back(&g_test_ctx.info.case_list, &p_case->node.queue);
+    }
+}
+
 static int _test_setup(int argc, char* argv[], const cutest_hook_t* hook)
 {
     (void)argc;
 
+    memset(&g_test_ctx, 0, sizeof(g_test_ctx));
     cutest_setup_once();
-    g_test_ctx.runtime.tid = GET_TID();
-    g_test_ctx.counter.repeat.repeat = 1;
+    _test_prepare();
 
     enum test_opt
     {
@@ -1457,58 +1472,58 @@ static void _test_run_test_loop(void)
 
 static uint32_t _test_float_point_exponent_bits(const float_point_t* p)
 {
-    return g_test_ctx.precision._float.kExponentBitMask_32 & p->bits_;
+    return g_test_nature.precision._float.kExponentBitMask_32 & p->bits_;
 }
 
 static uint64_t _test_double_point_exponent_bits(const double_point_t* p)
 {
-    return g_test_ctx.precision._double.kExponentBitMask_64 & p->bits_;
+    return g_test_nature.precision._double.kExponentBitMask_64 & p->bits_;
 }
 
 static uint32_t _test_float_point_fraction_bits(const float_point_t* p)
 {
-    return g_test_ctx.precision._float.kFractionBitMask_32 & p->bits_;
+    return g_test_nature.precision._float.kFractionBitMask_32 & p->bits_;
 }
 
 static uint64_t _test_double_point_fraction_bits(const double_point_t* p)
 {
-    return g_test_ctx.precision._double.kFractionBitMask_64 & p->bits_;
+    return g_test_nature.precision._double.kFractionBitMask_64 & p->bits_;
 }
 
 static int _test_float_point_is_nan(const float_point_t* p)
 {
-    return (_test_float_point_exponent_bits(p) == g_test_ctx.precision._float.kExponentBitMask_32)
+    return (_test_float_point_exponent_bits(p) == g_test_nature.precision._float.kExponentBitMask_32)
         && (_test_float_point_fraction_bits(p) != 0);
 }
 
 static int _test_double_point_is_nan(const double_point_t* p)
 {
-    return (_test_double_point_exponent_bits(p) == g_test_ctx.precision._double.kExponentBitMask_64)
+    return (_test_double_point_exponent_bits(p) == g_test_nature.precision._double.kExponentBitMask_64)
         && (_test_double_point_fraction_bits(p) != 0);
 }
 
 static uint32_t _test_float_point_sign_and_magnitude_to_biased(const uint32_t sam)
 {
-    if (g_test_ctx.precision._float.kSignBitMask_32 & sam)
+    if (g_test_nature.precision._float.kSignBitMask_32 & sam)
     {
         // sam represents a negative number.
         return ~sam + 1;
     }
 
     // sam represents a positive number.
-    return g_test_ctx.precision._float.kSignBitMask_32 | sam;
+    return g_test_nature.precision._float.kSignBitMask_32 | sam;
 }
 
 static uint64_t _test_double_point_sign_and_magnitude_to_biased(const uint64_t sam)
 {
-    if (g_test_ctx.precision._double.kSignBitMask_64 & sam)
+    if (g_test_nature.precision._double.kSignBitMask_64 & sam)
     {
         // sam represents a negative number.
         return ~sam + 1;
     }
 
     // sam represents a positive number.
-    return g_test_ctx.precision._double.kSignBitMask_64 | sam;
+    return g_test_nature.precision._double.kSignBitMask_64 | sam;
 }
 
 static uint32_t _test_float_point_distance_between_sign_and_magnitude_numbers(uint32_t sam1, uint32_t sam2)
@@ -1689,10 +1704,13 @@ int cutest_timestamp_dif(const cutest_timestamp_t* t1, const cutest_timestamp_t*
     return t1 == little_t ? -1 : 1;
 }
 
-void cutest_register_case(cutest_case_t* data)
+int cutest_register_case(cutest_case_t* data)
 {
-    ASSERT(cutest_map_insert(&g_test_ctx.info.case_table, &data->node.table) == 0);
-    cutest_list_push_back(&g_test_ctx.info.case_list, &data->node.queue);
+    /**
+     * Theoretically this operation will not fail. If two tests have duplicated
+     * name, it will fail at program link stage.
+     */
+    return cutest_map_insert(&g_test_nature.case_table, &data->node.table);
 }
 
 int cutest_run_tests(int argc, char* argv[], const cutest_hook_t* hook)
@@ -1717,7 +1735,6 @@ fin:
     return ret;
 }
 
-TEST_NORETURN
 void cutest_unwrap_assert_fail(const char *expr, const char *file, int line, const char *func)
 {
     fprintf(stderr, "Assertion failed: %s (%s: %s: %d)\n", expr, file, func, line);
@@ -1759,7 +1776,7 @@ int cutest_internal_assert_helper_float_eq(float a, float b)
     }
 
     return _test_float_point_distance_between_sign_and_magnitude_numbers(v_a.bits_, v_b.bits_)
-        <= g_test_ctx.precision.kMaxUlps;
+        <= g_test_nature.precision.kMaxUlps;
 }
 
 int cutest_internal_assert_helper_float_le(float a, float b)
@@ -1783,7 +1800,7 @@ int cutest_internal_assert_helper_double_eq(double a, double b)
     }
 
     return _test_double_point_distance_between_sign_and_magnitude_numbers(v_a.bits_, v_b.bits_)
-        <= g_test_ctx.precision.kMaxUlps;
+        <= g_test_nature.precision.kMaxUlps;
 }
 
 int cutest_internal_assert_helper_double_le(double a, double b)
@@ -1801,15 +1818,14 @@ unsigned cutest_internal_parameterized_index(void)
     return g_test_ctx.runtime.cur_parameterized_idx;
 }
 
-TEST_NORETURN
 void cutest_internal_assert_failure(void)
 {
     if (g_test_ctx.runtime.tid != GET_TID())
     {
-        /*
-        * If current thread is NOT the main thread, it is dangerous to jump back
-        * to caller stack, so we just abort the program.
-        */
+        /**
+         * If current thread is NOT the main thread, it is dangerous to jump back
+         * to caller stack, so we just abort the program.
+         */
         abort();
     }
     else
