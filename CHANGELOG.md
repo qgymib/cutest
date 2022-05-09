@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.0.2
+
+### Features
+1. Support log redirection
+
+
 ## v1.0.1 (2022/04/29)
 
 ### Features
