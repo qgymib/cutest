@@ -19,13 +19,6 @@ extern "C" {
     ASSERT_GT_U32(1, 0);    \
     ASSERT_GE_U32(1, 0);    \
                             \
-    ASSERT_EQ_X32(0, 0);    \
-    ASSERT_NE_X32(0, 1);    \
-    ASSERT_LT_X32(0, 1);    \
-    ASSERT_LE_X32(0, 1);    \
-    ASSERT_GT_X32(1, 0);    \
-    ASSERT_GE_X32(1, 0);    \
-                            \
     ASSERT_EQ_D64(0, 0);    \
     ASSERT_NE_D64(0, 1);    \
     ASSERT_LT_D64(0, 1);    \
@@ -39,13 +32,6 @@ extern "C" {
     ASSERT_LE_U64(0, 1);    \
     ASSERT_GT_U64(1, 0);    \
     ASSERT_GE_U64(1, 0);    \
-                            \
-    ASSERT_EQ_X64(0, 0);    \
-    ASSERT_NE_X64(0, 1);    \
-    ASSERT_LT_X64(0, 1);    \
-    ASSERT_LE_X64(0, 1);    \
-    ASSERT_GT_X64(1, 0);    \
-    ASSERT_GE_X64(1, 0);    \
                             \
     ASSERT_EQ_SIZE(0, 0);   \
     ASSERT_NE_SIZE(0, 1);   \

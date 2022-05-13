@@ -5,6 +5,9 @@
 ### Features
 1. Support log redirection
 
+### BREAKING CHANGES
+1. remove x32 / x64 assertion methods
+
 
 ## v1.0.1 (2022/04/29)
 
