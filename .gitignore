@@ -68,6 +68,9 @@ dkms.conf
 /build
 /build.*
 
+# FreeFileSync
+/*.ffs_db
+
 # Html document files
 /docs/html
 
@@ -82,3 +85,7 @@ dkms.conf
 /.vs
 /out
 /CMakeSettings.json
+
+# Idea
+/.idea
+/cmake-build-debug
