@@ -82,3 +82,7 @@ dkms.conf
 /.vs
 /out
 /CMakeSettings.json
+
+# Idea
+/.idea
+/cmake-build-debug
