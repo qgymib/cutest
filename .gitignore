@@ -68,6 +68,9 @@ dkms.conf
 /build
 /build.*
 
+# FreeFileSync
+/*.ffs_db
+
 # Html document files
 /docs/html
 

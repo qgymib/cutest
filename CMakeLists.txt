@@ -2,7 +2,14 @@ cmake_minimum_required(VERSION 3.2)
 project(cutest)
 
 add_library(${PROJECT_NAME}
-    "src/cutest.c")
+    "src/assertion.c"
+    "src/cutest.c"
+    "src/list.c"
+    "src/map.c"
+    "src/optparser.c"
+    "src/print.c"
+    "src/runtime.c"
+    "src/time.c")
 
 target_include_directories(${PROJECT_NAME}
     PUBLIC
