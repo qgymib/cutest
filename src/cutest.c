@@ -304,8 +304,8 @@ static void _test_run_case(void)
         return;
     }
 
-    _cutest_color_printf(CUTEST_PRINT_COLOR_GREEN, "[ RUN      ]");
-    _cutest_color_printf(CUTEST_PRINT_COLOR_DEFAULT, " %s\n", g_test_ctx2.strbuf);
+    cutest_color_printf(CUTEST_PRINT_COLOR_GREEN, "[ RUN      ]");
+    cutest_color_printf(CUTEST_PRINT_COLOR_DEFAULT, " %s\n", g_test_ctx2.strbuf);
 
     int ret;
     if ((ret = setjmp(cutest_runtime.jmpbuf)) != 0)
@@ -364,27 +364,27 @@ procedure_teardown_fin:
     if (HAS_MASK(cutest_runtime.runtime.cur_case->info.mask, MASK_FAILURE))
     {
         cutest_runtime.counter.result.failed++;
-        _cutest_color_printf(CUTEST_PRINT_COLOR_RED, "[  FAILED  ]");
+        cutest_color_printf(CUTEST_PRINT_COLOR_RED, "[  FAILED  ]");
     }
     else if (HAS_MASK(cutest_runtime.runtime.cur_case->info.mask, MASK_SKIPPED))
     {
         cutest_runtime.counter.result.skipped++;
-        _cutest_color_printf(CUTEST_PRINT_COLOR_YELLOW, "[   SKIP   ]");
+        cutest_color_printf(CUTEST_PRINT_COLOR_YELLOW, "[   SKIP   ]");
     }
     else
     {
         cutest_runtime.counter.result.success++;
-        _cutest_color_printf(CUTEST_PRINT_COLOR_GREEN, "[       OK ]");
+        cutest_color_printf(CUTEST_PRINT_COLOR_GREEN, "[       OK ]");
     }
 
-    _cutest_color_printf(CUTEST_PRINT_COLOR_DEFAULT, " %s", g_test_ctx2.strbuf);
+    cutest_color_printf(CUTEST_PRINT_COLOR_DEFAULT, " %s", g_test_ctx2.strbuf);
     if (!cutest_runtime.mask.no_print_time)
     {
         unsigned long take_time = (unsigned long)(cutest_runtime.timestamp.tv_diff.sec * 1000
             + cutest_runtime.timestamp.tv_diff.usec / 1000);
-        _cutest_color_printf(CUTEST_PRINT_COLOR_DEFAULT, " (%lu ms)", take_time);
+        cutest_color_printf(CUTEST_PRINT_COLOR_DEFAULT, " (%lu ms)", take_time);
     }
-    _cutest_color_printf(CUTEST_PRINT_COLOR_DEFAULT, "\n");
+    cutest_color_printf(CUTEST_PRINT_COLOR_DEFAULT, "\n");
 }
 
 static void _test_reset_all_test(void)
@@ -414,8 +414,8 @@ static void _test_show_report_failed(void)
         snprintf(g_test_ctx2.strbuf, sizeof(g_test_ctx2.strbuf), "%s.%s",
             case_data->info.suit_name, case_data->info.case_name);
 
-        _cutest_color_printf(CUTEST_PRINT_COLOR_RED, "[  FAILED  ]");
-        _cutest_color_printf(CUTEST_PRINT_COLOR_DEFAULT, " %s\n", g_test_ctx2.strbuf);
+        cutest_color_printf(CUTEST_PRINT_COLOR_RED, "[  FAILED  ]");
+        cutest_color_printf(CUTEST_PRINT_COLOR_DEFAULT, " %s\n", g_test_ctx2.strbuf);
     }
 }
 
@@ -424,8 +424,8 @@ static void _test_show_report(void)
     cutest_timestamp_dif(&cutest_runtime.timestamp.tv_total_start,
         &cutest_runtime.timestamp.tv_total_end, &cutest_runtime.timestamp.tv_diff);
 
-    _cutest_color_printf(CUTEST_PRINT_COLOR_DEFAULT, "[==========]");
-    _cutest_color_printf(CUTEST_PRINT_COLOR_DEFAULT, " %u/%u test case%s ran.",
+    cutest_color_printf(CUTEST_PRINT_COLOR_DEFAULT, "[==========]");
+    cutest_color_printf(CUTEST_PRINT_COLOR_DEFAULT, " %u/%u test case%s ran.",
         cutest_runtime.counter.result.total,
         (unsigned)cutest_list_size(&cutest_runtime.info.case_list),
         cutest_runtime.counter.result.total > 1 ? "s" : "");
@@ -433,28 +433,28 @@ static void _test_show_report(void)
     {
         unsigned long take_time = (unsigned long)(cutest_runtime.timestamp.tv_diff.sec * 1000
             + cutest_runtime.timestamp.tv_diff.usec / 1000);
-        _cutest_color_printf(CUTEST_PRINT_COLOR_DEFAULT, " (%lu ms total)", take_time);
+        cutest_color_printf(CUTEST_PRINT_COLOR_DEFAULT, " (%lu ms total)", take_time);
     }
-    _cutest_color_printf(CUTEST_PRINT_COLOR_DEFAULT, "\n");
+    cutest_color_printf(CUTEST_PRINT_COLOR_DEFAULT, "\n");
 
     if (cutest_runtime.counter.result.disabled != 0)
     {
-        _cutest_color_printf(CUTEST_PRINT_COLOR_GREEN, "[ DISABLED ]");
-        _cutest_color_printf(CUTEST_PRINT_COLOR_DEFAULT, " %u test%s.\n",
+        cutest_color_printf(CUTEST_PRINT_COLOR_GREEN, "[ DISABLED ]");
+        cutest_color_printf(CUTEST_PRINT_COLOR_DEFAULT, " %u test%s.\n",
             cutest_runtime.counter.result.disabled,
             cutest_runtime.counter.result.disabled > 1 ? "s" : "");
     }
     if (cutest_runtime.counter.result.skipped != 0)
     {
-        _cutest_color_printf(CUTEST_PRINT_COLOR_YELLOW,"[ BYPASSED ]");
-        _cutest_color_printf(CUTEST_PRINT_COLOR_DEFAULT, " %u test%s.\n",
+        cutest_color_printf(CUTEST_PRINT_COLOR_YELLOW,"[ BYPASSED ]");
+        cutest_color_printf(CUTEST_PRINT_COLOR_DEFAULT, " %u test%s.\n",
             cutest_runtime.counter.result.skipped,
             cutest_runtime.counter.result.skipped > 1 ? "s" : "");
     }
     if (cutest_runtime.counter.result.success != 0)
     {
-        _cutest_color_printf(CUTEST_PRINT_COLOR_GREEN, "[  PASSED  ]");
-        _cutest_color_printf(CUTEST_PRINT_COLOR_DEFAULT, " %u test%s.\n",
+        cutest_color_printf(CUTEST_PRINT_COLOR_GREEN, "[  PASSED  ]");
+        cutest_color_printf(CUTEST_PRINT_COLOR_DEFAULT, " %u test%s.\n",
             cutest_runtime.counter.result.success,
             cutest_runtime.counter.result.success > 1 ? "s" : "");
     }
@@ -465,8 +465,8 @@ static void _test_show_report(void)
         return;
     }
 
-    _cutest_color_printf(CUTEST_PRINT_COLOR_RED, "[  FAILED  ]");
-    _cutest_color_printf(CUTEST_PRINT_COLOR_DEFAULT,
+    cutest_color_printf(CUTEST_PRINT_COLOR_RED, "[  FAILED  ]");
+    cutest_color_printf(CUTEST_PRINT_COLOR_DEFAULT,
         " %u test%s, listed below:\n", cutest_runtime.counter.result.failed, cutest_runtime.counter.result.failed > 1 ? "s" : "");
     _test_show_report_failed();
 }
@@ -475,8 +475,8 @@ static void _test_run_test_loop(void)
 {
     _test_reset_all_test();
 
-    _cutest_color_printf(CUTEST_PRINT_COLOR_DEFAULT, "[==========]");
-    _cutest_color_printf(CUTEST_PRINT_COLOR_DEFAULT, " total %u test%s registered.\n",
+    cutest_color_printf(CUTEST_PRINT_COLOR_DEFAULT, "[==========]");
+    cutest_color_printf(CUTEST_PRINT_COLOR_DEFAULT, " total %u test%s registered.\n",
         (unsigned)cutest_list_size(&cutest_runtime.info.case_list),
         cutest_list_size(&cutest_runtime.info.case_list) > 1 ? "s" : "");
 
@@ -503,8 +503,8 @@ static void _test_run_tests_condition(void)
     {
         if (cutest_runtime.counter.repeat.repeat > 1)
         {
-            _cutest_color_printf(CUTEST_PRINT_COLOR_YELLOW, "[==========]");
-            _cutest_color_printf(CUTEST_PRINT_COLOR_DEFAULT, " start loop: %u/%u\n",
+            cutest_color_printf(CUTEST_PRINT_COLOR_YELLOW, "[==========]");
+            cutest_color_printf(CUTEST_PRINT_COLOR_DEFAULT, " start loop: %u/%u\n",
                 cutest_runtime.counter.repeat.repeated + 1, cutest_runtime.counter.repeat.repeat);
         }
 
@@ -512,12 +512,12 @@ static void _test_run_tests_condition(void)
 
         if (cutest_runtime.counter.repeat.repeat > 1)
         {
-            _cutest_color_printf(CUTEST_PRINT_COLOR_YELLOW, "[==========]");
-            _cutest_color_printf(CUTEST_PRINT_COLOR_DEFAULT, " end loop (%u/%u)\n",
+            cutest_color_printf(CUTEST_PRINT_COLOR_YELLOW, "[==========]");
+            cutest_color_printf(CUTEST_PRINT_COLOR_DEFAULT, " end loop (%u/%u)\n",
                 cutest_runtime.counter.repeat.repeated + 1, cutest_runtime.counter.repeat.repeat);
             if (cutest_runtime.counter.repeat.repeated < cutest_runtime.counter.repeat.repeat - 1)
             {
-                _cutest_color_printf(CUTEST_PRINT_COLOR_DEFAULT, "\n");
+                cutest_color_printf(CUTEST_PRINT_COLOR_DEFAULT, "\n");
             }
         }
     }

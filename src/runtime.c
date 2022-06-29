@@ -342,7 +342,7 @@ static void _test_list_tests_print_name(const cutest_case_t* case_data)
     char buffer[64];
     if (case_data->info.type != CUTEST_CASE_TYPE_PARAMETERIZED)
     {
-        _cutest_color_printf(CUTEST_PRINT_COLOR_DEFAULT, "  %s\n", case_data->info.case_name);
+        cutest_color_printf(CUTEST_PRINT_COLOR_DEFAULT, "  %s\n", case_data->info.case_name);
         return;
     }
 
@@ -359,7 +359,7 @@ static void _test_list_tests_print_name(const cutest_case_t* case_data)
     {
         _test_list_tests_gen_param_info(buffer, sizeof(buffer), param_type, case_data, i);
 
-        _cutest_color_printf(CUTEST_PRINT_COLOR_DEFAULT, "  %s/%" TEST_PRIsize "  # TEST_GET_PARAM() = %s\n",
+        cutest_color_printf(CUTEST_PRINT_COLOR_DEFAULT, "  %s/%" TEST_PRIsize "  # TEST_GET_PARAM() = %s\n",
             case_data->info.case_name, i, buffer);
     }
 }
@@ -377,7 +377,7 @@ static void _test_list_tests(void)
             && strcmp(last_class_name, case_data->info.suit_name) != 0)
         {
             last_class_name = case_data->info.suit_name;
-            _cutest_color_printf(CUTEST_PRINT_COLOR_DEFAULT, "%s.\n", last_class_name);
+            cutest_color_printf(CUTEST_PRINT_COLOR_DEFAULT, "%s.\n", last_class_name);
         }
         _test_list_tests_print_name(case_data);
     }
@@ -493,7 +493,7 @@ static void _test_shuffle_cases(void)
     cutest_runtime.info.case_list = copy_case_list;
 }
 
-static int _print_encoded(FILE* stream, const char* str)
+static int _print_encoded(const char* str)
 {
     char* str_tmp;
     int ret = 0;
@@ -504,12 +504,12 @@ static int _print_encoded(FILE* stream, const char* str)
         const char* p = strchr(str, '@');
         if (p == NULL)
         {
-            ret += cutest_color_fprintf(color, stream, "%s", str);
+            ret += cutest_color_printf(color, "%s", str);
             return ret;
         }
 
         str_tmp = strndup(str, p - str);
-        ret += cutest_color_fprintf(color, stream, "%s", str_tmp);
+        ret += cutest_color_printf(color, "%s", str_tmp);
         free(str_tmp);
 
         const char ch = p[1];
@@ -518,7 +518,7 @@ static int _print_encoded(FILE* stream, const char* str)
         switch (ch)
         {
         case '@':
-            ret += cutest_color_fprintf(color, stream, "@");
+            ret += cutest_color_printf(color, "@");
             break;
         case 'D':
             color = 0;
@@ -606,7 +606,7 @@ int cutest_setup(int argc, char* argv[], const cutest_hook_t* hook)
             _test_setup_arg_logfile(options.optarg);
             break;
         case help:
-            _print_encoded(cutest_runtime.io.f_out, s_test_help_encoded);
+            _print_encoded(s_test_help_encoded);
             return -1;
         default:
             break;

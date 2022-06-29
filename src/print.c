@@ -153,14 +153,6 @@ static const char* _cutest_get_log_level_str(cutest_log_level_t level)
     return "U";
 }
 
-static void _cutest_default_log(cutest_log_meta_t* info, const char* fmt, va_list ap, FILE* out)
-{
-    cutest_color_fprintf(CUTEST_PRINT_COLOR_DEFAULT, out, "[%s %s:%d] ",
-        _cutest_get_log_level_str(info->leve), info->file, info->line);
-    cutest_color_vfprintf(CUTEST_PRINT_COLOR_DEFAULT, out, fmt, ap);
-    cutest_color_fprintf(CUTEST_PRINT_COLOR_DEFAULT, out, "\n");
-}
-
 static int _should_use_color(int is_tty)
 {
 #if defined(_WIN32)
@@ -177,23 +169,7 @@ static int _should_use_color(int is_tty)
 #endif
 }
 
-void cutest_log(cutest_log_meta_t* info, const char* fmt, ...)
-{
-    va_list ap;
-
-    va_start(ap, fmt);
-    if (cutest_runtime.hook->on_log_print != NULL)
-    {
-        cutest_runtime.hook->on_log_print(info, fmt, ap, _get_logfile());
-    }
-    else
-    {
-        _cutest_default_log(info, fmt, ap, _get_logfile());
-    }
-    va_end(ap);
-}
-
-int cutest_color_vfprintf(cutest_print_color_t color, FILE* stream, const char* fmt, va_list ap)
+static int _test_color_vfprintf(cutest_print_color_t color, FILE* stream, const char* fmt, va_list ap)
 {
     assert(stream != NULL);
 
@@ -234,26 +210,50 @@ int cutest_color_vfprintf(cutest_print_color_t color, FILE* stream, const char* 
     return ret;
 }
 
+static int _test_color_fprintf(cutest_print_color_t color, FILE* stream, const char* fmt, ...)
+{
+    int ret;
+    va_list ap;
+
+    va_start(ap, fmt);
+    ret = _test_color_vfprintf(color, stream, fmt, ap);
+    va_end(ap);
+
+    return ret;
+}
+
+static void _cutest_default_log(cutest_log_meta_t* info, const char* fmt, va_list ap, FILE* out)
+{
+    _test_color_fprintf(CUTEST_PRINT_COLOR_DEFAULT, out, "[%s %s:%d] ",
+        _cutest_get_log_level_str(info->leve), info->file, info->line);
+    _test_color_vfprintf(CUTEST_PRINT_COLOR_DEFAULT, out, fmt, ap);
+    _test_color_fprintf(CUTEST_PRINT_COLOR_DEFAULT, out, "\n");
+}
+
+void cutest_log(cutest_log_meta_t* info, const char* fmt, ...)
+{
+    va_list ap;
+
+    va_start(ap, fmt);
+    if (cutest_runtime.hook->on_log_print != NULL)
+    {
+        cutest_runtime.hook->on_log_print(info, fmt, ap, _get_logfile());
+    }
+    else
+    {
+        _cutest_default_log(info, fmt, ap, _get_logfile());
+    }
+    va_end(ap);
+}
+
 int cutest_printf(const char* fmt, ...)
 {
     int ret;
     va_list ap;
 
     va_start(ap, fmt);
-    ret = cutest_color_vfprintf(CUTEST_PRINT_COLOR_DEFAULT, _get_logfile(),
+    ret = _test_color_vfprintf(CUTEST_PRINT_COLOR_DEFAULT, _get_logfile(),
         fmt, ap);
-    va_end(ap);
-
-    return ret;
-}
-
-int cutest_color_fprintf(cutest_print_color_t color, FILE* stream, const char* fmt, ...)
-{
-    int ret;
-    va_list ap;
-
-    va_start(ap, fmt);
-    ret = cutest_color_vfprintf(color, stream, fmt, ap);
     va_end(ap);
 
     return ret;
@@ -273,13 +273,13 @@ const char* cutest_pretty_file(const char* file)
     return pos;
 }
 
-int _cutest_color_printf(cutest_print_color_t color, const char* fmt, ...)
+int cutest_color_printf(cutest_print_color_t color, const char* fmt, ...)
 {
     int ret;
     va_list ap;
 
     va_start(ap, fmt);
-    ret = cutest_color_vfprintf(color, _get_logfile(), fmt, ap);
+    ret = _test_color_vfprintf(color, _get_logfile(), fmt, ap);
     va_end(ap);
 
     return ret;
