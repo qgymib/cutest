@@ -8,6 +8,9 @@
 ### BREAKING CHANGES
 1. remove x32 / x64 assertion methods
 
+### Fixed
+1. fix: crash on log if no hook passed
+
 
 ## v1.0.1 (2022/04/29)
 

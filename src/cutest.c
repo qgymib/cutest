@@ -1940,7 +1940,7 @@ void cutest_log(cutest_log_meta_t* info, const char* fmt, ...)
     va_list ap;
 
     va_start(ap, fmt);
-    if (g_test_ctx.hook->on_log_print != NULL)
+    if (g_test_ctx.hook != NULL && g_test_ctx.hook->on_log_print != NULL)
     {
         g_test_ctx.hook->on_log_print(info, fmt, ap, _get_logfile());
     }

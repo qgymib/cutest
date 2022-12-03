@@ -40,7 +40,7 @@
 /**
  * @brief Development version.
  */
-#define CUTEST_VERSION_PREREL       3
+#define CUTEST_VERSION_PREREL       4
 
 #ifdef __cplusplus
 extern "C" {
