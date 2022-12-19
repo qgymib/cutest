@@ -6,10 +6,11 @@
 1. Support log redirection
 
 ### BREAKING CHANGES
-1. remove x32 / x64 assertion methods
+1. Remove x32 / x64 assertion methods
+2. Hide some function that user should not use
 
 ### Fixed
-1. fix: crash on log if no hook passed
+1. Fix: crash on log if no hook passed
 
 
 ## v1.0.1 (2022/04/29)
