@@ -57,111 +57,6 @@
 #endif
 
 ///////////////////////////////////////////////////////////////////////////////
-// List
-///////////////////////////////////////////////////////////////////////////////
-
-/**
- * @brief List initializer helper
- */
-#define TEST_LIST_INITIALIZER       { NULL, NULL, 0 }
-
-static void _test_list_set_once(cutest_list_t * handler, cutest_list_node_t * node)
-{
-    handler->head = node;
-    handler->tail = node;
-    node->p_after = NULL;
-    node->p_before = NULL;
-    handler->size = 1;
-}
-
-/**
- * @brief Insert a node to the tail of the list.TEST_LIST_INITIALIZER
- * @warning the node must not exist in any list.
- * @param [in] handler  Pointer to list
- * @param [in] node     Pointer to a new node
- */
-static void cutest_list_push_back(cutest_list_t * handler, cutest_list_node_t * node)
-{
-    if (handler->head == NULL)
-    {
-        _test_list_set_once(handler, node);
-        return;
-    }
-
-    node->p_after = NULL;
-    node->p_before = handler->tail;
-    handler->tail->p_after = node;
-    handler->tail = node;
-    handler->size++;
-}
-
-/**
- * @brief Get the last node.
- * @param [in] handler  Pointer to list
- * @return              The first node
- */
-static cutest_list_node_t* cutest_list_begin(const cutest_list_t * handler)
-{
-    return handler->head;
-}
-
-/**
- * @brief Get next node.
- * @param [in] node     Current node
- * @return              The next node
- */
-static cutest_list_node_t* cutest_list_next(const cutest_list_node_t * node)
-{
-    return node->p_after;
-}
-
-/**
- * @brief Get the number of nodes in the list.
- * @param [in] handler  Pointer to list
- * @return              The number of nodes
- */
-static size_t cutest_list_size(const cutest_list_t * handler)
-{
-    return handler->size;
-}
-
-/**
- * @brief Delete a exist node
- * @warning The node must already in the list.
- * @param [in] handler  Pointer to list
- * @param [in] node     The node you want to delete
- */
-static void cutest_list_erase(cutest_list_t * handler, cutest_list_node_t * node)
-{
-    handler->size--;
-
-    if (handler->head == node && handler->tail == node)
-    {
-        handler->head = NULL;
-        handler->tail = NULL;
-        return;
-    }
-
-    if (handler->head == node)
-    {
-        node->p_after->p_before = NULL;
-        handler->head = node->p_after;
-        return;
-    }
-
-    if (handler->tail == node)
-    {
-        node->p_before->p_after = NULL;
-        handler->tail = node->p_before;
-        return;
-    }
-
-    node->p_before->p_after = node->p_after;
-    node->p_after->p_before = node->p_before;
-    return;
-}
-
-///////////////////////////////////////////////////////////////////////////////
 // Map
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -194,6 +89,12 @@ static void _etest_map_link_node(cutest_map_node_t* node, cutest_map_node_t* par
 
     *rb_link = node;
     return;
+}
+
+static void rb_set_black(cutest_map_node_t* rb)
+{
+    rb->__rb_parent_color =
+        (cutest_map_node_t*)((uintptr_t)(rb->__rb_parent_color) | RB_BLACK);
 }
 
 static cutest_map_node_t* rb_red_parent(cutest_map_node_t* red)
@@ -454,6 +355,277 @@ static cutest_map_node_t* cutest_map_next(const cutest_map_node_t* node)
         node = parent;
 
     return parent;
+}
+
+static void rb_set_parent(cutest_map_node_t* rb, cutest_map_node_t* p)
+{
+    rb->__rb_parent_color = (cutest_map_node_t*)(rb_color(rb) | (uintptr_t)p);
+}
+
+static cutest_map_node_t* __rb_erase_augmented(cutest_map_node_t* node, cutest_map_t* root)
+{
+    cutest_map_node_t* child = node->rb_right, *tmp = node->rb_left;
+    cutest_map_node_t* parent, * rebalance;
+    uintptr_t pc;
+
+    if (!tmp) {
+        /*
+        * Case 1: node to erase has no more than 1 child (easy!)
+        *
+        * Note that if there is one child it must be red due to 5)
+        * and node must be black due to 4). We adjust colors locally
+        * so as to bypass __rb_erase_color() later on.
+        */
+        pc = (uintptr_t)(node->__rb_parent_color);
+        parent = __rb_parent(pc);
+        __rb_change_child(node, child, parent, root);
+        if (child) {
+            child->__rb_parent_color = (cutest_map_node_t*)pc;
+            rebalance = NULL;
+        }
+        else
+            rebalance = __rb_is_black(pc) ? parent : NULL;
+        tmp = parent;
+    }
+    else if (!child) {
+        /* Still case 1, but this time the child is node->rb_left */
+        pc = (uintptr_t)(node->__rb_parent_color);
+        tmp->__rb_parent_color = (cutest_map_node_t*)pc;
+        parent = __rb_parent(pc);
+        __rb_change_child(node, tmp, parent, root);
+        rebalance = NULL;
+        tmp = parent;
+    }
+    else {
+        cutest_map_node_t* successor = child, * child2;
+        tmp = child->rb_left;
+        if (!tmp) {
+            /*
+            * Case 2: node's successor is its right child
+            *
+            *    (n)          (s)
+            *    / \          / \
+            *  (x) (s)  ->  (x) (c)
+            *        \
+            *        (c)
+            */
+            parent = successor;
+            child2 = successor->rb_right;
+        }
+        else {
+            /*
+            * Case 3: node's successor is leftmost under
+            * node's right child subtree
+            *
+            *    (n)          (s)
+            *    / \          / \
+            *  (x) (y)  ->  (x) (y)
+            *      /            /
+            *    (p)          (p)
+            *    /            /
+            *  (s)          (c)
+            *    \
+            *    (c)
+            */
+            do {
+                parent = successor;
+                successor = tmp;
+                tmp = tmp->rb_left;
+            } while (tmp);
+            parent->rb_left = child2 = successor->rb_right;
+            successor->rb_right = child;
+            rb_set_parent(child, successor);
+        }
+
+        successor->rb_left = tmp = node->rb_left;
+        rb_set_parent(tmp, successor);
+
+        pc = (uintptr_t)(node->__rb_parent_color);
+        tmp = __rb_parent(pc);
+        __rb_change_child(node, successor, tmp, root);
+        if (child2) {
+            successor->__rb_parent_color = (cutest_map_node_t*)pc;
+            rb_set_parent_color(child2, parent, RB_BLACK);
+            rebalance = NULL;
+        }
+        else {
+            uintptr_t pc2 = (uintptr_t)(successor->__rb_parent_color);
+            successor->__rb_parent_color = (cutest_map_node_t*)pc;
+            rebalance = __rb_is_black(pc2) ? parent : NULL;
+        }
+        tmp = successor;
+    }
+
+    return rebalance;
+}
+
+static void ____rb_erase_color(cutest_map_node_t* parent, cutest_map_t* root)
+{
+    cutest_map_node_t* node = NULL, * sibling, * tmp1, * tmp2;
+
+    for (;;) {
+        /*
+        * Loop invariants:
+        * - node is black (or NULL on first iteration)
+        * - node is not the root (parent is not NULL)
+        * - All leaf paths going through parent and node have a
+        *   black node count that is 1 lower than other leaf paths.
+        */
+        sibling = parent->rb_right;
+        if (node != sibling) {  /* node == parent->rb_left */
+            if (rb_is_red(sibling)) {
+                /*
+                * Case 1 - left rotate at parent
+                *
+                *     P               S
+                *    / \             / \
+                *   N   s    -->    p   Sr
+                *      / \         / \
+                *     Sl  Sr      N   Sl
+                */
+                parent->rb_right = tmp1 = sibling->rb_left;
+                sibling->rb_left = parent;
+                rb_set_parent_color(tmp1, parent, RB_BLACK);
+                __rb_rotate_set_parents(parent, sibling, root,
+                    RB_RED);
+                sibling = tmp1;
+            }
+            tmp1 = sibling->rb_right;
+            if (!tmp1 || rb_is_black(tmp1)) {
+                tmp2 = sibling->rb_left;
+                if (!tmp2 || rb_is_black(tmp2)) {
+                    /*
+                    * Case 2 - sibling color flip
+                    * (p could be either color here)
+                    *
+                    *    (p)           (p)
+                    *    / \           / \
+                    *   N   S    -->  N   s
+                    *      / \           / \
+                    *     Sl  Sr        Sl  Sr
+                    *
+                    * This leaves us violating 5) which
+                    * can be fixed by flipping p to black
+                    * if it was red, or by recursing at p.
+                    * p is red when coming from Case 1.
+                    */
+                    rb_set_parent_color(sibling, parent,
+                        RB_RED);
+                    if (rb_is_red(parent))
+                        rb_set_black(parent);
+                    else {
+                        node = parent;
+                        parent = rb_parent(node);
+                        if (parent)
+                            continue;
+                    }
+                    break;
+                }
+                /*
+                * Case 3 - right rotate at sibling
+                * (p could be either color here)
+                *
+                *   (p)           (p)
+                *   / \           / \
+                *  N   S    -->  N   Sl
+                *     / \             \
+                *    sl  Sr            s
+                *                       \
+                *                        Sr
+                */
+                sibling->rb_left = tmp1 = tmp2->rb_right;
+                tmp2->rb_right = sibling;
+                parent->rb_right = tmp2;
+                if (tmp1)
+                    rb_set_parent_color(tmp1, sibling,
+                        RB_BLACK);
+                tmp1 = sibling;
+                sibling = tmp2;
+            }
+            /*
+            * Case 4 - left rotate at parent + color flips
+            * (p and sl could be either color here.
+            *  After rotation, p becomes black, s acquires
+            *  p's color, and sl keeps its color)
+            *
+            *      (p)             (s)
+            *      / \             / \
+            *     N   S     -->   P   Sr
+            *        / \         / \
+            *      (sl) sr      N  (sl)
+            */
+            parent->rb_right = tmp2 = sibling->rb_left;
+            sibling->rb_left = parent;
+            rb_set_parent_color(tmp1, sibling, RB_BLACK);
+            if (tmp2)
+                rb_set_parent(tmp2, parent);
+            __rb_rotate_set_parents(parent, sibling, root,
+                RB_BLACK);
+            break;
+        }
+        else {
+            sibling = parent->rb_left;
+            if (rb_is_red(sibling)) {
+                /* Case 1 - right rotate at parent */
+                parent->rb_left = tmp1 = sibling->rb_right;
+                sibling->rb_right = parent;
+                rb_set_parent_color(tmp1, parent, RB_BLACK);
+                __rb_rotate_set_parents(parent, sibling, root,
+                    RB_RED);
+                sibling = tmp1;
+            }
+            tmp1 = sibling->rb_left;
+            if (!tmp1 || rb_is_black(tmp1)) {
+                tmp2 = sibling->rb_right;
+                if (!tmp2 || rb_is_black(tmp2)) {
+                    /* Case 2 - sibling color flip */
+                    rb_set_parent_color(sibling, parent,
+                        RB_RED);
+                    if (rb_is_red(parent))
+                        rb_set_black(parent);
+                    else {
+                        node = parent;
+                        parent = rb_parent(node);
+                        if (parent)
+                            continue;
+                    }
+                    break;
+                }
+                /* Case 3 - right rotate at sibling */
+                sibling->rb_right = tmp1 = tmp2->rb_left;
+                tmp2->rb_left = sibling;
+                parent->rb_left = tmp2;
+                if (tmp1)
+                    rb_set_parent_color(tmp1, sibling,
+                        RB_BLACK);
+                tmp1 = sibling;
+                sibling = tmp2;
+            }
+            /* Case 4 - left rotate at parent + color flips */
+            parent->rb_left = tmp2 = sibling->rb_right;
+            sibling->rb_right = parent;
+            rb_set_parent_color(tmp1, sibling, RB_BLACK);
+            if (tmp2)
+                rb_set_parent(tmp2, parent);
+            __rb_rotate_set_parents(parent, sibling, root,
+                RB_BLACK);
+            break;
+        }
+    }
+}
+
+static void ev_map_low_erase(cutest_map_t* root, cutest_map_node_t* node)
+{
+    cutest_map_node_t* rebalance;
+    rebalance = __rb_erase_augmented(node, root);
+    if (rebalance)
+        ____rb_erase_color(rebalance, root);
+}
+
+static void ev_map_erase(cutest_map_t* handler, cutest_map_node_t* node)
+{
+    handler->size--;
+    ev_map_low_erase(handler, node);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -771,6 +943,8 @@ static void cutest_optparse_init(cutest_optparse_t * options, char** argv)
 #define CONTAINER_OF(ptr, TYPE, member) \
     ((TYPE*)((char*)(ptr) - (size_t)&((TYPE*)0)->member))
 
+#define TEST_CASE_TABLE_INIT    CUTEST_MAP_INIT(_test_on_cmp_case, NULL)
+
 /**
  * `XX` have following parameters:
  *   +[0]: type enum
@@ -851,14 +1025,9 @@ typedef struct test_ctx
 {
     struct
     {
-        cutest_list_t       case_list;                      /**< Cases in list */
-    }info;
-
-    struct
-    {
         unsigned long       tid;                            /**< Thread ID */
         unsigned long long  seed;                           /**< Random seed */
-        cutest_list_node_t* cur_it;                         /**< Current cursor position */
+        cutest_map_node_t*  cur_it;                         /**< Current cursor position */
         cutest_case_t*      cur_case;                       /**< Current running test case */
         unsigned            cur_parameterized_idx;          /**< Current parameterized index */
         test_case_stage_t   cur_stage;                      /**< Current running stage */
@@ -920,22 +1089,29 @@ typedef struct test_ctx
 
 typedef struct test_ctx2
 {
-    char                        strbuf[128];                    /**< String buffer */
+    char                        strbuf[256];                    /**< String buffer */
     jmp_buf                     jmpbuf;                         /**< Jump buffer */
 }test_ctx2_t;
 
 static int _test_on_cmp_case(const cutest_map_node_t* key1, const cutest_map_node_t* key2, void* arg)
 {
     (void)arg;
-    const cutest_case_t* t_case_1 = CONTAINER_OF(key1, cutest_case_t, node.table);
-    const cutest_case_t* t_case_2 = CONTAINER_OF(key2, cutest_case_t, node.table);
+    const cutest_case_t* t_case_1 = CONTAINER_OF(key1, cutest_case_t, node_table);
+    const cutest_case_t* t_case_2 = CONTAINER_OF(key2, cutest_case_t, node_table);
 
+    if (t_case_1->cache.randkey < t_case_2->cache.randkey)
+    {
+        return -1;
+    }
+    if (t_case_1->cache.randkey > t_case_2->cache.randkey)
+    {
+        return 1;
+    }
     return strcmp(t_case_1->info.full_name, t_case_2->info.full_name);
 }
 
 static test_ctx2_t          g_test_ctx2;                                // no need to initialize
 static test_ctx_t           g_test_ctx = {
-    { { NULL, NULL, 0 }, },                                             /* .info */
     { 0, 0, NULL, NULL, 0, stage_setup },                               /* .runtime */
     { { 0, 0 }, { 0, 0 }, { 0, 0 }, { 0, 0 }, { 0, 0 } },               /* .timestamp */
     { { 0, 0, 0, 0, 0 }, { 0, 0 } },                                    /* .counter */
@@ -945,7 +1121,7 @@ static test_ctx_t           g_test_ctx = {
     NULL,                                                               /* .hook */
 };
 static test_nature_t        g_test_nature = {
-    CUTEST_MAP_INIT(_test_on_cmp_case, NULL),                           /* .case_table */
+    TEST_CASE_TABLE_INIT,                                               /* .case_table */
     { 0, { 0, 0, 0, 0, 0, 0 }, { 0, 0, 0, 0, 0, 0 } },                  /* .precision */
 };
 
@@ -1617,20 +1793,20 @@ static void _test_reset_all_test(void)
     memset(&g_test_ctx.counter.result, 0, sizeof(g_test_ctx.counter.result));
     memset(&g_test_ctx.timestamp, 0, sizeof(g_test_ctx.timestamp));
 
-    cutest_list_node_t* it = cutest_list_begin(&g_test_ctx.info.case_list);
-    for (; it != NULL; it = cutest_list_next(it))
+    cutest_map_node_t* it = cutest_map_begin(&g_test_nature.case_table);
+    for (; it != NULL; it = cutest_map_next(it))
     {
-        cutest_case_t* case_data = CONTAINER_OF(it, cutest_case_t, node.queue);
+        cutest_case_t* case_data = CONTAINER_OF(it, cutest_case_t, node_table);
         case_data->info.mask = 0;
     }
 }
 
 static void _test_show_report_failed(void)
 {
-    cutest_list_node_t* it = cutest_list_begin(&g_test_ctx.info.case_list);
-    for (; it != NULL; it = cutest_list_next(it))
+    cutest_map_node_t* it = cutest_map_begin(&g_test_nature.case_table);
+    for (; it != NULL; it = cutest_map_next(it))
     {
-        cutest_case_t* case_data = CONTAINER_OF(it, cutest_case_t, node.queue);
+        cutest_case_t* case_data = CONTAINER_OF(it, cutest_case_t, node_table);
         if (!HAS_MASK(case_data->info.mask, MASK_FAILURE))
         {
             continue;
@@ -1652,7 +1828,7 @@ static void _test_show_report(void)
     _cutest_color_printf(CUTEST_PRINT_COLOR_DEFAULT, "[==========]");
     _cutest_color_printf(CUTEST_PRINT_COLOR_DEFAULT, " %u/%u test case%s ran.",
         g_test_ctx.counter.result.total,
-        (unsigned)cutest_list_size(&g_test_ctx.info.case_list),
+        (unsigned)g_test_nature.case_table.size,
         g_test_ctx.counter.result.total > 1 ? "s" : "");
     if (!g_test_ctx.mask.no_print_time)
     {
@@ -1854,7 +2030,7 @@ static void _test_list_tests_gen_param_info(char* buffer, size_t size, test_para
 
 static void _test_list_tests_print_name(const cutest_case_t* case_data)
 {
-    char buffer[64];
+    char buffer[256];
     if (case_data->info.type != CUTEST_CASE_TYPE_PARAMETERIZED)
     {
         _cutest_color_printf(CUTEST_PRINT_COLOR_DEFAULT, "  %s\n", case_data->info.case_name);
@@ -1874,8 +2050,8 @@ static void _test_list_tests_print_name(const cutest_case_t* case_data)
     {
         _test_list_tests_gen_param_info(buffer, sizeof(buffer), param_type, case_data, i);
 
-        _cutest_color_printf(CUTEST_PRINT_COLOR_DEFAULT, "  %s/%" TEST_PRIsize "  # TEST_GET_PARAM() = %s\n",
-            case_data->info.case_name, i, buffer);
+        _cutest_color_printf(CUTEST_PRINT_COLOR_DEFAULT, "  %s/%lu  # TEST_GET_PARAM() = %s\n",
+            case_data->info.case_name, (unsigned long)i, buffer);
     }
 }
 
@@ -1886,7 +2062,7 @@ static void _test_list_tests(void)
     cutest_map_node_t* it = cutest_map_begin(&g_test_nature.case_table);
     for (; it != NULL; it = cutest_map_next(it))
     {
-        cutest_case_t* case_data = CONTAINER_OF(it, cutest_case_t, node.table);
+        cutest_case_t* case_data = CONTAINER_OF(it, cutest_case_t, node_table);
         /* some compiler will make same string with different address */
         if (last_class_name != case_data->info.suit_name
             && strcmp(last_class_name, case_data->info.suit_name) != 0)
@@ -1950,34 +2126,30 @@ static void _test_setup_precision(void)
 
 static void _test_shuffle_cases(void)
 {
-    cutest_list_t copy_case_list = TEST_LIST_INITIALIZER;
+    cutest_map_t copy_case_table = TEST_CASE_TABLE_INIT;
 
-    while (cutest_list_size(&g_test_ctx.info.case_list) != 0)
+    cutest_map_node_t* it = cutest_map_begin(&g_test_nature.case_table);
+    while (it != NULL)
     {
-        unsigned idx = _test_rand() % cutest_list_size(&g_test_ctx.info.case_list);
+        cutest_case_t* test_case = CONTAINER_OF(it, cutest_case_t, node_table);
+        it = cutest_map_next(it);
+        ev_map_erase(&g_test_nature.case_table, &test_case->node_table);
 
-        unsigned i = 0;
-        cutest_list_node_t* it = cutest_list_begin(&g_test_ctx.info.case_list);
-        for (; i < idx; i++, it = cutest_list_next(it))
-        {
-        }
-
-        cutest_list_erase(&g_test_ctx.info.case_list, it);
-        cutest_list_push_back(&copy_case_list, it);
+        test_case->cache.randkey = _test_rand();
+        cutest_map_insert(&copy_case_table, &test_case->node_table);
     }
-
-    g_test_ctx.info.case_list = copy_case_list;
+    g_test_nature.case_table = copy_case_table;
 }
 
 #if defined(_WIN32)
-static BOOL WINAPI _cutest_setup_once(PINIT_ONCE InitOnce, PVOID Parameter, PVOID* Context)
+static BOOL WINAPI _test_setup_once_body(PINIT_ONCE InitOnce, PVOID Parameter, PVOID* Context)
 {
     (void)InitOnce; (void)Parameter; (void)Context;
 #else
-static void _cutest_setup_once(void)
+static void _test_setup_once_body(void)
 {
 #endif
-    _test_srand(time(NULL));
+
     _test_setup_precision();
 
 #if defined(_WIN32)
@@ -1994,10 +2166,10 @@ static void cutest_setup_once(void)
 {
 #if defined(_WIN32)
     static INIT_ONCE token = INIT_ONCE_STATIC_INIT;
-    InitOnceExecuteOnce(&token, _cutest_setup_once, NULL, NULL);
+    InitOnceExecuteOnce(&token, _test_setup_once_body, NULL, NULL);
 #else
     static pthread_once_t once_control = PTHREAD_ONCE_INIT;
-    pthread_once(&once_control, _cutest_setup_once);
+    pthread_once(&once_control, _test_setup_once_body);
 #endif
 }
 
@@ -2039,15 +2211,9 @@ static int _test_setup_arg_logfile(const char* path)
 
 static void _test_prepare(void)
 {
+    _test_srand(time(NULL));
     g_test_ctx.runtime.tid = GET_TID();
     g_test_ctx.counter.repeat.repeat = 1;
-
-    cutest_map_node_t* it = cutest_map_begin(&g_test_nature.case_table);
-    for (; it != NULL; it = cutest_map_next(it))
-    {
-        cutest_case_t* p_case = CONTAINER_OF(it, cutest_case_t, node.table);
-        cutest_list_push_back(&g_test_ctx.info.case_list, &p_case->node.queue);
-    }
 }
 
 static int _test_setup(int argc, char* argv[], const cutest_hook_t* hook)
@@ -2072,7 +2238,7 @@ static int _test_setup(int argc, char* argv[], const cutest_hook_t* hook)
         help,
     };
 
-    cutest_optparse_long_opt_t longopts[] = {
+    static cutest_optparse_long_opt_t longopts[] = {
         { "test_list_tests",                test_list_tests,                CUTEST_OPTPARSE_NONE },
         { "test_filter",                    test_filter,                    CUTEST_OPTPARSE_REQUIRED },
         { "test_also_run_disabled_tests",   test_also_run_disabled_tests,   CUTEST_OPTPARSE_NONE },
@@ -2143,16 +2309,16 @@ static void _test_run_test_loop(void)
 
     _cutest_color_printf(CUTEST_PRINT_COLOR_DEFAULT, "[==========]");
     _cutest_color_printf(CUTEST_PRINT_COLOR_DEFAULT, " total %u test%s registered.\n",
-        (unsigned)cutest_list_size(&g_test_ctx.info.case_list),
-        cutest_list_size(&g_test_ctx.info.case_list) > 1 ? "s" : "");
+        (unsigned)g_test_nature.case_table.size,
+        g_test_nature.case_table.size > 1 ? "s" : "");
 
     cutest_timestamp_get(&g_test_ctx.timestamp.tv_total_start);
 
-    g_test_ctx.runtime.cur_it = cutest_list_begin(&g_test_ctx.info.case_list);
+    g_test_ctx.runtime.cur_it = cutest_map_begin(&g_test_nature.case_table);
     for (; g_test_ctx.runtime.cur_it != NULL;
-        g_test_ctx.runtime.cur_it = cutest_list_next(g_test_ctx.runtime.cur_it))
+        g_test_ctx.runtime.cur_it = cutest_map_next(g_test_ctx.runtime.cur_it))
     {
-        g_test_ctx.runtime.cur_case = CONTAINER_OF(g_test_ctx.runtime.cur_it, cutest_case_t, node.queue);
+        g_test_ctx.runtime.cur_case = CONTAINER_OF(g_test_ctx.runtime.cur_it, cutest_case_t, node_table);
         _test_run_case();
     }
 
@@ -2401,7 +2567,7 @@ int cutest_register_case(cutest_case_t* data)
      * Theoretically this operation will not fail. If two tests have duplicated
      * name, it will fail at program link stage.
      */
-    return cutest_map_insert(&g_test_nature.case_table, &data->node.table);
+    return cutest_map_insert(&g_test_nature.case_table, &data->node_table);
 }
 
 int cutest_run_tests(int argc, char* argv[], const cutest_hook_t* hook)

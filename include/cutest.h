@@ -142,7 +142,8 @@ extern "C" {
     void TEST_BODY_##fixture_name##_##case_name(_parameterized_type_##fixture_name##_##case_name*);\
     TEST_INITIALIZER(TEST_INIT_##fixture_name##_##case_name) {\
         static cutest_case_t _case_##fixture_name##_##case_name = {\
-            { { NULL, NULL }, { NULL, NULL, NULL } }, /* .node */\
+            { NULL, NULL, NULL }, /* .node_table */\
+            { 0 }, /* .cache */\
             {\
                 CUTEST_CASE_TYPE_PARAMETERIZED,\
                 0,\
@@ -178,7 +179,8 @@ extern "C" {
     void TEST_BODY_##fixture_name##_##case_name(void);\
     TEST_INITIALIZER(TEST_INIT_##fixture_name##_##case_name) {\
         static cutest_case_t _case_##fixture_name##_##case_name = {\
-            { { NULL, NULL }, { NULL, NULL, NULL } }, /* .node */\
+            { NULL, NULL, NULL }, /* .node */\
+            { 0 }, /* .cache */\
             {\
                 CUTEST_CASE_TYPE_FIXTURE,\
                 0,\
@@ -208,7 +210,8 @@ extern "C" {
     void TEST_BODY_##suit_name##_##case_name(void);\
     TEST_INITIALIZER(TEST_INIT_##suit_name##_##case_name) {\
         static cutest_case_t _case_##suit_name##_##case_name = {\
-            { { NULL, NULL }, { NULL, NULL, NULL } }, /* .node */\
+            { NULL, NULL, NULL }, /* .node */\
+            { 0 }, /* .cache */\
             {\
                 CUTEST_CASE_TYPE_SIMPLE,\
                 0,\
@@ -1354,25 +1357,6 @@ typedef enum cutest_case_type
 }cutest_case_type_t;
 
 /**
- * @brief List node
- */
-typedef struct cutest_list_node
-{
-    struct cutest_list_node* p_after;               /**< next node */
-    struct cutest_list_node* p_before;              /**< previous node */
-}cutest_list_node_t;
-
-/**
-* @brief List handler
-*/
-typedef struct cunittest_list
-{
-    cutest_list_node_t*     head;                   /**< Head node */
-    cutest_list_node_t*     tail;                   /**< Tail node */
-    size_t                  size;                   /**< Amount of nodes */
-}cutest_list_t;
-
-/**
  * @brief Map node
  */
 typedef struct cutest_map_node
@@ -1412,11 +1396,12 @@ typedef void(*cutest_parameterized_fn)(void*);
 
 typedef struct cutest_case
 {
+    cutest_map_node_t           node_table;             /**< map node */
+
     struct
     {
-        cutest_list_node_t      queue;                  /**< list node */
-        cutest_map_node_t       table;                  /**< map node */
-    }node;
+        unsigned long           randkey;                /**< Random key. */
+    } cache;
 
     struct
     {
@@ -1425,14 +1410,14 @@ typedef struct cutest_case
         const char*             suit_name;              /**< suit name */
         const char*             case_name;              /**< case name */
         const char*             full_name;              /**< full name */
-    }info;
+    } info;
 
     struct
     {
         cutest_procedure_fn     setup;                  /**< setup */
         cutest_procedure_fn     teardown;               /**< teardown */
         void*                   body;                   /**< test body */
-    }stage;
+    } stage;
 
     struct
     {
@@ -1441,7 +1426,7 @@ typedef struct cutest_case
         const char*             (*fn_get_user_type_name)(void);
         const char*             (*fn_get_builtin_type_name)(void);
         unsigned                (*fn_get_type_size)(void);
-    }parameterized;
+    } parameterized;
 }cutest_case_t;
 
 /**

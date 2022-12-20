@@ -4,6 +4,7 @@
 
 ### Features
 1. Support log redirection
+2. Faster shuffle algorithm
 
 ### BREAKING CHANGES
 1. Remove x32 / x64 assertion methods
