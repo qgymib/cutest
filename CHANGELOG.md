@@ -9,6 +9,7 @@
 ### BREAKING CHANGES
 1. Remove x32 / x64 assertion methods
 2. Hide some function that user should not use
+3. Exit code is explicit: 0 is success, otherwise failure
 
 ### Fixed
 1. Fix: crash on log if no hook passed

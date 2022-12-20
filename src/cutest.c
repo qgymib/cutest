@@ -2216,7 +2216,15 @@ static void _test_prepare(void)
     g_test_ctx.counter.repeat.repeat = 1;
 }
 
-static int _test_setup(int argc, char* argv[], const cutest_hook_t* hook)
+/**
+ * @brief Setup test context
+ * @param[in] argc      The number of command line argument.
+ * @param[in] argv      Command line argument list.
+ * @param[in] hook      Global test hook.
+ * @param[out] b_exit   Whether need to exit.
+ * @return              0 if success, otherwise failure.
+ */
+static int _test_setup(int argc, char* argv[], const cutest_hook_t* hook, int* b_exit)
 {
     (void)argc;
 
@@ -2287,7 +2295,8 @@ static int _test_setup(int argc, char* argv[], const cutest_hook_t* hook)
             break;
         case help:
             _print_encoded(_get_logfile(), s_test_help_encoded);
-            return -1;
+            *b_exit = 1;
+            return 0;
         default:
             break;
         }
@@ -2572,12 +2581,12 @@ int cutest_register_case(cutest_case_t* data)
 
 int cutest_run_tests(int argc, char* argv[], const cutest_hook_t* hook)
 {
-    int ret;
+    int ret = 0;
 
     /* Parser parameter */
-    if (_test_setup(argc, argv, hook) < 0)
+    int b_exit = 0;
+    if ((ret = _test_setup(argc, argv, hook, &b_exit)) < 0 || b_exit)
     {
-        ret = 0;
         goto fin;
     }
 
@@ -2589,7 +2598,7 @@ fin:
     _test_hook_after_all_test();
     _test_cleanup();
 
-    return ret;
+    return ret != 0 ? EXIT_FAILURE : EXIT_SUCCESS;
 }
 
 void cutest_unwrap_assert_fail(const char *expr, const char *file, int line, const char *func)
