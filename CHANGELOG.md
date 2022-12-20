@@ -12,6 +12,7 @@
 
 ### Fixed
 1. Fix: crash on log if no hook passed
+2. Fix: `--help` cause coredump
 
 
 ## v1.0.1 (2022/04/29)

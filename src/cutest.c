@@ -1080,8 +1080,8 @@ typedef struct test_ctx
 
     struct
     {
-        FILE*               f_out;                              /**< Output file */
-        int                 need_close;                         /**< Need close */
+        FILE*               f_out;                          /**< Output file */
+        int                 need_close;                     /**< Need close */
     }io;
 
     const cutest_hook_t*    hook;
@@ -1089,8 +1089,8 @@ typedef struct test_ctx
 
 typedef struct test_ctx2
 {
-    char                        strbuf[256];                    /**< String buffer */
-    jmp_buf                     jmpbuf;                         /**< Jump buffer */
+    char                    strbuf[512];                    /**< String buffer */
+    jmp_buf                 jmpbuf;                         /**< Jump buffer */
 }test_ctx2_t;
 
 static int _test_on_cmp_case(const cutest_map_node_t* key1, const cutest_map_node_t* key2, void* arg)
@@ -2286,7 +2286,7 @@ static int _test_setup(int argc, char* argv[], const cutest_hook_t* hook)
             _test_setup_arg_logfile(options.optarg);
             break;
         case help:
-            _print_encoded(g_test_ctx.io.f_out, s_test_help_encoded);
+            _print_encoded(_get_logfile(), s_test_help_encoded);
             return -1;
         default:
             break;
