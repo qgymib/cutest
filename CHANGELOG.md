@@ -1,6 +1,6 @@
 # Changelog
 
-## v1.0.2
+## v1.0.2 (2022/12/20)
 
 ### Features
 1. Support log redirection
