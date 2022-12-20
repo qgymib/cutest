@@ -51,6 +51,15 @@ extern "C" {
 /************************************************************************/
 
 /**
+ * @example main.c
+ * A example for how to call #cutest_run_tests().
+ */
+/**
+ * @example test_p.c
+ * A example for parameterized test #TEST_P().
+ */
+
+/**
  * @defgroup CUnitTest CUnitTest
  * @{
  */
@@ -88,6 +97,9 @@ extern "C" {
 
 /**
  * @brief Get parameterized data
+ * @snippet test_p.c GET_PARAMETERIZED_DATA
+ * @see TEST_PARAMETERIZED_DEFINE
+ * @see TEST_P
  * @return  The data you defined
  */
 #define TEST_GET_PARAM()    \
@@ -95,6 +107,8 @@ extern "C" {
 
 /**
  * @brief Define parameterized data for fixture
+ * @snippet test_p.c ADD_SIMPLE_PARAMETERIZED_DEFINE
+ * @snippet test_p.c ADD_COMPLEX_PARAMETERIZED_DEFINE
  * @param [in] fixture_name     Which fixture you want to parameterized
  * @param [in] TYPE             Data type
  * @param [in] ...              Data values
@@ -114,6 +128,7 @@ extern "C" {
 
 /**
  * @brief Suppress unused parameter warning if #TEST_GET_PARAM() is not used.
+ * @snippet test_p.c SUPPRESS_UNUSED_PARAMETERIZED_DATA
  */
 #define TEST_PARAMETERIZED_SUPPRESS_UNUSED  \
     (void)_test_parameterized_data
@@ -129,7 +144,7 @@ extern "C" {
  *
  * @note If you declare a Parameterized Test but do not want to use #TEST_GET_PARAM(),
  *   you may get a compile time warning like `unused parameter _test_parameterized_data`.
- *   To suppress this warning, just place `TEST_PARAMETERIZED_SUPPRESS_UNUSED`
+ *   To suppress this warning, just place #TEST_PARAMETERIZED_SUPPRESS_UNUSED
  *   in the begin of your test body.
  *
  * @param [in] fixture_name     The name of fixture
@@ -137,6 +152,7 @@ extern "C" {
  * @see TEST_GET_PARAM()
  * @see TEST_PARAMETERIZED_DEFINE()
  * @see TEST_PARAMETERIZED_SUPPRESS_UNUSED
+ * @snippet test_p.c
  */
 #define TEST_P(fixture_name, case_name) \
     void TEST_BODY_##fixture_name##_##case_name(_parameterized_type_##fixture_name##_##case_name*);\
@@ -1023,6 +1039,7 @@ typedef struct cutest_hook
 
 /**
  * @brief Run all test cases
+ * @snippet main.c ENTRYPOINT
  * @param[in] argc      The number of arguments
  * @param[in] argv      The argument list
  * @param[in] hook      Test hook
