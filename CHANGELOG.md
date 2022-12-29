@@ -2,6 +2,9 @@
 
 ## v1.0.3
 
+### Features
+1. Avoid memory allocation when print help
+
 ### Fixed
 1. Fix: pattern not working on parameterized tests
 

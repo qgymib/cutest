@@ -1320,16 +1320,6 @@ static WORD _get_new_color(cutest_print_color_t color, WORD old_color_attrs)
     return new_color;
 }
 
-static char* strndup(const char* s, size_t n)
-{
-    size_t l = strnlen(s, n);
-    char* d = malloc(l + 1);
-    if (!d) return NULL;
-    memcpy(d, s, l);
-    d[l] = 0;
-    return d;
-}
-
 #else
 
 typedef struct color_printf_ctx
@@ -1412,7 +1402,6 @@ static int _should_use_color(int is_tty)
 
 static int _print_encoded(FILE* stream, const char* str)
 {
-    char* str_tmp;
     int ret = 0;
     cutest_print_color_t color = CUTEST_PRINT_COLOR_DEFAULT;
 
@@ -1425,9 +1414,7 @@ static int _print_encoded(FILE* stream, const char* str)
             return ret;
         }
 
-        str_tmp = strndup(str, p - str);
-        ret += cutest_color_fprintf(color, stream, "%s", str_tmp);
-        free(str_tmp);
+        ret += cutest_color_fprintf(color, stream, "%.*s", p - str, str);
 
         const char ch = p[1];
         str = p + 2;
