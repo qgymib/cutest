@@ -945,35 +945,6 @@ static void cutest_optparse_init(cutest_optparse_t * options, char** argv)
 
 #define TEST_CASE_TABLE_INIT    CUTEST_MAP_INIT(_test_on_cmp_case, NULL)
 
-/**
- * `XX` have following parameters:
- *   +[0]: type enum
- *   +[1]: print pattern
- *   +[2]: data type
- */
-#define TEST_PARAMETERIZED_MAP(XX)  \
-    XX(TEST_PARAMETERIZED_TYPE_D8,      "%" PRId8,  int8_t)\
-    XX(TEST_PARAMETERIZED_TYPE_U8,      "%" PRIu8,  uint8_t)\
-    XX(TEST_PARAMETERIZED_TYPE_D16,     "%" PRId16, int16_t)\
-    XX(TEST_PARAMETERIZED_TYPE_U16,     "%" PRIu16, uint16_t)\
-    XX(TEST_PARAMETERIZED_TYPE_D32,     "%" PRId32, int32_t)\
-    XX(TEST_PARAMETERIZED_TYPE_U32,     "%" PRIu32, uint32_t)\
-    XX(TEST_PARAMETERIZED_TYPE_D64,     "%" PRId64, int64_t)\
-    XX(TEST_PARAMETERIZED_TYPE_U64,     "%" PRIu64, uint64_t)\
-    XX(TEST_PARAMETERIZED_TYPE_PTR,     "%p",       void*)\
-    XX(TEST_PARAMETERIZED_TYPE_CHAR,    "%c",       char)\
-    XX(TEST_PARAMETERIZED_TYPE_FLOAT,   "%f",       float)\
-    XX(TEST_PARAMETERIZED_TYPE_DOUBLE,  "%f",       double)\
-    XX(TEST_PARAMETERIZED_TYPE_STRING,  "%s",       const char*)
-
-typedef enum test_parameterized_type
-{
-#define EXPAND_TEST_PARAMETERIZED_AS_ENUM(type, ign0, ign1)    type,
-    TEST_PARAMETERIZED_MAP(EXPAND_TEST_PARAMETERIZED_AS_ENUM)
-#undef EXPAND_TEST_PARAMETERIZED_AS_ENUM
-    TEST_PARAMETERIZED_TYPE_UNKNOWN,
-}test_parameterized_type_t;
-
 typedef union double_point
 {
     double                  value_;
@@ -986,16 +957,18 @@ typedef union float_point
     uint32_t                bits_;
 }float_point_t;
 
-typedef enum test_case_stage
+typedef struct test_case_info
 {
-    stage_setup = 0,
-    stage_run,
-    stage_teardown,
-}test_case_stage_t;
+    char                    fmt_name[256];  /**< Formatted name. */
+    cutest_case_t*          test_case;      /**< Test case. */
+    cutest_timestamp_t      tv_case_beg;    /**< Start time. */
+    cutest_timestamp_t      tv_case_end;    /**< End time. */
+} test_case_info_t;
 
 typedef struct test_nature_s
 {
     cutest_map_t            case_table;                     /**< Cases in map */
+    size_t                  total_cases;                    /**< The number of cases */
 
     struct
     {
@@ -1027,22 +1000,8 @@ typedef struct test_ctx
     {
         unsigned long       tid;                            /**< Thread ID */
         unsigned long long  seed;                           /**< Random seed */
-        cutest_map_node_t*  cur_it;                         /**< Current cursor position */
         cutest_case_t*      cur_case;                       /**< Current running test case */
-        unsigned            cur_parameterized_idx;          /**< Current parameterized index */
-        test_case_stage_t   cur_stage;                      /**< Current running stage */
     }runtime;
-
-    struct
-    {
-        cutest_timestamp_t  tv_case_start;                  /**< Test start time */
-        cutest_timestamp_t  tv_case_end;                    /**< Test end time */
-
-        cutest_timestamp_t  tv_total_start;                 /**< The start time of whole test */
-        cutest_timestamp_t  tv_total_end;                   /**< The end time of whole test */
-
-        cutest_timestamp_t  tv_diff;                        /**< Time diff */
-    }timestamp;
 
     struct
     {
@@ -1112,8 +1071,7 @@ static int _test_on_cmp_case(const cutest_map_node_t* key1, const cutest_map_nod
 
 static test_ctx2_t          g_test_ctx2;                                // no need to initialize
 static test_ctx_t           g_test_ctx = {
-    { 0, 0, NULL, NULL, 0, stage_setup },                               /* .runtime */
-    { { 0, 0 }, { 0, 0 }, { 0, 0 }, { 0, 0 }, { 0, 0 } },               /* .timestamp */
+    { 0, 0, NULL },                                                     /* .runtime */
     { { 0, 0, 0, 0, 0 }, { 0, 0 } },                                    /* .counter */
     { 0, 0, 0, 0 },                                                     /* .mask */
     { NULL, NULL, 0, 0 },                                               /* .filter */
@@ -1122,6 +1080,7 @@ static test_ctx_t           g_test_ctx = {
 };
 static test_nature_t        g_test_nature = {
     TEST_CASE_TABLE_INIT,                                               /* .case_table */
+    0,                                                                  /* .total_cases */
     { 0, { 0, 0, 0, 0, 0, 0 }, { 0, 0, 0, 0, 0, 0 } },                  /* .precision */
 };
 
@@ -1271,6 +1230,11 @@ static int _test_pattern_matches_string(const char* pat, const char* str)
  */
 static int _test_check_pattern(const char* str)
 {
+    if (g_test_ctx.filter.positive_patterns == NULL)
+    {
+        return 1;
+    }
+
     size_t i;
     for (i = 0; i < g_test_ctx.filter.n_negative; i++)
     {
@@ -1510,16 +1474,31 @@ static void _test_hook_after_fixture_setup(cutest_case_t* test_case, int ret)
     g_test_ctx.hook->after_fixture_setup(test_case->info.suit_name, ret);
 }
 
-static void _test_fixture_run_setup(void)
+/**
+ * @brief Run setup stage.
+ * @param[in] test_case The test case to run.
+ * @return              0 if success, otherwise failure.
+ */
+static int _test_fixture_run_setup(test_case_info_t* info)
 {
-    if (g_test_ctx.runtime.cur_case->stage.setup == NULL)
+    int ret = 0;
+    if (info->test_case->stage.setup == NULL)
     {
-        return;
+        return 0;
     }
 
-    _test_hook_before_fixture_setup(g_test_ctx.runtime.cur_case);
-    g_test_ctx.runtime.cur_case->stage.setup();
-    _test_hook_after_fixture_setup(g_test_ctx.runtime.cur_case, 0);
+    if ((ret = setjmp(g_test_ctx2.jmpbuf)) != 0)
+    {
+        SET_MASK(info->test_case->info.mask, ret);
+        goto after_setup;
+    }
+
+    _test_hook_before_fixture_setup(info->test_case);
+    info->test_case->stage.setup();
+
+after_setup:
+    _test_hook_after_fixture_setup(info->test_case, ret);
+    return ret;
 }
 
 static void _test_hook_before_normal_test(cutest_case_t* test_case)
@@ -1576,8 +1555,11 @@ static void _test_hook_before_parameterized_test(cutest_case_t* test_case, unsig
     {
         return;
     }
+
+    cutest_parameterized_info_t* info = test_case->get_parameterized_info();
+
     g_test_ctx.hook->before_parameterized_test(test_case->info.suit_name,
-        test_case->info.case_name, index, (unsigned)test_case->parameterized.n_dat);
+        test_case->info.case_name, index, (unsigned)info->test_data_sz);
 }
 
 static void _test_hook_after_parameterized_test(cutest_case_t* test_case, unsigned index, int ret)
@@ -1586,29 +1568,11 @@ static void _test_hook_after_parameterized_test(cutest_case_t* test_case, unsign
     {
         return;
     }
-    g_test_ctx.hook->after_parameterized_test(test_case->info.suit_name,
-        test_case->info.case_name, index, (unsigned)test_case->parameterized.n_dat, ret);
-}
 
-static void _test_fixture_run_body(void)
-{
-    if (g_test_ctx.runtime.cur_case->info.type != CUTEST_CASE_TYPE_PARAMETERIZED)
-    {
-        _test_hook_before_normal_test(g_test_ctx.runtime.cur_case);
-        ((cutest_procedure_fn)g_test_ctx.runtime.cur_case->stage.body)();
-        _test_hook_after_normal_test(g_test_ctx.runtime.cur_case, 0);
-    }
-    else
-    {
-        for (g_test_ctx.runtime.cur_parameterized_idx = 0;
-            g_test_ctx.runtime.cur_parameterized_idx < g_test_ctx.runtime.cur_case->parameterized.n_dat;
-            g_test_ctx.runtime.cur_parameterized_idx++)
-        {
-            _test_hook_before_parameterized_test(g_test_ctx.runtime.cur_case, g_test_ctx.runtime.cur_parameterized_idx);
-            ((cutest_parameterized_fn)g_test_ctx.runtime.cur_case->stage.body)(g_test_ctx.runtime.cur_case->parameterized.p_dat);
-            _test_hook_after_parameterized_test(g_test_ctx.runtime.cur_case, g_test_ctx.runtime.cur_parameterized_idx, -1);
-        }
-    }
+    cutest_parameterized_info_t* info = test_case->get_parameterized_info();
+
+    g_test_ctx.hook->after_parameterized_test(test_case->info.suit_name,
+        test_case->info.case_name, index, (unsigned)info->test_data_sz, ret);
 }
 
 static void _test_hook_before_fixture_teardown(cutest_case_t* test_case)
@@ -1648,16 +1612,25 @@ static void _test_hook_after_all_test(void)
     g_test_ctx.hook->after_all_test();
 }
 
-static void _test_fixture_run_teardown(void)
+static void _test_fixture_run_teardown(test_case_info_t* info)
 {
-    if (g_test_ctx.runtime.cur_case->stage.teardown == NULL)
+    int ret = 0;
+    if (info->test_case->stage.teardown == NULL)
     {
         return;
     }
 
-    _test_hook_before_fixture_teardown(g_test_ctx.runtime.cur_case);
-    g_test_ctx.runtime.cur_case->stage.teardown();
-    _test_hook_after_fixture_teardown(g_test_ctx.runtime.cur_case, 0);
+    if ((ret = setjmp(g_test_ctx2.jmpbuf)) != 0)
+    {
+        SET_MASK(info->test_case->info.mask, ret);
+        goto after_teardown;
+    }
+
+    _test_hook_before_fixture_teardown(info->test_case);
+    info->test_case->stage.teardown();
+
+after_teardown:
+    _test_hook_after_fixture_teardown(info->test_case, ret);
 }
 
 static FILE* _get_logfile(void)
@@ -1677,97 +1650,19 @@ static int _cutest_color_printf(cutest_print_color_t color, const char* fmt, ...
     return ret;
 }
 
-/**
-* run test case.
-* the target case was set to `g_test_ctx.runtime.cur_case`
-*/
-static void _test_run_case(void)
+static void _test_finishlize(test_case_info_t* info)
 {
-    /* reset resource */
-    g_test_ctx.runtime.cur_parameterized_idx = 0;
-    g_test_ctx.runtime.cur_case->info.mask = 0;
+    cutest_timestamp_get(&info->tv_case_end);
 
-    snprintf(g_test_ctx2.strbuf, sizeof(g_test_ctx2.strbuf), "%s.%s",
-        g_test_ctx.runtime.cur_case->info.suit_name,
-        g_test_ctx.runtime.cur_case->info.case_name);
+    cutest_timestamp_t tv_diff;
+    cutest_timestamp_dif(&info->tv_case_beg, &info->tv_case_end, &tv_diff);
 
-    /* Check if need to run this test case */
-    if (g_test_ctx.filter.positive_patterns != NULL && !_test_check_pattern(g_test_ctx2.strbuf))
-    {
-        return;
-    }
-    g_test_ctx.counter.result.total++;
-
-    /* check if this test is disabled */
-    if (_test_check_disable(g_test_ctx.runtime.cur_case->info.case_name))
-    {
-        g_test_ctx.counter.result.disabled++;
-        return;
-    }
-
-    _cutest_color_printf(CUTEST_PRINT_COLOR_GREEN, "[ RUN      ]");
-    _cutest_color_printf(CUTEST_PRINT_COLOR_DEFAULT, " %s\n", g_test_ctx2.strbuf);
-
-    int ret;
-    if ((ret = setjmp(g_test_ctx2.jmpbuf)) != 0)
-    {
-        SET_MASK(g_test_ctx.runtime.cur_case->info.mask, ret);
-        goto procedure_teardown;
-    }
-
-    /* setup */
-    g_test_ctx.runtime.cur_stage = stage_setup;
-    _test_fixture_run_setup();
-
-    /* record start time */
-    ASSERT(cutest_timestamp_get(&g_test_ctx.timestamp.tv_case_start) == 0);
-
-    /* run test case */
-    g_test_ctx.runtime.cur_stage = stage_run;
-    _test_fixture_run_body();
-
-procedure_teardown:
-    switch (g_test_ctx.runtime.cur_stage)
-    {
-    case stage_setup:
-        _test_hook_after_fixture_setup(g_test_ctx.runtime.cur_case, -1);
-        break;
-
-    case stage_run:
-        if (g_test_ctx.runtime.cur_case->info.type != CUTEST_CASE_TYPE_PARAMETERIZED)
-        {
-            _test_hook_after_normal_test(g_test_ctx.runtime.cur_case, -1);
-        }
-        else
-        {
-            _test_hook_after_parameterized_test(g_test_ctx.runtime.cur_case, g_test_ctx.runtime.cur_parameterized_idx, -1);
-        }
-        break;
-
-    case stage_teardown:
-        _test_hook_after_fixture_teardown(g_test_ctx.runtime.cur_case, -1);
-        goto procedure_teardown_fin;
-
-    default:
-        ASSERT(0);
-    }
-
-    /* record end time */
-    ASSERT(cutest_timestamp_get(&g_test_ctx.timestamp.tv_case_end) == 0);
-
-    /* teardown */
-    g_test_ctx.runtime.cur_stage = stage_teardown;
-    _test_fixture_run_teardown();
-
-procedure_teardown_fin:
-    cutest_timestamp_dif(&g_test_ctx.timestamp.tv_case_start, &g_test_ctx.timestamp.tv_case_end, &g_test_ctx.timestamp.tv_diff);
-
-    if (HAS_MASK(g_test_ctx.runtime.cur_case->info.mask, MASK_FAILURE))
+    if (HAS_MASK(info->test_case->info.mask, MASK_FAILURE))
     {
         g_test_ctx.counter.result.failed++;
         _cutest_color_printf(CUTEST_PRINT_COLOR_RED, "[  FAILED  ]");
     }
-    else if (HAS_MASK(g_test_ctx.runtime.cur_case->info.mask, MASK_SKIPPED))
+    else if (HAS_MASK(info->test_case->info.mask, MASK_SKIPPED))
     {
         g_test_ctx.counter.result.skipped++;
         _cutest_color_printf(CUTEST_PRINT_COLOR_YELLOW, "[   SKIP   ]");
@@ -1778,20 +1673,148 @@ procedure_teardown_fin:
         _cutest_color_printf(CUTEST_PRINT_COLOR_GREEN, "[       OK ]");
     }
 
-    _cutest_color_printf(CUTEST_PRINT_COLOR_DEFAULT, " %s", g_test_ctx2.strbuf);
+    _cutest_color_printf(CUTEST_PRINT_COLOR_DEFAULT, " %s", info->fmt_name);
     if (!g_test_ctx.mask.no_print_time)
     {
-        unsigned long take_time = (unsigned long)(g_test_ctx.timestamp.tv_diff.sec * 1000
-            + g_test_ctx.timestamp.tv_diff.usec / 1000);
+        unsigned long take_time = (unsigned long)(tv_diff.sec * 1000 + tv_diff.usec / 1000);
         _cutest_color_printf(CUTEST_PRINT_COLOR_DEFAULT, " (%lu ms)", take_time);
     }
     _cutest_color_printf(CUTEST_PRINT_COLOR_DEFAULT, "\n");
 }
 
+static int _test_run_case_normal_body(test_case_info_t* info)
+{
+    int ret = 0;
+    if ((ret = setjmp(g_test_ctx2.jmpbuf)) != 0)
+    {
+        SET_MASK(info->test_case->info.mask, ret);
+        goto after_body;
+    }
+
+    _test_hook_before_normal_test(info->test_case);
+    ((cutest_procedure_fn)info->test_case->stage.body)();
+
+after_body:
+    _test_hook_after_normal_test(info->test_case, ret);
+    return ret;
+}
+
+/**
+ * @return  1 if need to process, 0 to stop.
+ */
+static int _test_run_prepare(test_case_info_t* info)
+{
+    /* Check if need to run this test case */
+    if (!_test_check_pattern(info->fmt_name))
+    {
+        return 1;
+    }
+    g_test_ctx.counter.result.total++;
+
+    /* check if this test is disabled */
+    if (_test_check_disable(info->test_case->info.case_name))
+    {
+        g_test_ctx.counter.result.disabled++;
+        return 1;
+    }
+
+    _cutest_color_printf(CUTEST_PRINT_COLOR_GREEN, "[ RUN      ]");
+    _cutest_color_printf(CUTEST_PRINT_COLOR_DEFAULT, " %s\n", info->fmt_name);
+
+    /* record start time */
+    cutest_timestamp_get(&info->tv_case_beg);
+    return 0;
+}
+
+static void _test_run_case_normal(cutest_case_t* test_case)
+{
+    test_case_info_t info;
+    snprintf(info.fmt_name, sizeof(info.fmt_name), "%s.%s",
+        test_case->info.suit_name, test_case->info.case_name);
+    info.test_case = test_case;
+
+    if (_test_run_prepare(&info) != 0)
+    {
+        return;
+    }
+
+    /* setup */
+    if (_test_fixture_run_setup(&info) != 0)
+    {
+        goto cleanup;
+    }
+
+    _test_run_case_normal_body(&info);
+    _test_fixture_run_teardown(&info);
+
+cleanup:
+    _test_finishlize(&info);
+}
+
+static void _test_run_case_parameterized_body(test_case_info_t* info,
+    cutest_parameterized_info_t* parameterized_info, unsigned idx)
+{
+    _test_hook_before_parameterized_test(info->test_case, idx);
+    ((cutest_parameterized_fn)info->test_case->stage.body)(parameterized_info->test_data, idx);
+    _test_hook_after_parameterized_test(info->test_case, idx, -1);
+}
+
+static void _test_run_case_parameterized_idx(test_case_info_t* info,
+    cutest_parameterized_info_t* parameterized_info, unsigned idx)
+{
+    if (_test_run_prepare(info) != 0)
+    {
+        return;
+    }
+
+    /* setup */
+    if (_test_fixture_run_setup(info) != 0)
+    {
+        goto cleanup;
+    }
+
+    _test_run_case_parameterized_body(info, parameterized_info, idx);
+    _test_fixture_run_teardown(info);
+
+cleanup:
+    _test_finishlize(info);
+}
+
+static void _test_run_case_parameterized(cutest_case_t* test_case)
+{
+    test_case_info_t info;
+    info.test_case = test_case;
+    cutest_parameterized_info_t* parameterized_info = test_case->get_parameterized_info();
+
+    unsigned idx;
+    for (idx = 0; idx < parameterized_info->test_data_sz; idx++)
+    {
+        snprintf(info.fmt_name, sizeof(info.fmt_name), "%s.%s/%u",
+            test_case->info.suit_name, test_case->info.case_name, idx);
+        _test_run_case_parameterized_idx(&info, parameterized_info, idx);
+    }
+}
+
+/**
+* run test case.
+* the target case was set to `g_test_ctx.runtime.cur_case`
+*/
+static void _test_run_case(cutest_case_t* test_case)
+{
+    test_case->info.mask = 0;
+
+    if (test_case->get_parameterized_info != NULL)
+    {
+        _test_run_case_parameterized(test_case);
+        return;
+    }
+
+    _test_run_case_normal(test_case);
+}
+
 static void _test_reset_all_test(void)
 {
     memset(&g_test_ctx.counter.result, 0, sizeof(g_test_ctx.counter.result));
-    memset(&g_test_ctx.timestamp, 0, sizeof(g_test_ctx.timestamp));
 
     cutest_map_node_t* it = cutest_map_begin(&g_test_nature.case_table);
     for (; it != NULL; it = cutest_map_next(it))
@@ -1820,20 +1843,20 @@ static void _test_show_report_failed(void)
     }
 }
 
-static void _test_show_report(void)
+static void _test_show_report(const cutest_timestamp_t* tv_total_start,
+    const cutest_timestamp_t* tv_total_end)
 {
-    cutest_timestamp_dif(&g_test_ctx.timestamp.tv_total_start,
-        &g_test_ctx.timestamp.tv_total_end, &g_test_ctx.timestamp.tv_diff);
+    cutest_timestamp_t tv_diff;
+    cutest_timestamp_dif(tv_total_start, tv_total_end, &tv_diff);
 
     _cutest_color_printf(CUTEST_PRINT_COLOR_DEFAULT, "[==========]");
     _cutest_color_printf(CUTEST_PRINT_COLOR_DEFAULT, " %u/%u test case%s ran.",
         g_test_ctx.counter.result.total,
-        (unsigned)g_test_nature.case_table.size,
+        (unsigned)g_test_nature.total_cases,
         g_test_ctx.counter.result.total > 1 ? "s" : "");
     if (!g_test_ctx.mask.no_print_time)
     {
-        unsigned long take_time = (unsigned long)(g_test_ctx.timestamp.tv_diff.sec * 1000
-            + g_test_ctx.timestamp.tv_diff.usec / 1000);
+        unsigned long take_time = (unsigned long)(tv_diff.sec * 1000 + tv_diff.usec / 1000);
         _cutest_color_printf(CUTEST_PRINT_COLOR_DEFAULT, " (%lu ms total)", take_time);
     }
     _cutest_color_printf(CUTEST_PRINT_COLOR_DEFAULT, "\n");
@@ -1933,126 +1956,17 @@ static void _test_setup_arg_pattern(const char* user_pattern)
     } while ((str_it = strchr(str_it + 1, ':')) != NULL);
 }
 
-static test_parameterized_type_t _test_get_well_known_type(const char* type_name)
-{
-#define CHECK_FIXED_SIZE_TYPE(RET, ...)   \
-    do {\
-        const char* pat[] = { __VA_ARGS__ };\
-        size_t i;\
-        for (i = 0; i < ARRAY_SIZE(pat); i++) {\
-            if (strcmp(pat[i], type_name) == 0) {\
-                return RET;\
-            }\
-        }\
-    } while (0)
-#define CHECK_BUILTIN_TYPE_WITH_WIDTH(TYPE, width) \
-    CHECK_FIXED_SIZE_TYPE(TEST_PARAMETERIZED_TYPE_D##width, #TYPE, "signed " #TYPE " int", #TYPE " int");\
-    CHECK_FIXED_SIZE_TYPE(TEST_PARAMETERIZED_TYPE_U##width, "unsigned " #TYPE " int", "unsigned " #TYPE " int");\
-    break;
-#define CHECK_BUILTIN_TYPE(TYPE)    \
-    switch(sizeof(TYPE)) {\
-    case 2: CHECK_BUILTIN_TYPE_WITH_WIDTH(TYPE, 16)\
-    case 4: CHECK_BUILTIN_TYPE_WITH_WIDTH(TYPE, 32)\
-    case 8: CHECK_BUILTIN_TYPE_WITH_WIDTH(TYPE, 64)\
-    default: break;\
-    }
-
-    CHECK_FIXED_SIZE_TYPE(TEST_PARAMETERIZED_TYPE_D8, "signed char", "int8_t");
-    CHECK_FIXED_SIZE_TYPE(TEST_PARAMETERIZED_TYPE_U8, "unsigned char", "uint8_t");
-    CHECK_FIXED_SIZE_TYPE(TEST_PARAMETERIZED_TYPE_D16, "int16_t");
-    CHECK_FIXED_SIZE_TYPE(TEST_PARAMETERIZED_TYPE_U16, "uint16_t");
-    CHECK_FIXED_SIZE_TYPE(TEST_PARAMETERIZED_TYPE_D32, "int32_t");
-    CHECK_FIXED_SIZE_TYPE(TEST_PARAMETERIZED_TYPE_U32, "uint32_t");
-    CHECK_FIXED_SIZE_TYPE(TEST_PARAMETERIZED_TYPE_D64, "int64_t");
-    CHECK_FIXED_SIZE_TYPE(TEST_PARAMETERIZED_TYPE_U64, "uint64_t");
-    CHECK_FIXED_SIZE_TYPE(TEST_PARAMETERIZED_TYPE_CHAR, "char");
-    CHECK_FIXED_SIZE_TYPE(TEST_PARAMETERIZED_TYPE_FLOAT, "float");
-    CHECK_FIXED_SIZE_TYPE(TEST_PARAMETERIZED_TYPE_DOUBLE, "double");
-    CHECK_FIXED_SIZE_TYPE(TEST_PARAMETERIZED_TYPE_STRING, "const char*", "const char *", "char*", "char *");
-
-    CHECK_BUILTIN_TYPE(short);
-    CHECK_BUILTIN_TYPE(int);
-    CHECK_BUILTIN_TYPE(long);
-    CHECK_BUILTIN_TYPE(long long);
-
-    if (type_name[strlen(type_name) - 1] == '*')
-    {
-        return TEST_PARAMETERIZED_TYPE_PTR;
-    }
-
-    return TEST_PARAMETERIZED_TYPE_UNKNOWN;
-
-#undef CHECK_BUILTIN_TYPE
-#undef CHECK_BUILTIN_TYPE_WITH_WIDTH
-#undef CHECK_FIXED_SIZE_TYPE
-}
-
-static char _test_log_ascii_to_char(char c)
-{
-    if (c >= 32 && c <= 126)
-    {
-        return c;
-    }
-    return '.';
-}
-
-static void _test_list_tests_fix_escape(char* buffer, size_t size)
-{
-    size_t idx;
-    for (idx = 0; idx < size; idx++)
-    {
-        buffer[idx] = _test_log_ascii_to_char(buffer[idx]);
-    }
-}
-
-static void _test_list_tests_gen_param_info(char* buffer, size_t size, test_parameterized_type_t param_type, const cutest_case_t* case_data, size_t idx)
-{
-#define EXPAND_TEST_PARAMETERIZED_AS_SWITCH(type_enum, print_type, TYPE)  \
-    case type_enum: {\
-        TYPE* val = (TYPE*)((uintptr_t)case_data->parameterized.p_dat + case_data->parameterized.fn_get_type_size() * idx);\
-        int ret = snprintf(buffer, size, "<%s> " print_type,\
-            case_data->parameterized.fn_get_user_type_name(), *val);\
-        size_t fix_len = ret >= (int)size ? size - 1 : (size_t)ret;\
-        _test_list_tests_fix_escape(buffer, fix_len);\
-    }\
-    break;\
-
-    switch (param_type)
-    {
-    TEST_PARAMETERIZED_MAP(EXPAND_TEST_PARAMETERIZED_AS_SWITCH)
-    default:
-        snprintf(buffer, size, "<%s>", case_data->parameterized.fn_get_user_type_name());
-        break;
-    }
-
-#undef EXPAND_TEST_PARAMETERIZED_AS_SWITCH
-}
-
 static void _test_list_tests_print_name(const cutest_case_t* case_data)
 {
-    char buffer[256];
     if (case_data->info.type != CUTEST_CASE_TYPE_PARAMETERIZED)
     {
         _cutest_color_printf(CUTEST_PRINT_COLOR_DEFAULT, "  %s\n", case_data->info.case_name);
         return;
     }
 
-    const char* type_name = case_data->parameterized.fn_get_builtin_type_name();
-    if (type_name == NULL)
-    {
-        type_name = case_data->parameterized.fn_get_user_type_name();
-    }
-
-    test_parameterized_type_t param_type = _test_get_well_known_type(type_name);
-
-    size_t i;
-    for (i = 0; i < case_data->parameterized.n_dat; i++)
-    {
-        _test_list_tests_gen_param_info(buffer, sizeof(buffer), param_type, case_data, i);
-
-        _cutest_color_printf(CUTEST_PRINT_COLOR_DEFAULT, "  %s/%lu  # TEST_GET_PARAM() = %s\n",
-            case_data->info.case_name, (unsigned long)i, buffer);
-    }
+    cutest_parameterized_info_t* parameterized_info = case_data->get_parameterized_info();
+    _cutest_color_printf(CUTEST_PRINT_COLOR_DEFAULT, "  %s/%u  # <%s> %s\n",
+        case_data->info.case_name, parameterized_info->test_data_sz, parameterized_info->type_name, parameterized_info->test_data_info);
 }
 
 static void _test_list_tests(void)
@@ -2312,28 +2226,28 @@ static int _test_setup(int argc, char* argv[], const cutest_hook_t* hook, int* b
     return 0;
 }
 
-static void _test_run_test_loop(void)
+static void _run_all_test_once(void)
 {
     _test_reset_all_test();
 
     _cutest_color_printf(CUTEST_PRINT_COLOR_DEFAULT, "[==========]");
     _cutest_color_printf(CUTEST_PRINT_COLOR_DEFAULT, " total %u test%s registered.\n",
-        (unsigned)g_test_nature.case_table.size,
-        g_test_nature.case_table.size > 1 ? "s" : "");
+        (unsigned)g_test_nature.total_cases,
+        g_test_nature.total_cases > 1 ? "s" : "");
 
-    cutest_timestamp_get(&g_test_ctx.timestamp.tv_total_start);
+    cutest_timestamp_t tv_total_start, tv_total_end;
+    cutest_timestamp_get(&tv_total_start);
 
-    g_test_ctx.runtime.cur_it = cutest_map_begin(&g_test_nature.case_table);
-    for (; g_test_ctx.runtime.cur_it != NULL;
-        g_test_ctx.runtime.cur_it = cutest_map_next(g_test_ctx.runtime.cur_it))
+    cutest_map_node_t* it = cutest_map_begin(&g_test_nature.case_table);
+    for (; it != NULL; it = cutest_map_next(it))
     {
-        g_test_ctx.runtime.cur_case = CONTAINER_OF(g_test_ctx.runtime.cur_it, cutest_case_t, node_table);
-        _test_run_case();
+        g_test_ctx.runtime.cur_case = CONTAINER_OF(it, cutest_case_t, node_table);
+        _test_run_case(g_test_ctx.runtime.cur_case);
     }
 
-    cutest_timestamp_get(&g_test_ctx.timestamp.tv_total_end);
+    cutest_timestamp_get(&tv_total_end);
 
-    _test_show_report();
+    _test_show_report(&tv_total_start, &tv_total_end);
 }
 
 static uint32_t _test_float_point_exponent_bits(const float_point_t* p)
@@ -2411,7 +2325,6 @@ static uint64_t _test_double_point_distance_between_sign_and_magnitude_numbers(u
 static void _test_cleanup(void)
 {
     memset(&g_test_ctx.runtime, 0, sizeof(g_test_ctx.runtime));
-    memset(&g_test_ctx.timestamp, 0, sizeof(g_test_ctx.timestamp));
     memset(&g_test_ctx.counter, 0, sizeof(g_test_ctx.counter));
     memset(&g_test_ctx.mask, 0, sizeof(g_test_ctx.mask));
 
@@ -2425,7 +2338,7 @@ static void _test_cleanup(void)
     g_test_ctx.hook = NULL;
 }
 
-static void _test_run_tests_condition(void)
+static void _run_all_tests(void)
 {
     for (g_test_ctx.counter.repeat.repeated = 0;
         g_test_ctx.counter.repeat.repeated < g_test_ctx.counter.repeat.repeat;
@@ -2438,7 +2351,7 @@ static void _test_run_tests_condition(void)
                 g_test_ctx.counter.repeat.repeated + 1, g_test_ctx.counter.repeat.repeat);
         }
 
-        _test_run_test_loop();
+        _run_all_test_once();
 
         if (g_test_ctx.counter.repeat.repeat > 1)
         {
@@ -2481,12 +2394,12 @@ static void _cutest_default_log(cutest_log_meta_t* info, const char* fmt, va_lis
     cutest_color_fprintf(CUTEST_PRINT_COLOR_DEFAULT, out, "\n");
 }
 
-int cutest_timestamp_get(cutest_timestamp_t* ts)
+void cutest_timestamp_get(cutest_timestamp_t* ts)
 {
 #if defined(_MSC_VER)
 
     LARGE_INTEGER           t;
-    FILETIME            f;
+    FILETIME                f;
     double                  microseconds;
     static LARGE_INTEGER    offset;
     static double           frequencyToMicroseconds;
@@ -2526,18 +2439,15 @@ int cutest_timestamp_get(cutest_timestamp_t* ts)
     t.QuadPart = (LONGLONG)microseconds;
     ts->sec = t.QuadPart / 1000000;
     ts->usec = t.QuadPart % 1000000;
-    return 0;
-
 #else
     struct timespec tmp_ts;
     if (clock_gettime(CLOCK_MONOTONIC, &tmp_ts) < 0)
     {
-        return -1;
+        abort();
     }
 
     ts->sec = tmp_ts.tv_sec;
     ts->usec = tmp_ts.tv_nsec / 1000;
-    return 0;
 #endif
 }
 
@@ -2572,11 +2482,26 @@ int cutest_timestamp_dif(const cutest_timestamp_t* t1, const cutest_timestamp_t*
 
 int cutest_register_case(cutest_case_t* data)
 {
-    /**
+    /*
      * Theoretically this operation will not fail. If two tests have duplicated
      * name, it will fail at program link stage.
      */
-    return cutest_map_insert(&g_test_nature.case_table, &data->node_table);
+    if (cutest_map_insert(&g_test_nature.case_table, &data->node_table) != 0)
+    {
+        return -1;
+    }
+
+    if (data->get_parameterized_info != NULL)
+    {
+        cutest_parameterized_info_t* parameterized_info = data->get_parameterized_info();
+        g_test_nature.total_cases += parameterized_info->test_data_sz;
+    }
+    else
+    {
+        g_test_nature.total_cases += 1;
+    }
+
+    return 0;
 }
 
 int cutest_run_tests(int argc, char* argv[], const cutest_hook_t* hook)
@@ -2591,7 +2516,7 @@ int cutest_run_tests(int argc, char* argv[], const cutest_hook_t* hook)
     }
 
     _test_hook_before_all_test(argc, argv);
-    _test_run_tests_condition();
+    _run_all_tests();
 
     ret = (int)g_test_ctx.counter.result.failed;
 fin:
@@ -2679,11 +2604,6 @@ int cutest_internal_assert_helper_double_ge(double a, double b)
     return (a > b) || cutest_internal_assert_helper_double_eq(a, b);
 }
 
-unsigned cutest_internal_parameterized_index(void)
-{
-    return g_test_ctx.runtime.cur_parameterized_idx;
-}
-
 void cutest_internal_assert_failure(void)
 {
     if (g_test_ctx.runtime.tid != GET_TID())
@@ -2696,14 +2616,12 @@ void cutest_internal_assert_failure(void)
     }
     else
     {
-        ASSERT(g_test_ctx.runtime.cur_stage != stage_teardown);
         longjmp(g_test_ctx2.jmpbuf, MASK_FAILURE);
     }
 }
 
 void cutest_skip_test(void)
 {
-    ASSERT(g_test_ctx.runtime.cur_stage == stage_setup);
     SET_MASK(g_test_ctx.runtime.cur_case->info.mask, MASK_SKIPPED);
 }
 

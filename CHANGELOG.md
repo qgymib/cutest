@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.0.3
+
+### Fixed
+1. Fix: pattern not working on parameterized tests
+
+
 ## v1.0.2 (2022/12/20)
 
 ### Features

@@ -35,12 +35,12 @@
 /**
  * @brief Patch version.
  */
-#define CUTEST_VERSION_PATCH        2
+#define CUTEST_VERSION_PATCH        3
 
 /**
  * @brief Development version.
  */
-#define CUTEST_VERSION_PREREL       0
+#define CUTEST_VERSION_PREREL       1
 
 #ifdef __cplusplus
 extern "C" {
@@ -103,7 +103,7 @@ extern "C" {
  * @return  The data you defined
  */
 #define TEST_GET_PARAM()    \
-    (_test_parameterized_data[cutest_internal_parameterized_index()])
+    (_test_parameterized_data[_test_parameterized_idx])
 
 /**
  * @brief Define parameterized data for fixture
@@ -114,24 +114,23 @@ extern "C" {
  * @param [in] ...              Data values
  */
 #define TEST_PARAMETERIZED_DEFINE(fixture_name, case_name, TYPE, ...)  \
-    typedef TYPE _parameterized_type_##fixture_name##_##case_name;\
-    static const char* _parameterized_get_user_type_name_##fixture_name##_##case_name(void) {\
-        return #TYPE;\
+    static cutest_parameterized_info_t* s_test_parameterized_##fixture_name##_##case_name(void){\
+        static TYPE s_parameterized_userdata_##fixture_name##_##case_name[] = { __VA_ARGS__ };\
+        static cutest_parameterized_info_t s_test_parameterized_info_##fixture_name##_##case_name = {\
+            #TYPE, #__VA_ARGS__,\
+            sizeof(s_parameterized_userdata_##fixture_name##_##case_name) / sizeof(s_parameterized_userdata_##fixture_name##_##case_name[0]),\
+            (void*)s_parameterized_userdata_##fixture_name##_##case_name,\
+        };\
+        return &s_test_parameterized_info_##fixture_name##_##case_name;\
     }\
-    static const char* _parameterized_get_builtin_type_name_##fixture_name##_##case_name(void) {\
-        TEST_RETURN_BUILTIN_TYPENAME(TYPE);\
-    }\
-    static unsigned _parameterized_get_type_size_##fixture_name##_##case_name(void) {\
-        return sizeof(TYPE);\
-    }\
-    static TYPE _parameterized_data_##fixture_name##_##case_name[] = { __VA_ARGS__ }
+    typedef TYPE _parameterized_type_##fixture_name##_##case_name\
 
 /**
  * @brief Suppress unused parameter warning if #TEST_GET_PARAM() is not used.
  * @snippet test_p.c SUPPRESS_UNUSED_PARAMETERIZED_DATA
  */
 #define TEST_PARAMETERIZED_SUPPRESS_UNUSED  \
-    (void)_test_parameterized_data
+    (void)_test_parameterized_data; (void)_test_parameterized_idx
 
 /**
  * @brief Parameterized Test
@@ -155,7 +154,7 @@ extern "C" {
  * @snippet test_p.c
  */
 #define TEST_P(fixture_name, case_name) \
-    void TEST_BODY_##fixture_name##_##case_name(_parameterized_type_##fixture_name##_##case_name*);\
+    void TEST_BODY_##fixture_name##_##case_name(_parameterized_type_##fixture_name##_##case_name*, unsigned);\
     TEST_INITIALIZER(TEST_INIT_##fixture_name##_##case_name) {\
         static cutest_case_t _case_##fixture_name##_##case_name = {\
             { NULL, NULL, NULL }, /* .node_table */\
@@ -172,19 +171,13 @@ extern "C" {
                 TEST_FIXTURE_TEARDOWN_##fixture_name,\
                 (void*)TEST_BODY_##fixture_name##_##case_name,\
             }, /* stage */\
-            {\
-                sizeof(_parameterized_data_##fixture_name##_##case_name)\
-                    / sizeof(_parameterized_data_##fixture_name##_##case_name[0]), \
-                _parameterized_data_##fixture_name##_##case_name, \
-                _parameterized_get_user_type_name_##fixture_name##_##case_name,\
-                _parameterized_get_builtin_type_name_##fixture_name##_##case_name,\
-                _parameterized_get_type_size_##fixture_name##_##case_name,\
-            }, /* parameterized */\
+            s_test_parameterized_##fixture_name##_##case_name, /* parameterized */\
         };\
         TEST_REGISTER_TEST_CASE(&_case_##fixture_name##_##case_name);\
     }\
     void TEST_BODY_##fixture_name##_##case_name(\
-        _parameterized_type_##fixture_name##_##case_name* _test_parameterized_data)
+        _parameterized_type_##fixture_name##_##case_name* _test_parameterized_data,\
+        unsigned _test_parameterized_idx)
 
 /**
  * @brief Test Fixture
@@ -209,9 +202,7 @@ extern "C" {
                 TEST_FIXTURE_TEARDOWN_##fixture_name,\
                 (void*)TEST_BODY_##fixture_name##_##case_name,\
             }, /* stage */\
-            {\
-                0, NULL, NULL, NULL, 0\
-            }, /* parameterized */\
+            NULL, /* parameterized */\
         };\
         TEST_REGISTER_TEST_CASE(&_case_##fixture_name##_##case_name);\
     }\
@@ -238,9 +229,7 @@ extern "C" {
             {\
                 NULL, NULL, (void*)TEST_BODY_##suit_name##_##case_name,\
             }, /* stage */\
-            {\
-                0, NULL, NULL,NULL,  0\
-            }, /* parameterized */\
+            NULL, /* parameterized */\
         };\
         TEST_REGISTER_TEST_CASE(&_case_##suit_name##_##case_name);\
     }\
@@ -1091,10 +1080,9 @@ typedef struct cutest_timestamp
 
 /**
  * @brief Monotonic time since some unspecified starting point
- * @param [in] ts       etest_timestamp_t*
- * @return              0 if success, otherwise failure
+ * @param[out] t    Timestamp.
  */
-int cutest_timestamp_get(cutest_timestamp_t* ts);
+void cutest_timestamp_get(cutest_timestamp_t* t);
 
 /**
  * @brief Compare timestamp
@@ -1208,15 +1196,29 @@ int cutest_timestamp_dif(const cutest_timestamp_t* t1, const cutest_timestamp_t*
  * @brief Get the number of arguments
  */
 #ifdef _MSC_VER // Microsoft compilers
-#   define TEST_ARG_COUNT(...)  INTERNAL_EXPAND_ARGS_PRIVATE(INTERNAL_ARGS_AUGMENTER(__VA_ARGS__))
-#   define INTERNAL_ARGS_AUGMENTER(...) unused, __VA_ARGS__
-#   define INTERNAL_EXPAND(x) x
-#   define INTERNAL_EXPAND_ARGS_PRIVATE(...) INTERNAL_EXPAND(INTERNAL_GET_ARG_COUNT_PRIVATE(__VA_ARGS__, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0))
-#   define INTERNAL_GET_ARG_COUNT_PRIVATE(_1_, _2_, _3_, _4_, _5_, _6_, _7_, _8_, _9_, _10_, _11_, _12_, _13_, _14_, _15_, _16_, count, ...) count
+#   define TEST_ARG_COUNT(...)  \
+        TEST_INTERNAL_EXPAND_ARGS_PRIVATE(TEST_INTERNAL_ARGS_AUGMENTER(__VA_ARGS__))
+#   define TEST_INTERNAL_ARGS_AUGMENTER(...)    \
+        unused, __VA_ARGS__
+#   define TEST_INTERNAL_EXPAND(x) x
+#   define TEST_INTERNAL_EXPAND_ARGS_PRIVATE(...)   \
+        TEST_INTERNAL_EXPAND(TEST_INTERNAL_GET_ARG_COUNT_PRIVATE(__VA_ARGS__, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0))
+#   define TEST_INTERNAL_GET_ARG_COUNT_PRIVATE(_1_, _2_, _3_, _4_, _5_, _6_, _7_, _8_, _9_, _10_, _11_, _12_, _13_, _14_, _15_, _16_, count, ...) count
 #else // Non-Microsoft compilers
-#   define TEST_ARG_COUNT(...) INTERNAL_GET_ARG_COUNT_PRIVATE(0, ## __VA_ARGS__, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0)
-#   define INTERNAL_GET_ARG_COUNT_PRIVATE(_0, _1_, _2_, _3_, _4_, _5_, _6_, _7_, _8_, _9_, _10_, _11_, _12_, _13_, _14_, _15_, _16_, count, ...) count
+#   define TEST_ARG_COUNT(...)  \
+        TEST_INTERNAL_GET_ARG_COUNT_PRIVATE(0, ## __VA_ARGS__, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0)
+#   define TEST_INTERNAL_GET_ARG_COUNT_PRIVATE(_0, _1_, _2_, _3_, _4_, _5_, _6_, _7_, _8_, _9_, _10_, _11_, _12_, _13_, _14_, _15_, _16_, count, ...) count
 #endif
+
+#define TEST_STRINGIFY_ARG(...)     TEST_JOIN(TEST_STRINGIFY_, TEST_ARG_COUNT(__VA_ARGS__))(__VA_ARGS__)
+#define TEST_STRINGIFY_1(x)         #x
+#define TEST_STRINGIFY_2(x, ...)    #x, TEST_STRINGIFY_1(__VA_ARGS__)
+#define TEST_STRINGIFY_3(x, ...)    #x, TEST_STRINGIFY_2(__VA_ARGS__)
+#define TEST_STRINGIFY_4(x, ...)    #x, TEST_STRINGIFY_3(__VA_ARGS__)
+#define TEST_STRINGIFY_5(x, ...)    #x, TEST_STRINGIFY_4(__VA_ARGS__)
+#define TEST_STRINGIFY_6(x, ...)    #x, TEST_STRINGIFY_5(__VA_ARGS__)
+#define TEST_STRINGIFY_7(x, ...)    #x, TEST_STRINGIFY_6(__VA_ARGS__)
+#define TEST_STRINGIFY_8(x, ...)    #x, TEST_STRINGIFY_7(__VA_ARGS__)
 
 #define TEST_EXPAND(x)      x
 #define TEST_JOIN(a, b)     TEST_JOIN2(a, b)
@@ -1317,55 +1319,6 @@ int cutest_timestamp_dif(const cutest_timestamp_t* t1, const cutest_timestamp_t*
 #define _ASSERT_INTERNAL_HELPER_GT(a, b)        ((a) > (b))
 #define _ASSERT_INTERNAL_HELPER_GE(a, b)        ((a) >= (b))
 
-#if __STDC__==1 && __STDC_VERSION >= 201112L
-#   define TEST_BUILTIN_TYPENAME(x) _Generic((x),                                       \
-        char:                   "char", \
-        unsigned char:          "unsigned char",\
-        signed char:            "signed char",\
-        short int:              "short int",\
-        unsigned short int:     "unsigned short int",\
-        int:                    "int",\
-        unsigned int:           "unsigned int",\
-        long int:               "long int",\
-        unsigned long int:      "unsigned long int",\
-        long long int:          "long long int",\
-        unsigned long long int: "unsigned long long int",\
-        float:                  "float",\
-        double:                 "double",\
-        long double:            "long double",\
-        char* :                 "char*",\
-        void* :                 "void*",\
-        default:                NULL)
-#   define TEST_RETURN_BUILTIN_TYPENAME(x)  return TEST_BUILTIN_TYPENAME(x)
-#elif defined(__GNUC__) || defined(__clang__)
-#   define TEST_BUILTIN_TYPENAME(x) \
-        __builtin_choose_expr(__builtin_types_compatible_p(typeof (x), char),                   "char",\
-        __builtin_choose_expr(__builtin_types_compatible_p(typeof (x), unsigned char),          "unsigned char",\
-        __builtin_choose_expr(__builtin_types_compatible_p(typeof (x), signed char),            "signed char",\
-        __builtin_choose_expr(__builtin_types_compatible_p(typeof (x), short int),              "short int",\
-        __builtin_choose_expr(__builtin_types_compatible_p(typeof (x), unsigned short int),     "unsigned short int",\
-        __builtin_choose_expr(__builtin_types_compatible_p(typeof (x), int),                    "int",\
-        __builtin_choose_expr(__builtin_types_compatible_p(typeof (x), unsigned int),           "unsigned int",\
-        __builtin_choose_expr(__builtin_types_compatible_p(typeof (x), long int),               "long int",\
-        __builtin_choose_expr(__builtin_types_compatible_p(typeof (x), unsigned long int),      "unsigned long int",\
-        __builtin_choose_expr(__builtin_types_compatible_p(typeof (x), long long int),          "long long int",\
-        __builtin_choose_expr(__builtin_types_compatible_p(typeof (x), unsigned long long int), "unsigned long long int",\
-        __builtin_choose_expr(__builtin_types_compatible_p(typeof (x), float),                  "float",\
-        __builtin_choose_expr(__builtin_types_compatible_p(typeof (x), double),                 "double",\
-        __builtin_choose_expr(__builtin_types_compatible_p(typeof (x), long double),            "long double",\
-        __builtin_choose_expr(__builtin_types_compatible_p(typeof (x), char*),                  "char*",\
-        __builtin_choose_expr(__builtin_types_compatible_p(typeof (x), void*),                  "void*",\
-                                                                                                NULL   ))))))))))))))))
-#   define TEST_RETURN_BUILTIN_TYPENAME(x)  return TEST_BUILTIN_TYPENAME(x)
-#elif defined(_MSC_VER) && defined(__cplusplus)
-#   define TEST_RETURN_BUILTIN_TYPENAME(x)\
-        static std::string info = typeid(x).name();\
-        return info.c_str()
-#else
-#   define TEST_BUILTIN_TYPENAME(x) NULL
-#   define TEST_RETURN_BUILTIN_TYPENAME(x)  return TEST_BUILTIN_TYPENAME(x)
-#endif
-
 typedef enum cutest_case_type
 {
     CUTEST_CASE_TYPE_SIMPLE,
@@ -1409,7 +1362,15 @@ typedef struct cunittest_map
 }cutest_map_t;
 
 typedef void(*cutest_procedure_fn)(void);
-typedef void(*cutest_parameterized_fn)(void*);
+typedef void(*cutest_parameterized_fn)(void*, unsigned);
+
+typedef struct cutest_parameterized_info
+{
+    const char*                 type_name;              /**< User type name. */
+    const char*                 test_data_info;         /**< The C string of user test data. */
+    size_t                      test_data_sz;           /**< parameterized data size */
+    void*                       test_data;              /**< parameterized data */
+} cutest_parameterized_info_t;
 
 typedef struct cutest_case
 {
@@ -1436,14 +1397,7 @@ typedef struct cutest_case
         void*                   body;                   /**< test body */
     } stage;
 
-    struct
-    {
-        size_t                  n_dat;                  /**< parameterized data size */
-        void*                   p_dat;                  /**< parameterized data */
-        const char*             (*fn_get_user_type_name)(void);
-        const char*             (*fn_get_builtin_type_name)(void);
-        unsigned                (*fn_get_type_size)(void);
-    } parameterized;
+    cutest_parameterized_info_t* (*get_parameterized_info)(void);
 }cutest_case_t;
 
 /**
@@ -1470,7 +1424,6 @@ int cutest_internal_assert_helper_float_ge(float a, float b);
 int cutest_internal_assert_helper_double_eq(double a, double b);
 int cutest_internal_assert_helper_double_le(double a, double b);
 int cutest_internal_assert_helper_double_ge(double a, double b);
-unsigned cutest_internal_parameterized_index(void);
 int cutest_printf(const char* fmt, ...);
 int cutest_color_fprintf(cutest_print_color_t color, FILE* stream, const char* fmt, ...);
 int cutest_color_vfprintf(cutest_print_color_t color, FILE* stream, const char* fmt, va_list ap);

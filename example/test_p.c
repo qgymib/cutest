@@ -9,15 +9,15 @@ TEST_FIXTURE_TEAREDOWN(example)
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-// example.test_p_1
+// example.test_p_simple
 ///////////////////////////////////////////////////////////////////////////////
 
 //! [ADD_SIMPLE_PARAMETERIZED_DEFINE]
 /*
- * Define parameterized test data for `example.test_p_1`
+ * Define parameterized test data for `example.test_p_simple`
  * The test data is typeof `int` and is defined as { 1, 2, 3 }
  */
-TEST_PARAMETERIZED_DEFINE(example, test_p_1, int, 1, 2, 3);
+TEST_PARAMETERIZED_DEFINE(example, test_p_simple, int, 1, 2, 3);
 //! [ADD_SIMPLE_PARAMETERIZED_DEFINE]
 
 /*
@@ -35,7 +35,7 @@ TEST_PARAMETERIZED_DEFINE(example, test_p_1, int, 1, 2, 3);
  * It does not mater how many times you call `TEST_GET_PARAM()`, as it will
  * always return the same resule.
  */
-TEST_P(example, test_p_1)
+TEST_P(example, test_p_simple)
 {
 	/* We can get parameterized data by `TEST_GET_PARAM()`. */
 	int data = TEST_GET_PARAM();
@@ -45,7 +45,7 @@ TEST_P(example, test_p_1)
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-// example.test_p_2
+// example.test_p_structure
 ///////////////////////////////////////////////////////////////////////////////
 
 typedef struct test_p_2_data
@@ -62,11 +62,11 @@ typedef struct test_p_2_data
  * The `TEST_PARAMETERIZED_DEFINE()` macro support custom data structure like
  * `struct` or `enum`, you can define any type you want.
  */
-TEST_PARAMETERIZED_DEFINE(example, test_p_2, test_p_2_data_t, { 1, 2, 3 }, {2, 3, 5});
+TEST_PARAMETERIZED_DEFINE(example, test_p_structure, test_p_2_data_t, { 1, 2, 3 }, { 2, 3, 5 });
 //! [ADD_COMPLEX_PARAMETERIZED_DEFINE]
 
 //! [GET_PARAMETERIZED_DATA]
-TEST_P(example, test_p_2)
+TEST_P(example, test_p_structure)
 {
 	/*
 	 * The `TEST_GET_PARAM()` is strong typed, it returns the same type as you
@@ -80,7 +80,7 @@ TEST_P(example, test_p_2)
 //! [GET_PARAMETERIZED_DATA]
 
 ///////////////////////////////////////////////////////////////////////////////
-// example.test_p_3
+// example.test_p_repeat
 ///////////////////////////////////////////////////////////////////////////////
 
 /*
@@ -90,10 +90,10 @@ TEST_P(example, test_p_2)
  * In such condition just write some random thing in `TEST_PARAMETERIZED_DEFINE()`,
  * just ensure the number of parameterized test data meet your need.
  */
-TEST_PARAMETERIZED_DEFINE(example, test_p_3, int, 0, 0, 0);
+TEST_PARAMETERIZED_DEFINE(example, test_p_repeat, int, 0, 0, 0);
 
 //! [SUPPRESS_UNUSED_PARAMETERIZED_DATA]
-TEST_P(example, test_p_3)
+TEST_P(example, test_p_repeat)
 {
 	/*
 	 * We don't call `TEST_GET_PARAM()`, so there might be some warnings during
