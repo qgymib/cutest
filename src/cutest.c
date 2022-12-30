@@ -629,6 +629,68 @@ static void ev_map_erase(cutest_map_t* handler, cutest_map_node_t* node)
 }
 
 ///////////////////////////////////////////////////////////////////////////////
+// C String
+///////////////////////////////////////////////////////////////////////////////
+
+typedef struct test_str
+{
+    char*                       ptr;            /**< String address. */
+    size_t                      len;            /**< String length, not including NULL terminator. */
+} test_str_t;
+
+/**
+ * @brief Construct a C string.
+ * @param[in] str   Constanst C string.
+ * @return          C string.
+ */
+static test_str_t _test_str(const char* str)
+{
+    test_str_t tmp;
+    tmp.ptr = (char*)str;
+    tmp.len = strlen(str);
+    return tmp;
+}
+
+/**
+ * @brief Split \p str into \p k and \p v by needle \p s, start at \p offset.
+ * @note When failure, \p k and \p v remain untouched.
+ * @return 0 if success, otherwise failure.
+ */
+static int _test_str_split(const test_str_t* str, test_str_t* k,
+    test_str_t* v, const char* s, size_t offset)
+{
+    size_t i;
+    size_t s_len = strlen(s);
+    if (str->len < s_len)
+    {
+        goto error;
+    }
+
+    for (i = offset; i < str->len - s_len + 1; i++)
+    {
+        if (memcmp(str->ptr + i, s, s_len) == 0)
+        {
+            if (k != NULL)
+            {
+                k->ptr = str->ptr;
+                k->len = i;
+            }
+
+            if (v != NULL)
+            {
+                v->ptr = str->ptr + i + s_len;
+                v->len = str->len - i - s_len;
+            }
+
+            return 0;
+        }
+    }
+
+error:
+    return -1;
+}
+
+///////////////////////////////////////////////////////////////////////////////
 // Option parser
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -960,6 +1022,8 @@ typedef union float_point
 typedef struct test_case_info
 {
     char                    fmt_name[256];  /**< Formatted name. */
+    size_t                  fmt_name_sz;    /**< The length of formatted name, not include NULL termainator. */
+
     cutest_case_t*          test_case;      /**< Test case. */
     cutest_timestamp_t      tv_case_beg;    /**< Start time. */
     cutest_timestamp_t      tv_case_end;    /**< End time. */
@@ -1001,7 +1065,7 @@ typedef struct test_ctx
         unsigned long       tid;                            /**< Thread ID */
         unsigned long long  seed;                           /**< Random seed */
         cutest_case_t*      cur_case;                       /**< Current running test case */
-    }runtime;
+    } runtime;
 
     struct
     {
@@ -1012,14 +1076,19 @@ typedef struct test_ctx
             unsigned        success;                        /**< The number of successed cases */
             unsigned        skipped;                        /**< The number of skipped cases */
             unsigned        failed;                         /**< The number of failed cases */
-        }result;
+        } result;
 
         struct
         {
             unsigned        repeat;                         /**< How many times need to repeat */
             unsigned        repeated;                       /**< How many times alread repeated */
-        }repeat;
-    }counter;
+        } repeat;
+    } counter;
+
+    struct
+    {
+        test_str_t          pattern;                         /**< `--test_filter` */
+    } filter;
 
     struct
     {
@@ -1027,30 +1096,17 @@ typedef struct test_ctx
         unsigned            no_print_time : 1;              /**< Whether to print execution cost time */
         unsigned            also_run_disabled_tests : 1;    /**< Also run disabled tests */
         unsigned            shuffle : 1;                    /**< Randomize running cases */
-    }mask;
-
-    struct
-    {
-        char**              positive_patterns;              /**< positive patterns for filter */
-        char**              negative_patterns;              /**< negative patterns for filter */
-        size_t              n_negative;                     /**< The number of negative patterns */
-        size_t              n_postive;                      /**< The number of positive patterns */
-    }filter;                                                /**< Context for float/double compare */
+    } mask;
 
     struct
     {
         FILE*               f_out;                          /**< Output file */
         int                 need_close;                     /**< Need close */
-    }io;
+    } io;
 
+    jmp_buf                 jmpbuf;                         /**< Jump buffer */
     const cutest_hook_t*    hook;
 }test_ctx_t;
-
-typedef struct test_ctx2
-{
-    char                    strbuf[512];                    /**< String buffer */
-    jmp_buf                 jmpbuf;                         /**< Jump buffer */
-}test_ctx2_t;
 
 static int _test_on_cmp_case(const cutest_map_node_t* key1, const cutest_map_node_t* key2, void* arg)
 {
@@ -1069,15 +1125,7 @@ static int _test_on_cmp_case(const cutest_map_node_t* key1, const cutest_map_nod
     return strcmp(t_case_1->info.full_name, t_case_2->info.full_name);
 }
 
-static test_ctx2_t          g_test_ctx2;                                // no need to initialize
-static test_ctx_t           g_test_ctx = {
-    { 0, 0, NULL },                                                     /* .runtime */
-    { { 0, 0, 0, 0, 0 }, { 0, 0 } },                                    /* .counter */
-    { 0, 0, 0, 0 },                                                     /* .mask */
-    { NULL, NULL, 0, 0 },                                               /* .filter */
-    { NULL, 0 },                                                        /* .io */
-    NULL,                                                               /* .hook */
-};
+static test_ctx_t           g_test_ctx;
 static test_nature_t        g_test_nature = {
     TEST_CASE_TABLE_INIT,                                               /* .case_table */
     0,                                                                  /* .total_cases */
@@ -1210,54 +1258,73 @@ static unsigned long _test_rand(void)
  * @brief Check if `str` match `pat`
  * @return bool
  */
-static int _test_pattern_matches_string(const char* pat, const char* str)
+static int _test_pattern_match(const char* pat, size_t pat_sz, const char* str, size_t str_sz)
 {
+    if (pat_sz == 0)
+    {
+        return str_sz == 0;
+    }
+
     switch (*pat)
     {
-    case '\0':
-        return *str == '\0';
     case '?':
-        return *str != '\0' && _test_pattern_matches_string(pat + 1, str + 1);
+        return str_sz != 0 && _test_pattern_match(pat + 1, pat_sz - 1, str + 1, str_sz - 1);
     case '*':
-        return (*str != '\0' && _test_pattern_matches_string(pat, str + 1)) || _test_pattern_matches_string(pat + 1, str);
+        return (str_sz != 0 && _test_pattern_match(pat, pat_sz, str + 1, str_sz - 1)) || _test_pattern_match(pat + 1, pat_sz - 1, str, str_sz);
     default:
-        return *pat == *str && _test_pattern_matches_string(pat + 1, str + 1);
+        return *pat == *str && _test_pattern_match(pat + 1, pat_sz - 1, str + 1, str_sz - 1);
     }
 }
 
 /**
- * @return bool
+ * @return true if this test will run, false if not.
  */
-static int _test_check_pattern(const char* str)
+static int _test_check_pattern(const char* str, size_t str_sz)
 {
-    if (g_test_ctx.filter.positive_patterns == NULL)
+    test_str_t k, v = g_test_ctx.filter.pattern;
+
+    /* If no pattern, run this test. */
+    if (v.ptr == NULL)
     {
         return 1;
     }
 
-    size_t i;
-    for (i = 0; i < g_test_ctx.filter.n_negative; i++)
+    size_t cnt_positive_patterns = 0;
+    int flag_match_positive_pattern = 0;
+
+    /* Split patterns by `:` */
+    while (_test_str_split(&v, &k, &v, ":", 0) == 0)
     {
-        if (_test_pattern_matches_string(g_test_ctx.filter.negative_patterns[i], str))
+        /* If it is a positive pattern. */
+        if (k.ptr[0] != '-')
         {
+            cnt_positive_patterns++;
+
+            /* Record if it match any of positive pattern */
+            if (_test_pattern_match(k.ptr, k.len, str, str_sz))
+            {
+                flag_match_positive_pattern = 1;
+            }
+        }
+        else if (_test_pattern_match(k.ptr + 1, k.len - 1, str, str_sz))
+        {/* If match negative pattern, don't run. */
             return 0;
         }
     }
-
-    if (g_test_ctx.filter.n_postive == 0)
+    if (v.ptr[0] != '-')
     {
-        return 1;
-    }
-
-    for (i = 0; i < g_test_ctx.filter.n_postive; i++)
-    {
-        if (_test_pattern_matches_string(g_test_ctx.filter.positive_patterns[i], str))
+        cnt_positive_patterns++;
+        if (_test_pattern_match(v.ptr, v.len, str, str_sz))
         {
-            return 1;
+            flag_match_positive_pattern = 1;
         }
     }
+    else if (_test_pattern_match(v.ptr + 1, v.len - 1, str, str_sz))
+    {
+        return 0;
+    }
 
-    return 0;
+    return cnt_positive_patterns ? flag_match_positive_pattern : 1;
 }
 
 /**
@@ -1474,7 +1541,7 @@ static int _test_fixture_run_setup(test_case_info_t* info)
         return 0;
     }
 
-    if ((ret = setjmp(g_test_ctx2.jmpbuf)) != 0)
+    if ((ret = setjmp(g_test_ctx.jmpbuf)) != 0)
     {
         SET_MASK(info->test_case->info.mask, ret);
         goto after_setup;
@@ -1607,7 +1674,7 @@ static void _test_fixture_run_teardown(test_case_info_t* info)
         return;
     }
 
-    if ((ret = setjmp(g_test_ctx2.jmpbuf)) != 0)
+    if ((ret = setjmp(g_test_ctx.jmpbuf)) != 0)
     {
         SET_MASK(info->test_case->info.mask, ret);
         goto after_teardown;
@@ -1672,7 +1739,7 @@ static void _test_finishlize(test_case_info_t* info)
 static int _test_run_case_normal_body(test_case_info_t* info)
 {
     int ret = 0;
-    if ((ret = setjmp(g_test_ctx2.jmpbuf)) != 0)
+    if ((ret = setjmp(g_test_ctx.jmpbuf)) != 0)
     {
         SET_MASK(info->test_case->info.mask, ret);
         goto after_body;
@@ -1692,7 +1759,7 @@ after_body:
 static int _test_run_prepare(test_case_info_t* info)
 {
     /* Check if need to run this test case */
-    if (!_test_check_pattern(info->fmt_name))
+    if (!_test_check_pattern(info->fmt_name, info->fmt_name_sz))
     {
         return 1;
     }
@@ -1716,8 +1783,13 @@ static int _test_run_prepare(test_case_info_t* info)
 static void _test_run_case_normal(cutest_case_t* test_case)
 {
     test_case_info_t info;
-    snprintf(info.fmt_name, sizeof(info.fmt_name), "%s.%s",
+    int ret = snprintf(info.fmt_name, sizeof(info.fmt_name), "%s.%s",
         test_case->info.suit_name, test_case->info.case_name);
+    if (ret < 0 || ret >= (int)sizeof(info.fmt_name))
+    {
+        abort();
+    }
+    info.fmt_name_sz = ret;
     info.test_case = test_case;
 
     if (_test_run_prepare(&info) != 0)
@@ -1776,8 +1848,14 @@ static void _test_run_case_parameterized(cutest_case_t* test_case)
     unsigned idx;
     for (idx = 0; idx < parameterized_info->test_data_sz; idx++)
     {
-        snprintf(info.fmt_name, sizeof(info.fmt_name), "%s.%s/%u",
+        int ret = snprintf(info.fmt_name, sizeof(info.fmt_name), "%s.%s/%u",
             test_case->info.suit_name, test_case->info.case_name, idx);
+        if (ret < 0 || ret >= (int)sizeof(info.fmt_name))
+        {
+            abort();
+        }
+        info.fmt_name_sz = ret;
+
         _test_run_case_parameterized_idx(&info, parameterized_info, idx);
     }
 }
@@ -1813,6 +1891,8 @@ static void _test_reset_all_test(void)
 
 static void _test_show_report_failed(void)
 {
+    char buffer[512];
+
     cutest_map_node_t* it = cutest_map_begin(&g_test_nature.case_table);
     for (; it != NULL; it = cutest_map_next(it))
     {
@@ -1822,11 +1902,11 @@ static void _test_show_report_failed(void)
             continue;
         }
 
-        snprintf(g_test_ctx2.strbuf, sizeof(g_test_ctx2.strbuf), "%s.%s",
+        snprintf(buffer, sizeof(buffer), "%s.%s",
             case_data->info.suit_name, case_data->info.case_name);
 
         _cutest_color_printf(CUTEST_PRINT_COLOR_RED, "[  FAILED  ]");
-        _cutest_color_printf(CUTEST_PRINT_COLOR_DEFAULT, " %s\n", g_test_ctx2.strbuf);
+        _cutest_color_printf(CUTEST_PRINT_COLOR_DEFAULT, " %s\n", buffer);
     }
 }
 
@@ -1882,65 +1962,9 @@ static void _test_show_report(const cutest_timestamp_t* tv_total_start,
     _test_show_report_failed();
 }
 
-static void _test_setup_arg_pattern(const char* user_pattern)
+static void _test_setup_arg_pattern(char* user_pattern)
 {
-    int flag_allow_negative = 1;
-    size_t number_of_patterns = 1;
-    size_t number_of_negative = 0;
-    size_t user_pattern_size = 0;
-    while (user_pattern[user_pattern_size] != '\0')
-    {
-        if (user_pattern[user_pattern_size] == '-' && flag_allow_negative)
-        {/* If no `:` before `-`, it is not a negative item */
-            flag_allow_negative = 0;
-            number_of_negative++;
-        }
-        else if (user_pattern[user_pattern_size] == ':')
-        {
-            flag_allow_negative = 1;
-            number_of_patterns++;
-        }
-        user_pattern_size++;
-    }
-    user_pattern_size++;
-
-    size_t prefix_size = sizeof(void*) * number_of_patterns;
-    size_t malloc_size = prefix_size + user_pattern_size;
-    g_test_ctx.filter.positive_patterns = malloc(malloc_size);
-    if (g_test_ctx.filter.positive_patterns == NULL)
-    {
-        return;
-    }
-    g_test_ctx.filter.negative_patterns = g_test_ctx.filter.positive_patterns + (number_of_patterns - number_of_negative);
-    memcpy((char*)g_test_ctx.filter.positive_patterns + prefix_size, user_pattern, user_pattern_size);
-
-    char* str_it = (char*)g_test_ctx.filter.positive_patterns + prefix_size;
-    do 
-    {
-        while (*str_it == ':')
-        {
-            *str_it = '\0';
-            str_it++;
-        }
-
-        if (*str_it == '\0')
-        {
-            return;
-        }
-
-        if (*str_it == '-')
-        {
-            *str_it = '\0';
-            str_it++;
-
-            g_test_ctx.filter.negative_patterns[g_test_ctx.filter.n_negative] = str_it;
-            g_test_ctx.filter.n_negative++;
-            continue;
-        }
-
-        g_test_ctx.filter.positive_patterns[g_test_ctx.filter.n_postive] = str_it;
-        g_test_ctx.filter.n_postive++;
-    } while ((str_it = strchr(str_it + 1, ':')) != NULL);
+    g_test_ctx.filter.pattern = _test_str(user_pattern);
 }
 
 static void _test_list_tests_print_name(const cutest_case_t* case_data)
@@ -2314,12 +2338,7 @@ static void _test_cleanup(void)
     memset(&g_test_ctx.runtime, 0, sizeof(g_test_ctx.runtime));
     memset(&g_test_ctx.counter, 0, sizeof(g_test_ctx.counter));
     memset(&g_test_ctx.mask, 0, sizeof(g_test_ctx.mask));
-
-    if (g_test_ctx.filter.positive_patterns != NULL)
-    {
-        free(g_test_ctx.filter.positive_patterns);
-        memset(&g_test_ctx.filter, 0, sizeof(g_test_ctx.filter));
-    }
+    memset(&g_test_ctx.filter, 0, sizeof(g_test_ctx.filter));
 
     _test_close_logfile();
     g_test_ctx.hook = NULL;
@@ -2603,7 +2622,7 @@ void cutest_internal_assert_failure(void)
     }
     else
     {
-        longjmp(g_test_ctx2.jmpbuf, MASK_FAILURE);
+        longjmp(g_test_ctx.jmpbuf, MASK_FAILURE);
     }
 }
 

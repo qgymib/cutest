@@ -4,6 +4,7 @@
 
 ### Features
 1. Avoid memory allocation when print help
+2. Avoid memory allocation for pattern matching
 
 ### Fixed
 1. Fix: pattern not working on parameterized tests
