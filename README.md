@@ -1,6 +1,13 @@
 # cutest
 UnitTest framework for C.
 
+## Features
+
+1. Absolutely no memory allocation. You are safe to observe and measure your own program's memory usage.
+2. Tests are automatically registered when declared. No need to rewrite your test name!
+3. A rich set of assertions.
+4. Value-parameterized tests.
+
 ## Quick start
 
 ### Step 1. Call entrypoint function in your `main()`
