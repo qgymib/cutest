@@ -40,7 +40,7 @@
 /**
  * @brief Development version.
  */
-#define CUTEST_VERSION_PREREL       3
+#define CUTEST_VERSION_PREREL       4
 
 #ifdef __cplusplus
 extern "C" {
@@ -115,13 +115,15 @@ extern "C" {
  */
 #define TEST_PARAMETERIZED_DEFINE(fixture_name, case_name, TYPE, ...)  \
     static cutest_parameterized_info_t* s_test_parameterized_##fixture_name##_##case_name(void){\
-        static TYPE s_parameterized_userdata_##fixture_name##_##case_name[] = { __VA_ARGS__ };\
-        static cutest_parameterized_info_t s_test_parameterized_info_##fixture_name##_##case_name = {\
+        static TYPE s_parameterized_userdata[] = { __VA_ARGS__ };\
+        static cutest_case_node_t s_nodes[TEST_ARG_COUNT(__VA_ARGS__)];\
+        static cutest_parameterized_info_t s_parameterized_info = {\
             #TYPE, #__VA_ARGS__,\
-            sizeof(s_parameterized_userdata_##fixture_name##_##case_name) / sizeof(s_parameterized_userdata_##fixture_name##_##case_name[0]),\
-            (void*)s_parameterized_userdata_##fixture_name##_##case_name,\
+            sizeof(s_parameterized_userdata) / sizeof(s_parameterized_userdata[0]),\
+            (void*)s_parameterized_userdata,\
+            s_nodes, sizeof(s_nodes) / sizeof(s_nodes[0]),\
         };\
-        return &s_test_parameterized_info_##fixture_name##_##case_name;\
+        return &s_parameterized_info;\
     }\
     typedef TYPE _parameterized_type_##fixture_name##_##case_name\
 
@@ -154,17 +156,13 @@ extern "C" {
  * @snippet test_p.c
  */
 #define TEST_P(fixture_name, case_name) \
-    void TEST_BODY_##fixture_name##_##case_name(_parameterized_type_##fixture_name##_##case_name*, unsigned);\
+    void TEST_BODY_##fixture_name##_##case_name(_parameterized_type_##fixture_name##_##case_name*, size_t);\
     TEST_INITIALIZER(TEST_INIT_##fixture_name##_##case_name) {\
         static cutest_case_t _case_##fixture_name##_##case_name = {\
-            { NULL, NULL, NULL }, /* .node_table */\
-            { 0 }, /* .cache */\
             {\
                 CUTEST_CASE_TYPE_PARAMETERIZED,\
-                0,\
                 #fixture_name,\
                 #case_name,\
-                #fixture_name "." #case_name,\
             }, /* .info */\
             {\
                 TEST_FIXTURE_SETUP_##fixture_name,\
@@ -173,11 +171,12 @@ extern "C" {
             }, /* stage */\
             s_test_parameterized_##fixture_name##_##case_name, /* parameterized */\
         };\
-        TEST_REGISTER_TEST_CASE(&_case_##fixture_name##_##case_name);\
+        cutest_parameterized_info_t* info = s_test_parameterized_##fixture_name##_##case_name();\
+        cutest_register_case(&_case_##fixture_name##_##case_name, info->nodes, info->node_sz);\
     }\
     void TEST_BODY_##fixture_name##_##case_name(\
         _parameterized_type_##fixture_name##_##case_name* _test_parameterized_data,\
-        unsigned _test_parameterized_idx)
+        size_t _test_parameterized_idx)
 
 /**
  * @brief Test Fixture
@@ -188,14 +187,10 @@ extern "C" {
     void TEST_BODY_##fixture_name##_##case_name(void);\
     TEST_INITIALIZER(TEST_INIT_##fixture_name##_##case_name) {\
         static cutest_case_t _case_##fixture_name##_##case_name = {\
-            { NULL, NULL, NULL }, /* .node */\
-            { 0 }, /* .cache */\
             {\
                 CUTEST_CASE_TYPE_FIXTURE,\
-                0,\
                 #fixture_name,\
                 #case_name,\
-                #fixture_name "." #case_name,\
             }, /* .info */\
             {\
                 TEST_FIXTURE_SETUP_##fixture_name,\
@@ -204,7 +199,8 @@ extern "C" {
             }, /* stage */\
             NULL, /* parameterized */\
         };\
-        TEST_REGISTER_TEST_CASE(&_case_##fixture_name##_##case_name);\
+        static cutest_case_node_t s_node;\
+        cutest_register_case(&_case_##fixture_name##_##case_name, &s_node, 1);\
     }\
     void TEST_BODY_##fixture_name##_##case_name(void)
 
@@ -217,21 +213,18 @@ extern "C" {
     void TEST_BODY_##suit_name##_##case_name(void);\
     TEST_INITIALIZER(TEST_INIT_##suit_name##_##case_name) {\
         static cutest_case_t _case_##suit_name##_##case_name = {\
-            { NULL, NULL, NULL }, /* .node */\
-            { 0 }, /* .cache */\
             {\
                 CUTEST_CASE_TYPE_SIMPLE,\
-                0,\
                 #suit_name,\
                 #case_name,\
-                #suit_name "." #case_name,\
             }, /* .info */\
             {\
                 NULL, NULL, (void*)TEST_BODY_##suit_name##_##case_name,\
             }, /* stage */\
             NULL, /* parameterized */\
         };\
-        TEST_REGISTER_TEST_CASE(&_case_##suit_name##_##case_name);\
+        static cutest_case_node_t s_node;\
+        cutest_register_case(&_case_##suit_name##_##case_name, &s_node, 1);\
     }\
     void TEST_BODY_##suit_name##_##case_name(void)
 
@@ -989,7 +982,7 @@ typedef struct cutest_hook
      * @param[in] index         Current parameterized data index
      * @param[in] total         Amount of parameterized data
      */
-    void(*before_parameterized_test)(const char* fixture_name, const char* test_name, unsigned index, unsigned total);
+    void(*before_parameterized_test)(const char* fixture_name, const char* test_name, size_t index, size_t total);
 
     /**
      * @brief Hook after #TEST_P() is called
@@ -999,7 +992,7 @@ typedef struct cutest_hook
      * @param[in] total         Amount of parameterized data
      * @param[in] ret           zero: #TEST_P() success, otherwise failure
      */
-    void(*after_parameterized_test)(const char* fixture_name, const char* test_name, unsigned index, unsigned total, int ret);
+    void(*after_parameterized_test)(const char* fixture_name, const char* test_name, size_t index, size_t total, int ret);
 
     /**
      * @brief Hook before #TEST() is called
@@ -1200,9 +1193,8 @@ int cutest_timestamp_dif(const cutest_timestamp_t* t1, const cutest_timestamp_t*
         TEST_INTERNAL_EXPAND_ARGS_PRIVATE(TEST_INTERNAL_ARGS_AUGMENTER(__VA_ARGS__))
 #   define TEST_INTERNAL_ARGS_AUGMENTER(...)    \
         unused, __VA_ARGS__
-#   define TEST_INTERNAL_EXPAND(x) x
 #   define TEST_INTERNAL_EXPAND_ARGS_PRIVATE(...)   \
-        TEST_INTERNAL_EXPAND(TEST_INTERNAL_GET_ARG_COUNT_PRIVATE(__VA_ARGS__, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0))
+        TEST_EXPAND(TEST_INTERNAL_GET_ARG_COUNT_PRIVATE(__VA_ARGS__, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0))
 #   define TEST_INTERNAL_GET_ARG_COUNT_PRIVATE(_1_, _2_, _3_, _4_, _5_, _6_, _7_, _8_, _9_, _10_, _11_, _12_, _13_, _14_, _15_, _16_, count, ...) count
 #else // Non-Microsoft compilers
 #   define TEST_ARG_COUNT(...)  \
@@ -1284,22 +1276,6 @@ int cutest_timestamp_dif(const cutest_timestamp_t* t1, const cutest_timestamp_t*
         }\
     } TEST_MSVC_WARNNING_GUARD(while (0), 4127)
 
-/**
- * @brief Register test case
- */
-#define TEST_REGISTER_TEST_CASE(p_case)\
-    do {\
-        cutest_case_t* _p_case = p_case;\
-        if (cutest_register_case(_p_case) != 0) {\
-            fprintf(stderr, "[%s:%d] register %s failed: duplicate name.\n",\
-                cutest_pretty_file(__FILE__),\
-                __LINE__,\
-                _p_case->info.full_name);\
-            cutest_internal_flush();\
-            TEST_DEBUGBREAK;\
-        }\
-    } TEST_MSVC_WARNNING_GUARD(while (0), 4127)
-
 #define ASSERT_TEMPLATE_VA(...)                                 TEST_JOIN(ASSERT_TEMPLATE_VA_, TEST_ARG_COUNT(__VA_ARGS__))
 #define ASSERT_TEMPLATE_VA_0(TYPE, FMT, OP, CMP, a, b, ...)     TEST_EXPAND(ASSERT_TEMPLATE(TYPE, FMT, OP, CMP, a, b, __VA_ARGS__))
 #define ASSERT_TEMPLATE_VA_1(TYPE, FMT, OP, CMP, a, b, ...)     TEST_EXPAND(ASSERT_TEMPLATE(TYPE, FMT, OP, CMP, a, b, __VA_ARGS__))
@@ -1362,32 +1338,29 @@ typedef struct cunittest_map
 }cutest_map_t;
 
 typedef void(*cutest_procedure_fn)(void);
-typedef void(*cutest_parameterized_fn)(void*, unsigned);
+typedef void(*cutest_parameterized_fn)(void*, size_t);
+
+typedef struct cutest_case_node cutest_case_node_t;
 
 typedef struct cutest_parameterized_info
 {
     const char*                 type_name;              /**< User type name. */
+
     const char*                 test_data_info;         /**< The C string of user test data. */
     size_t                      test_data_sz;           /**< parameterized data size */
     void*                       test_data;              /**< parameterized data */
+
+    cutest_case_node_t*         nodes;
+    size_t                      node_sz;
 } cutest_parameterized_info_t;
 
 typedef struct cutest_case
 {
-    cutest_map_node_t           node_table;             /**< map node */
-
-    struct
-    {
-        unsigned long           randkey;                /**< Random key. */
-    } cache;
-
     struct
     {
         cutest_case_type_t      type;                   /**< case type */
-        unsigned                mask;                   /**< internal mask */
         const char*             suit_name;              /**< suit name */
         const char*             case_name;              /**< case name */
-        const char*             full_name;              /**< full name */
     } info;
 
     struct
@@ -1398,14 +1371,22 @@ typedef struct cutest_case
     } stage;
 
     cutest_parameterized_info_t* (*get_parameterized_info)(void);
-}cutest_case_t;
+} cutest_case_t;
+
+struct cutest_case_node
+{
+    cutest_map_node_t           node;
+    cutest_case_t*              test_case;
+    unsigned                    mask;                   /**< internal mask */
+    unsigned long               randkey;
+    size_t                      parameterized_idx;
+};
 
 /**
  * @brief Register test case
  * @param[in] test_case     Test case
- * @return                  0 for success, -1 for failure.
  */
-int cutest_register_case(cutest_case_t* test_case);
+void cutest_register_case(cutest_case_t* test_case, cutest_case_node_t* node, size_t node_sz);
 
 /**
  * @internal

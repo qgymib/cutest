@@ -1,5 +1,6 @@
 
 set(test_lists
+    arg_count
     empty
     filter
     simple)
