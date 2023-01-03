@@ -986,6 +986,174 @@ static void cutest_optparse_init(cutest_optparse_t * options, char** argv)
     options->errmsg[0] = '\0';
 }
 
+///////////////////////////////////////////////////////////////////////////////
+// Once
+///////////////////////////////////////////////////////////////////////////////
+
+#if defined(_WIN32)
+
+typedef INIT_ONCE test_once_t;
+#define TEST_ONCE_INIT  INIT_ONCE_STATIC_INIT
+
+static BOOL WINAPI _test_once_proxy(PINIT_ONCE InitOnce, PVOID Parameter, PVOID* Context)
+{
+    (void)InitOnce; (void)Context;
+
+    void (*routine)(void) = (void (*)(void))Parameter;
+    routine();
+
+    return TRUE;
+}
+
+static void test_once(test_once_t* token, void (*routine)(void))
+{
+    InitOnceExecuteOnce(token, _test_once_proxy, (void*)routine, NULL);
+}
+
+#else
+
+typedef pthread_once_t test_once_t;
+#define TEST_ONCE_INIT  PTHREAD_ONCE_INIT
+
+static void test_once(test_once_t* token, void (*routine)(void))
+{
+    pthread_once(token, routine);
+}
+
+#endif
+
+///////////////////////////////////////////////////////////////////////////////
+// Timestamp
+///////////////////////////////////////////////////////////////////////////////
+
+#if defined(_WIN32)
+
+typedef struct test_timestamp_win32
+{
+    BOOL            usePerformanceCounter;
+    LARGE_INTEGER   performanceFrequency;
+    LARGE_INTEGER   offset;
+    double          frequencyToMicroseconds;
+} test_timestamp_win32_t;
+
+static test_timestamp_win32_t s_timestamp_win32;
+
+static LARGE_INTEGER _test_get_file_time_offset(void)
+{
+    SYSTEMTIME s;
+    FILETIME f;
+    LARGE_INTEGER t;
+
+    s.wYear = 1970;
+    s.wMonth = 1;
+    s.wDay = 1;
+    s.wHour = 0;
+    s.wMinute = 0;
+    s.wSecond = 0;
+    s.wMilliseconds = 0;
+    SystemTimeToFileTime(&s, &f);
+    t.QuadPart = f.dwHighDateTime;
+    t.QuadPart <<= 32;
+    t.QuadPart |= f.dwLowDateTime;
+
+    return t;
+}
+
+static void _test_init_timestamp_win32(void)
+{
+    s_timestamp_win32.usePerformanceCounter = QueryPerformanceFrequency(&s_timestamp_win32.performanceFrequency);
+
+    if (s_timestamp_win32.usePerformanceCounter)
+    {
+        QueryPerformanceCounter(&s_timestamp_win32.offset);
+        s_timestamp_win32.frequencyToMicroseconds = (double)s_timestamp_win32.performanceFrequency.QuadPart / 1000000.;
+    }
+    else
+    {
+        s_timestamp_win32.offset = _test_get_file_time_offset();
+        s_timestamp_win32.frequencyToMicroseconds = 10.;
+    }
+}
+
+void cutest_timestamp_get(cutest_timestamp_t* ts)
+{
+    /* One time initialize */
+    static test_once_t token = TEST_ONCE_INIT;
+    test_once(&token, _test_init_timestamp_win32);
+
+    /* Get PerformanceCounter */
+    LARGE_INTEGER t;
+    if (s_timestamp_win32.usePerformanceCounter)
+    {
+        QueryPerformanceCounter(&t);
+    }
+    else
+    {
+        FILETIME                f;
+        GetSystemTimeAsFileTime(&f);
+
+        t.QuadPart = f.dwHighDateTime;
+        t.QuadPart <<= 32;
+        t.QuadPart |= f.dwLowDateTime;
+    }
+
+    /* Shift to basis */
+    t.QuadPart -= s_timestamp_win32.offset.QuadPart;
+
+    /* Convert to microseconds */
+    double microseconds = (double)t.QuadPart / s_timestamp_win32.frequencyToMicroseconds;
+    t.QuadPart = (LONGLONG)microseconds;
+
+    /* Set result */
+    ts->sec = t.QuadPart / 1000000;
+    ts->usec = t.QuadPart % 1000000;
+}
+
+#else
+
+void cutest_timestamp_get(cutest_timestamp_t* ts)
+{
+    struct timespec tmp_ts;
+    if (clock_gettime(CLOCK_MONOTONIC, &tmp_ts) < 0)
+    {
+        abort();
+    }
+
+    ts->sec = tmp_ts.tv_sec;
+    ts->usec = tmp_ts.tv_nsec / 1000;
+}
+
+#endif
+
+int cutest_timestamp_dif(const cutest_timestamp_t* t1, const cutest_timestamp_t* t2, cutest_timestamp_t* dif)
+{
+    cutest_timestamp_t tmp_dif;
+    const cutest_timestamp_t* large_t = t1->sec > t2->sec ? t1 : (t1->sec < t2->sec ? t2 : (t1->usec > t2->usec ? t1 : t2));
+    const cutest_timestamp_t* little_t = large_t == t1 ? t2 : t1;
+
+    tmp_dif.sec = large_t->sec - little_t->sec;
+    if (large_t->usec < little_t->usec)
+    {
+        tmp_dif.usec = little_t->usec - large_t->usec;
+        tmp_dif.sec--;
+    }
+    else
+    {
+        tmp_dif.usec = large_t->usec - little_t->usec;
+    }
+
+    if (dif != NULL)
+    {
+        *dif = tmp_dif;
+    }
+
+    if (tmp_dif.sec == 0 && tmp_dif.usec == 0)
+    {
+        return 0;
+    }
+    return t1 == little_t ? -1 : 1;
+}
+
 /************************************************************************/
 /* test                                                                 */
 /************************************************************************/
@@ -1188,27 +1356,6 @@ static const char* s_test_help_encoded =
 ;
 
 #if defined(_MSC_VER)
-
-static LARGE_INTEGER _test_get_file_time_offset(void)
-{
-    SYSTEMTIME s;
-    FILETIME f;
-    LARGE_INTEGER t;
-
-    s.wYear = 1970;
-    s.wMonth = 1;
-    s.wDay = 1;
-    s.wHour = 0;
-    s.wMinute = 0;
-    s.wSecond = 0;
-    s.wMilliseconds = 0;
-    SystemTimeToFileTime(&s, &f);
-    t.QuadPart = f.dwHighDateTime;
-    t.QuadPart <<= 32;
-    t.QuadPart |= f.dwLowDateTime;
-
-    return t;
-}
 
 // Returns the character attribute for the given color.
 static WORD _test_get_color_attribute(cutest_print_color_t color)
@@ -2101,36 +2248,13 @@ static void _test_shuffle_cases(void)
     g_test_nature.case_table = copy_case_table;
 }
 
-#if defined(_WIN32)
-static BOOL WINAPI _test_setup_once_body(PINIT_ONCE InitOnce, PVOID Parameter, PVOID* Context)
-{
-    (void)InitOnce; (void)Parameter; (void)Context;
-#else
-static void _test_setup_once_body(void)
-{
-#endif
-
-    _test_setup_precision();
-
-#if defined(_WIN32)
-    return TRUE;
-}
-#else
-}
-#endif
-
 /**
  * @brief Setup resources that will not change.
  */
 static void cutest_setup_once(void)
 {
-#if defined(_WIN32)
-    static INIT_ONCE token = INIT_ONCE_STATIC_INIT;
-    InitOnceExecuteOnce(&token, _test_setup_once_body, NULL, NULL);
-#else
-    static pthread_once_t once_control = PTHREAD_ONCE_INIT;
-    pthread_once(&once_control, _test_setup_once_body);
-#endif
+    static test_once_t token = TEST_ONCE_INIT;
+    test_once(&token, _test_setup_precision);
 }
 
 static void _test_close_logfile(void)
@@ -2405,92 +2529,6 @@ static void _run_all_tests(void)
             }
         }
     }
-}
-
-void cutest_timestamp_get(cutest_timestamp_t* ts)
-{
-#if defined(_MSC_VER)
-
-    LARGE_INTEGER           t;
-    FILETIME                f;
-    double                  microseconds;
-    static LARGE_INTEGER    offset;
-    static double           frequencyToMicroseconds;
-    static int              initialized = 0;
-    static BOOL             usePerformanceCounter = 0;
-
-    if (!initialized)
-    {
-        LARGE_INTEGER performanceFrequency;
-        initialized = 1;
-        usePerformanceCounter = QueryPerformanceFrequency(&performanceFrequency);
-        if (usePerformanceCounter)
-        {
-            QueryPerformanceCounter(&offset);
-            frequencyToMicroseconds = (double)performanceFrequency.QuadPart / 1000000.;
-        }
-        else
-        {
-            offset = _test_get_file_time_offset();
-            frequencyToMicroseconds = 10.;
-        }
-    }
-    if (usePerformanceCounter)
-    {
-        QueryPerformanceCounter(&t);
-    }
-    else
-    {
-        GetSystemTimeAsFileTime(&f);
-        t.QuadPart = f.dwHighDateTime;
-        t.QuadPart <<= 32;
-        t.QuadPart |= f.dwLowDateTime;
-    }
-
-    t.QuadPart -= offset.QuadPart;
-    microseconds = (double)t.QuadPart / frequencyToMicroseconds;
-    t.QuadPart = (LONGLONG)microseconds;
-    ts->sec = t.QuadPart / 1000000;
-    ts->usec = t.QuadPart % 1000000;
-#else
-    struct timespec tmp_ts;
-    if (clock_gettime(CLOCK_MONOTONIC, &tmp_ts) < 0)
-    {
-        abort();
-    }
-
-    ts->sec = tmp_ts.tv_sec;
-    ts->usec = tmp_ts.tv_nsec / 1000;
-#endif
-}
-
-int cutest_timestamp_dif(const cutest_timestamp_t* t1, const cutest_timestamp_t* t2, cutest_timestamp_t* dif)
-{
-    cutest_timestamp_t tmp_dif;
-    const cutest_timestamp_t* large_t = t1->sec > t2->sec ? t1 : (t1->sec < t2->sec ? t2 : (t1->usec > t2->usec ? t1 : t2));
-    const cutest_timestamp_t* little_t = large_t == t1 ? t2 : t1;
-
-    tmp_dif.sec = large_t->sec - little_t->sec;
-    if (large_t->usec < little_t->usec)
-    {
-        tmp_dif.usec = little_t->usec - large_t->usec;
-        tmp_dif.sec--;
-    }
-    else
-    {
-        tmp_dif.usec = large_t->usec - little_t->usec;
-    }
-
-    if (dif != NULL)
-    {
-        *dif = tmp_dif;
-    }
-
-    if (tmp_dif.sec == 0 && tmp_dif.usec == 0)
-    {
-        return 0;
-    }
-    return t1 == little_t ? -1 : 1;
 }
 
 void cutest_register_case(cutest_case_t* data, cutest_case_node_t* node, size_t node_sz)

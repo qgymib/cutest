@@ -6,6 +6,7 @@
 1. Avoid memory allocation when print help
 2. Avoid memory allocation for pattern matching
 3. Able to shuffle parameterized tests
+3. Get time stamp is now thread-safe
 
 ### BREAKING CHANGES
 1. Remove custom log
