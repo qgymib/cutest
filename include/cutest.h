@@ -40,7 +40,7 @@
 /**
  * @brief Development version.
  */
-#define CUTEST_VERSION_PREREL       6
+#define CUTEST_VERSION_PREREL       7
 
 #ifdef __cplusplus
 extern "C" {
@@ -71,19 +71,17 @@ extern "C" {
 
 /**
  * @brief Setup test fixture
- * @note `fixture_name' must be globally unique
- * @param [in] fixture_name     The name of fixture
+ * @param [in] fixture  The name of fixture
  */
-#define TEST_FIXTURE_SETUP(fixture_name)    \
-    static void TEST_FIXTURE_SETUP_##fixture_name(void)
+#define TEST_FIXTURE_SETUP(fixture)    \
+    static void TEST_FIXTURE_SETUP_##fixture(void)
 
 /**
  * @brief TearDown test suit
- * @note `fixture_name' must be globally unique
- * @param [in] fixture_name     The name of fixture
+ * @param [in] fixture  The name of fixture
  */
-#define TEST_FIXTURE_TEAREDOWN(fixture_name)    \
-    static void TEST_FIXTURE_TEARDOWN_##fixture_name(void)
+#define TEST_FIXTURE_TEAREDOWN(fixture)    \
+    static void TEST_FIXTURE_TEARDOWN_##fixture(void)
 
 /**
  * Group: SetupAndTeardown
@@ -113,8 +111,8 @@ extern "C" {
  * @param [in] TYPE             Data type
  * @param [in] ...              Data values
  */
-#define TEST_PARAMETERIZED_DEFINE(fixture_name, case_name, TYPE, ...)  \
-    static cutest_parameterized_info_t* s_test_parameterized_##fixture_name##_##case_name(void){\
+#define TEST_PARAMETERIZED_DEFINE(fixture, test, TYPE, ...)  \
+    static cutest_parameterized_info_t* s_test_parameterized_##fixture##_##test(void){\
         static TYPE s_parameterized_userdata[] = { __VA_ARGS__ };\
         static cutest_case_node_t s_nodes[TEST_ARG_COUNT(__VA_ARGS__)];\
         static cutest_parameterized_info_t s_parameterized_info = {\
@@ -125,7 +123,7 @@ extern "C" {
         };\
         return &s_parameterized_info;\
     }\
-    typedef TYPE _parameterized_type_##fixture_name##_##case_name\
+    typedef TYPE _parameterized_type_##fixture##_##test\
 
 /**
  * @brief Suppress unused parameter warning if #TEST_GET_PARAM() is not used.
@@ -148,85 +146,82 @@ extern "C" {
  *   To suppress this warning, just place #TEST_PARAMETERIZED_SUPPRESS_UNUSED
  *   in the begin of your test body.
  *
- * @param [in] fixture_name     The name of fixture
- * @param [in] case_name        The name of test case
+ * @param [in] fixture  The name of fixture
+ * @param [in] test     The name of test case
  * @see TEST_GET_PARAM()
  * @see TEST_PARAMETERIZED_DEFINE()
  * @see TEST_PARAMETERIZED_SUPPRESS_UNUSED
  * @snippet test_p.c
  */
-#define TEST_P(fixture_name, case_name) \
-    void TEST_BODY_##fixture_name##_##case_name(_parameterized_type_##fixture_name##_##case_name*, size_t);\
-    TEST_INITIALIZER(TEST_INIT_##fixture_name##_##case_name) {\
-        static cutest_case_t _case_##fixture_name##_##case_name = {\
+#define TEST_P(fixture, test) \
+    void TEST_BODY_##fixture##_##test(_parameterized_type_##fixture##_##test*, size_t);\
+    TEST_INITIALIZER(TEST_INIT_##fixture##_##test) {\
+        static cutest_case_t _case_##fixture##_##test = {\
             {\
-                CUTEST_CASE_TYPE_PARAMETERIZED,\
-                #fixture_name,\
-                #case_name,\
+                #fixture,\
+                #test,\
             }, /* .info */\
             {\
-                TEST_FIXTURE_SETUP_##fixture_name,\
-                TEST_FIXTURE_TEARDOWN_##fixture_name,\
-                (void*)TEST_BODY_##fixture_name##_##case_name,\
+                TEST_FIXTURE_SETUP_##fixture,\
+                TEST_FIXTURE_TEARDOWN_##fixture,\
+                (void*)TEST_BODY_##fixture##_##test,\
             }, /* stage */\
-            s_test_parameterized_##fixture_name##_##case_name, /* parameterized */\
+            s_test_parameterized_##fixture##_##test, /* parameterized */\
         };\
-        cutest_parameterized_info_t* info = s_test_parameterized_##fixture_name##_##case_name();\
-        cutest_register_case(&_case_##fixture_name##_##case_name, info->nodes, info->node_sz);\
+        cutest_parameterized_info_t* info = s_test_parameterized_##fixture##_##test();\
+        cutest_register_case(&_case_##fixture##_##test, info->nodes, info->node_sz);\
     }\
-    void TEST_BODY_##fixture_name##_##case_name(\
-        _parameterized_type_##fixture_name##_##case_name* _test_parameterized_data,\
+    void TEST_BODY_##fixture##_##test(\
+        _parameterized_type_##fixture##_##test* _test_parameterized_data,\
         size_t _test_parameterized_idx)
 
 /**
  * @brief Test Fixture
- * @param [in] fixture_name     The name of fixture
- * @param [in] case_name        The name of test case
+ * @param [in] fixture  The name of fixture
+ * @param [in] test     The name of test case
  */
-#define TEST_F(fixture_name, case_name) \
-    void TEST_BODY_##fixture_name##_##case_name(void);\
-    TEST_INITIALIZER(TEST_INIT_##fixture_name##_##case_name) {\
-        static cutest_case_t _case_##fixture_name##_##case_name = {\
+#define TEST_F(fixture, test) \
+    void TEST_BODY_##fixture##_##test(void);\
+    TEST_INITIALIZER(TEST_INIT_##fixture##_##test) {\
+        static cutest_case_t _case_##fixture##_##test = {\
             {\
-                CUTEST_CASE_TYPE_FIXTURE,\
-                #fixture_name,\
-                #case_name,\
+                #fixture,\
+                #test,\
             }, /* .info */\
             {\
-                TEST_FIXTURE_SETUP_##fixture_name,\
-                TEST_FIXTURE_TEARDOWN_##fixture_name,\
-                (void*)TEST_BODY_##fixture_name##_##case_name,\
+                TEST_FIXTURE_SETUP_##fixture,\
+                TEST_FIXTURE_TEARDOWN_##fixture,\
+                (void*)TEST_BODY_##fixture##_##test,\
             }, /* stage */\
             NULL, /* parameterized */\
         };\
         static cutest_case_node_t s_node;\
-        cutest_register_case(&_case_##fixture_name##_##case_name, &s_node, 1);\
+        cutest_register_case(&_case_##fixture##_##test, &s_node, 1);\
     }\
-    void TEST_BODY_##fixture_name##_##case_name(void)
+    void TEST_BODY_##fixture##_##test(void)
 
 /**
  * @brief Simple Test
- * @param [in] suit_name        suit name
- * @param [in] case_name        case name
+ * @param [in] fixture  suit name
+ * @param [in] test     case name
  */
-#define TEST(suit_name, case_name)  \
-    void TEST_BODY_##suit_name##_##case_name(void);\
-    TEST_INITIALIZER(TEST_INIT_##suit_name##_##case_name) {\
-        static cutest_case_t _case_##suit_name##_##case_name = {\
+#define TEST(fixture, test)  \
+    void TEST_BODY_##fixture##_##test(void);\
+    TEST_INITIALIZER(TEST_INIT_##fixture##_##test) {\
+        static cutest_case_t _case_##fixture##_##test = {\
             {\
-                CUTEST_CASE_TYPE_SIMPLE,\
-                #suit_name,\
-                #case_name,\
+                #fixture,\
+                #test,\
             }, /* .info */\
             {\
-                NULL, NULL, (void*)TEST_BODY_##suit_name##_##case_name,\
+                NULL, NULL, (void*)TEST_BODY_##fixture##_##test,\
             }, /* stage */\
             NULL, /* parameterized */\
         };\
         static cutest_case_node_t s_node;\
-        cutest_register_case(&_case_##suit_name##_##case_name, &s_node, 1);\
+        cutest_register_case(&_case_##fixture##_##test, &s_node, 1);\
     }\
-    void TEST_BODY_##suit_name##_##case_name(void)
+    void TEST_BODY_##fixture##_##test(void)
 
 /**
  * Group: DefineTest
@@ -853,78 +848,44 @@ typedef struct cutest_hook
 
     /**
      * @brief Hook before #TEST_FIXTURE_SETUP() is called
-     * @param[in] fixture_name  Fixture name
+     * @param[in] fixture   Fixture name
      */
-    void(*before_fixture_setup)(const char* fixture_name);
+    void(*before_setup)(const char* fixture);
 
     /**
      * @brief Hook after #TEST_FIXTURE_SETUP() is called
-     * @param[in] fixture_name  Fixture name
-     * @param[in] ret           zero: #TEST_FIXTURE_SETUP() success, otherwise failure
+     * @param[in] fixture   Fixture name
+     * @param[in] ret       zero: #TEST_FIXTURE_SETUP() success, otherwise failure
      */
-    void(*after_fixture_setup)(const char* fixture_name, int ret);
+    void(*after_setup)(const char* fixture, int ret);
 
     /**
      * @brief Hook before #TEST_FIXTURE_TEAREDOWN() is called
-     * @param[in] fixture_name  Fixture name
+     * @param[in] fixture   Fixture name
      */
-    void(*before_fixture_teardown)(const char* fixture_name);
+    void(*before_teardown)(const char* fixture);
 
     /**
      * @brief Hook after #TEST_FIXTURE_TEAREDOWN() is called
-     * @param[in] fixture_name  Fixture name
-     * @param[in] ret           zero: #TEST_FIXTURE_TEAREDOWN() success, otherwise failure
+     * @param[in] fixture   Fixture name
+     * @param[in] ret       zero: #TEST_FIXTURE_TEAREDOWN() success, otherwise failure
      */
-    void(*after_fixture_teardown)(const char* fixture_name, int ret);
+    void(*after_teardown)(const char* fixture, int ret);
 
     /**
      * @brief Hook before #TEST_F() is called
-     * @param[in] fixture_name  Fixture name
+     * @param[in] fixture       Fixture name
      * @param[in] test_name     Test name
      */
-    void(*before_fixture_test)(const char* fixture_name, const char* test_name);
+    void(*before_test)(const char* fixture, const char* test_name);
 
     /**
      * @brief Hook after #TEST_F() is called
-     * @param[in] fixture_name  Fixture name
+     * @param[in] fixture       Fixture name
      * @param[in] test_name     Test name
      * @param[in] ret           zero: #TEST_F() success, otherwise failure
      */
-    void(*after_fixture_test)(const char* fixture_name, const char* test_name, int ret);
-
-    /**
-     * @brief Hook before #TEST_P() is called
-     * @param[in] fixture_name  Fixture name
-     * @param[in] test_name     Test name
-     * @param[in] index         Current parameterized data index
-     * @param[in] total         Amount of parameterized data
-     */
-    void(*before_parameterized_test)(const char* fixture_name, const char* test_name, size_t index, size_t total);
-
-    /**
-     * @brief Hook after #TEST_P() is called
-     * @param[in] fixture_name  Fixture name
-     * @param[in] test_name     Test name
-     * @param[in] index         Current parameterized data index
-     * @param[in] total         Amount of parameterized data
-     * @param[in] ret           zero: #TEST_P() success, otherwise failure
-     */
-    void(*after_parameterized_test)(const char* fixture_name, const char* test_name, size_t index, size_t total, int ret);
-
-    /**
-     * @brief Hook before #TEST() is called
-     * @param[in] suit_name     Suit name
-     * @param[in] test_name     Test name
-     */
-    void(*before_simple_test)(const char* suit_name, const char* test_name);
-
-    /**
-     * @brief Hook after #TEST() is called
-     * @param[in] suit_name     Suit name
-     * @param[in] test_name     Test name
-     * @param[in] ret           zero: #TEST() success, otherwise failure
-     */
-    void(*after_simple_test)(const char* suit_name, const char* test_name, int ret);
+    void(*after_test)(const char* fixture, const char* test_name, int ret);
 } cutest_hook_t;
 
 /**
@@ -941,13 +902,13 @@ int cutest_run_tests(int argc, char* argv[], const cutest_hook_t* hook);
  * @brief Get current running suit name
  * @return              The suit name
  */
-const char* cutest_get_current_suit_name(void);
+const char* cutest_get_current_fixture(void);
 
 /**
  * @brief Get current running case name
  * @return              The case name
  */
-const char* cutest_get_current_case_name(void);
+const char* cutest_get_current_test(void);
 
 /**
  * @brief Skip current test case.
@@ -1168,14 +1129,14 @@ int cutest_timestamp_dif(const cutest_timestamp_t* t1, const cutest_timestamp_t*
  */
 #define ASSERT_TEMPLATE(TYPE, FMT, OP, CMP, a, b, u_fmt, ...)   \
     do {\
-        TYPE _1 = (TYPE)(a); TYPE _2 = (TYPE)(b);\
-        if (CMP(_1, _2)) {\
+        TYPE _L = (TYPE)(a); TYPE _R = (TYPE)(b);\
+        if (CMP(_L, _R)) {\
             break;\
         }\
         cutest_printf("%s:%d:failure:" u_fmt "\n"\
             "            expected:    `%s' %s `%s'\n"\
             "              actual:    " FMT " vs " FMT "\n",\
-            __FILE__, __LINE__, ##__VA_ARGS__, #a, #OP, #b, _1, _2);\
+            __FILE__, __LINE__, ##__VA_ARGS__, #a, #OP, #b, _L, _R);\
         cutest_internal_flush();\
         if (cutest_internal_break_on_failure()) {\
             TEST_DEBUGBREAK;\
@@ -1202,13 +1163,6 @@ int cutest_timestamp_dif(const cutest_timestamp_t* t1, const cutest_timestamp_t*
 #define _ASSERT_INTERNAL_HELPER_LE(a, b)        ((a) <= (b))
 #define _ASSERT_INTERNAL_HELPER_GT(a, b)        ((a) > (b))
 #define _ASSERT_INTERNAL_HELPER_GE(a, b)        ((a) >= (b))
-
-typedef enum cutest_case_type
-{
-    CUTEST_CASE_TYPE_SIMPLE,
-    CUTEST_CASE_TYPE_FIXTURE,
-    CUTEST_CASE_TYPE_PARAMETERIZED,
-}cutest_case_type_t;
 
 typedef enum cutest_print_color
 {
@@ -1274,8 +1228,7 @@ typedef struct cutest_case
 {
     struct
     {
-        cutest_case_type_t      type;                   /**< case type */
-        const char*             suit_name;              /**< suit name */
+        const char*             fixture;                /**< suit name */
         const char*             case_name;              /**< case name */
     } info;
 

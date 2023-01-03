@@ -1297,7 +1297,7 @@ static int _test_on_cmp_case(const cutest_map_node_t* key1, const cutest_map_nod
         return 1;
     }
 
-    if ((ret = strcmp(t1->info.suit_name, t2->info.suit_name)) != 0)
+    if ((ret = strcmp(t1->info.fixture, t2->info.fixture)) != 0)
     {
         return ret;
     }
@@ -1679,20 +1679,20 @@ static int _print_encoded(FILE* stream, const char* str)
 
 static void _test_hook_before_fixture_setup(cutest_case_t* test_case)
 {
-    if (g_test_ctx.hook == NULL || g_test_ctx.hook->before_fixture_setup == NULL)
+    if (g_test_ctx.hook == NULL || g_test_ctx.hook->before_setup == NULL)
     {
         return;
     }
-    g_test_ctx.hook->before_fixture_setup(test_case->info.suit_name);
+    g_test_ctx.hook->before_setup(test_case->info.fixture);
 }
 
 static void _test_hook_after_fixture_setup(cutest_case_t* test_case, int ret)
 {
-    if (g_test_ctx.hook == NULL || g_test_ctx.hook->after_fixture_setup == NULL)
+    if (g_test_ctx.hook == NULL || g_test_ctx.hook->after_setup == NULL)
     {
         return;
     }
-    g_test_ctx.hook->after_fixture_setup(test_case->info.suit_name, ret);
+    g_test_ctx.hook->after_setup(test_case->info.fixture, ret);
 }
 
 /**
@@ -1722,97 +1722,47 @@ after_setup:
     return ret;
 }
 
-static void _test_hook_before_normal_test(cutest_case_t* test_case)
+static void _test_hook_before_test(test_case_info_t* info)
 {
-    switch (test_case->info.type)
-    {
-    case CUTEST_CASE_TYPE_SIMPLE:
-        if (g_test_ctx.hook != NULL && g_test_ctx.hook->before_simple_test != NULL)
-        {
-            g_test_ctx.hook->before_simple_test(test_case->info.suit_name, test_case->info.case_name);
-        }
-        break;
-
-    case CUTEST_CASE_TYPE_FIXTURE:
-        if (g_test_ctx.hook != NULL && g_test_ctx.hook->before_fixture_test != NULL)
-        {
-            g_test_ctx.hook->before_fixture_test(test_case->info.suit_name, test_case->info.case_name);
-        }
-        break;
-
-    default:
-        ASSERT(0);
-        break;
-    }
-}
-
-static void _test_hook_after_normal_test(cutest_case_t* test_case, int ret)
-{
-    switch (test_case->info.type)
-    {
-    case CUTEST_CASE_TYPE_SIMPLE:
-        if (g_test_ctx.hook != NULL && g_test_ctx.hook->after_simple_test != NULL)
-        {
-            g_test_ctx.hook->after_simple_test(test_case->info.suit_name, test_case->info.case_name, ret);
-        }
-        break;
-
-    case CUTEST_CASE_TYPE_FIXTURE:
-        if (g_test_ctx.hook != NULL && g_test_ctx.hook->after_fixture_test != NULL)
-        {
-            g_test_ctx.hook->after_fixture_test(test_case->info.suit_name, test_case->info.case_name, ret);
-        }
-        break;
-
-    default:
-        ASSERT(0);
-        break;
-    }
-}
-
-static void _test_hook_before_parameterized_test(cutest_case_t* test_case, size_t index)
-{
-    if (g_test_ctx.hook == NULL || g_test_ctx.hook->before_parameterized_test == NULL)
+    cutest_case_t* test_case = info->test_case;
+    if (g_test_ctx.hook == NULL || g_test_ctx.hook->before_test == NULL)
     {
         return;
     }
 
-    cutest_parameterized_info_t* info = test_case->get_parameterized_info();
-
-    g_test_ctx.hook->before_parameterized_test(test_case->info.suit_name,
-        test_case->info.case_name, index, info->test_data_sz);
+    size_t fixture_sz = strlen(test_case->info.fixture);
+    g_test_ctx.hook->before_test(test_case->info.fixture, info->fmt_name + fixture_sz);
 }
 
-static void _test_hook_after_parameterized_test(cutest_case_t* test_case, size_t index, int ret)
+static void _test_hook_after_test(test_case_info_t* info, int ret)
 {
-    if (g_test_ctx.hook == NULL || g_test_ctx.hook->after_parameterized_test == NULL)
+    cutest_case_t* test_case = info->test_case;
+    if (g_test_ctx.hook == NULL || g_test_ctx.hook->after_test == NULL)
     {
         return;
     }
 
-    cutest_parameterized_info_t* info = test_case->get_parameterized_info();
-
-    g_test_ctx.hook->after_parameterized_test(test_case->info.suit_name,
-        test_case->info.case_name, index, info->test_data_sz, ret);
+    size_t fixture_sz = strlen(test_case->info.fixture);
+    g_test_ctx.hook->after_test(test_case->info.fixture, info->fmt_name + fixture_sz, ret);
 }
 
-static void _test_hook_before_fixture_teardown(cutest_case_t* test_case)
+static void _test_hook_before_teardown(cutest_case_t* test_case)
 {
-    if (g_test_ctx.hook == NULL || g_test_ctx.hook->before_fixture_teardown == NULL)
+    if (g_test_ctx.hook == NULL || g_test_ctx.hook->before_teardown == NULL)
     {
         return;
     }
 
-    g_test_ctx.hook->before_fixture_teardown(test_case->info.suit_name);
+    g_test_ctx.hook->before_teardown(test_case->info.fixture);
 }
 
-static void _test_hook_after_fixture_teardown(cutest_case_t* test_case, int ret)
+static void _test_hook_after_teardown(cutest_case_t* test_case, int ret)
 {
-    if (g_test_ctx.hook == NULL || g_test_ctx.hook->after_fixture_teardown == NULL)
+    if (g_test_ctx.hook == NULL || g_test_ctx.hook->after_teardown == NULL)
     {
         return;
     }
-    g_test_ctx.hook->after_fixture_teardown(test_case->info.suit_name, ret);
+    g_test_ctx.hook->after_teardown(test_case->info.fixture, ret);
 }
 
 static void _test_hook_before_all_test(int argc, char* argv[])
@@ -1847,11 +1797,11 @@ static void _test_fixture_run_teardown(test_case_info_t* info)
         goto after_teardown;
     }
 
-    _test_hook_before_fixture_teardown(info->test_case);
+    _test_hook_before_teardown(info->test_case);
     info->test_case->stage.teardown();
 
 after_teardown:
-    _test_hook_after_fixture_teardown(info->test_case, ret);
+    _test_hook_after_teardown(info->test_case, ret);
 }
 
 static FILE* _get_logfile(void)
@@ -1912,11 +1862,11 @@ static int _test_run_case_normal_body(test_case_info_t* info)
         goto after_body;
     }
 
-    _test_hook_before_normal_test(info->test_case);
+    _test_hook_before_test(info);
     ((cutest_procedure_fn)info->test_case->stage.body)();
 
 after_body:
-    _test_hook_after_normal_test(info->test_case, ret);
+    _test_hook_after_test(info, ret);
     return ret;
 }
 
@@ -1953,7 +1903,7 @@ static void _test_run_case_normal(cutest_case_node_t* node)
 
     test_case_info_t info;
     int ret = snprintf(info.fmt_name, sizeof(info.fmt_name), "%s.%s",
-        test_case->info.suit_name, test_case->info.case_name);
+        test_case->info.fixture, test_case->info.case_name);
     if (ret < 0 || ret >= (int)sizeof(info.fmt_name))
     {
         abort();
@@ -1983,9 +1933,9 @@ cleanup:
 static void _test_run_case_parameterized_body(test_case_info_t* info,
     cutest_parameterized_info_t* parameterized_info, size_t idx)
 {
-    _test_hook_before_parameterized_test(info->test_case, idx);
+    _test_hook_before_test(info);
     ((cutest_parameterized_fn)info->test_case->stage.body)(parameterized_info->test_data, idx);
-    _test_hook_after_parameterized_test(info->test_case, idx, -1);
+    _test_hook_after_test(info, -1);
 }
 
 static void _test_run_case_parameterized_idx(test_case_info_t* info,
@@ -2019,7 +1969,7 @@ static void _test_run_case_parameterized(cutest_case_node_t* node)
     info.test_case = test_case;
 
     int ret = snprintf(info.fmt_name, sizeof(info.fmt_name), "%s.%s/%u",
-        test_case->info.suit_name, test_case->info.case_name, (unsigned)node->parameterized_idx);
+        test_case->info.fixture, test_case->info.case_name, (unsigned)node->parameterized_idx);
     if (ret < 0 || ret >= (int)sizeof(info.fmt_name))
     {
         abort();
@@ -2076,12 +2026,12 @@ static void _test_show_report_failed(void)
         if (test_case->get_parameterized_info == NULL)
         {
             snprintf(buffer, sizeof(buffer), "%s.%s",
-                test_case->info.suit_name, test_case->info.case_name);
+                test_case->info.fixture, test_case->info.case_name);
         }
         else
         {
             snprintf(buffer, sizeof(buffer), "%s.%s/%u",
-                test_case->info.suit_name, test_case->info.case_name, (unsigned)node->parameterized_idx);
+                test_case->info.fixture, test_case->info.case_name, (unsigned)node->parameterized_idx);
         }
 
         _cutest_color_printf(CUTEST_PRINT_COLOR_RED, "[  FAILED  ]");
@@ -2171,10 +2121,10 @@ static void _test_list_tests(void)
         cutest_case_t* test_case = node->test_case;
 
         /* some compiler will make same string with different address */
-        if (last_class_name != test_case->info.suit_name
-            && strcmp(last_class_name, test_case->info.suit_name) != 0)
+        if (last_class_name != test_case->info.fixture
+            && strcmp(last_class_name, test_case->info.fixture) != 0)
         {
-            last_class_name = test_case->info.suit_name;
+            last_class_name = test_case->info.fixture;
             _cutest_color_printf(CUTEST_PRINT_COLOR_DEFAULT, "%s.\n", last_class_name);
         }
         _test_list_tests_print_name(node);
@@ -2598,16 +2548,16 @@ void cutest_unwrap_assert_fail(const char *expr, const char *file, int line, con
     abort();
 }
 
-const char* cutest_get_current_suit_name(void)
+const char* cutest_get_current_fixture(void)
 {
     if (g_test_ctx.runtime.cur_node == NULL)
     {
         return NULL;
     }
-    return g_test_ctx.runtime.cur_node->test_case->info.suit_name;
+    return g_test_ctx.runtime.cur_node->test_case->info.fixture;
 }
 
-const char* cutest_get_current_case_name(void)
+const char* cutest_get_current_test(void)
 {
     if (g_test_ctx.runtime.cur_node == NULL)
     {

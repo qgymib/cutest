@@ -10,6 +10,7 @@
 
 ### BREAKING CHANGES
 1. Remove custom log
+2. Unified test hook
 
 ### Fixed
 1. Fix: pattern not working on parameterized tests
