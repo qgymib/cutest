@@ -40,7 +40,7 @@
 /**
  * @brief Development version.
  */
-#define CUTEST_VERSION_PREREL       4
+#define CUTEST_VERSION_PREREL       5
 
 #ifdef __cplusplus
 extern "C" {
@@ -828,90 +828,7 @@ extern "C" {
  * @{
  */
 
-typedef enum cutest_log_level
-{
-    CUTEST_LOG_DEBUG,
-    CUTEST_LOG_INFO,
-    CUTEST_LOG_WARN,
-    CUTEST_LOG_ERROR,
-    CUTEST_LOG_FATAL,
-} cutest_log_level_t;
 
-typedef enum cutest_print_color
-{
-    CUTEST_PRINT_COLOR_DEFAULT  = 0,
-    CUTEST_PRINT_COLOR_RED      = 1,
-    CUTEST_PRINT_COLOR_GREEN    = 2,
-    CUTEST_PRINT_COLOR_YELLOW   = 4,
-} cutest_print_color_t;
-
-typedef struct cutest_log_meta
-{
-    cutest_log_level_t  leve;
-    const char*         file;
-    const char*         func;
-    int                 line;
-} cutest_log_meta_t;
-
-/**
- * @brief Debug log
- * @param [in] fmt      Print format
- * @param [in] ...      Print arguments
- */
-#define TEST_LOG_D(fmt, ...)  \
-    do {\
-        cutest_log_meta_t info = {\
-            CUTEST_LOG_DEBUG,\
-            __FILE__,\
-            __FUNCTION__,\
-            __LINE__,\
-        };\
-        cutest_log(&info, fmt, ##__VA_ARGS__);\
-    } while (0)
-
-#define TEST_LOG_I(fmt, ...)    \
-    do {\
-        cutest_log_meta_t info = {\
-            CUTEST_LOG_INFO,\
-            __FILE__,\
-            __FUNCTION__,\
-            __LINE__,\
-        };\
-        cutest_log(&info, fmt, ##__VA_ARGS__);\
-    } while (0)
-
-#define TEST_LOG_W(fmt, ...)    \
-    do {\
-        cutest_log_meta_t info = {\
-            CUTEST_LOG_WARN,\
-            __FILE__,\
-            __FUNCTION__,\
-            __LINE__,\
-        };\
-        cutest_log(&info, fmt, ##__VA_ARGS__);\
-    } while (0)
-
-#define TEST_LOG_E(fmt, ...)    \
-    do {\
-        cutest_log_meta_t info = {\
-            CUTEST_LOG_ERROR,\
-            __FILE__,\
-            __FUNCTION__,\
-            __LINE__,\
-        };\
-        cutest_log(&info, fmt, ##__VA_ARGS__);\
-    } while (0)
-
-#define TEST_LOG_F(fmt, ...)    \
-    do {\
-        cutest_log_meta_t info = {\
-            CUTEST_LOG_FATAL,\
-            __FILE__,\
-            __FUNCTION__,\
-            __LINE__,\
-        };\
-        cutest_log(&info, fmt, ##__VA_ARGS__);\
-    } while (0)
 
 /**
  * @}
@@ -1008,15 +925,6 @@ typedef struct cutest_hook
      * @param[in] ret           zero: #TEST() success, otherwise failure
      */
     void(*after_simple_test)(const char* suit_name, const char* test_name, int ret);
-
-    /**
-     * @brief Log output
-     * @param[in] info          Log information.
-     * @param[in] fmt           Print format.
-     * @param[in] ap            Print argument list.
-     * @param[in] out           The file to write log.
-     */
-    void(*on_log_print)(cutest_log_meta_t* info, const char* fmt, va_list ap, FILE* out);
 } cutest_hook_t;
 
 /**
@@ -1302,6 +1210,14 @@ typedef enum cutest_case_type
     CUTEST_CASE_TYPE_PARAMETERIZED,
 }cutest_case_type_t;
 
+typedef enum cutest_print_color
+{
+    CUTEST_PRINT_COLOR_DEFAULT  = 0,
+    CUTEST_PRINT_COLOR_RED      = 1,
+    CUTEST_PRINT_COLOR_GREEN    = 2,
+    CUTEST_PRINT_COLOR_YELLOW   = 4,
+} cutest_print_color_t;
+
 /**
  * @brief Map node
  */
@@ -1409,8 +1325,6 @@ int cutest_printf(const char* fmt, ...);
 int cutest_color_fprintf(cutest_print_color_t color, FILE* stream, const char* fmt, ...);
 int cutest_color_vfprintf(cutest_print_color_t color, FILE* stream, const char* fmt, va_list ap);
 const char* cutest_pretty_file(const char* file);
-
-void cutest_log(cutest_log_meta_t* info, const char* fmt, ...);
 
 /** @endcond */
 

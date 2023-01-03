@@ -7,6 +7,9 @@
 2. Avoid memory allocation for pattern matching
 3. Able to shuffle parameterized tests
 
+### BREAKING CHANGES
+1. Remove custom log
+
 ### Fixed
 1. Fix: pattern not working on parameterized tests
 

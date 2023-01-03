@@ -2407,34 +2407,6 @@ static void _run_all_tests(void)
     }
 }
 
-static const char* _cutest_get_log_level_str(cutest_log_level_t level)
-{
-    switch(level)
-    {
-    case CUTEST_LOG_DEBUG:
-        return "D";
-    case CUTEST_LOG_INFO:
-        return "I";
-    case CUTEST_LOG_WARN:
-        return "W";
-    case CUTEST_LOG_ERROR:
-        return "E";
-    case CUTEST_LOG_FATAL:
-        return "F";
-    default:
-        break;
-    }
-    return "U";
-}
-
-static void _cutest_default_log(cutest_log_meta_t* info, const char* fmt, va_list ap, FILE* out)
-{
-    cutest_color_fprintf(CUTEST_PRINT_COLOR_DEFAULT, out, "[%s %s:%d] ",
-            _cutest_get_log_level_str(info->leve), info->file, info->line);
-    cutest_color_vfprintf(CUTEST_PRINT_COLOR_DEFAULT, out, fmt, ap);
-    cutest_color_fprintf(CUTEST_PRINT_COLOR_DEFAULT, out, "\n");
-}
-
 void cutest_timestamp_get(cutest_timestamp_t* ts)
 {
 #if defined(_MSC_VER)
@@ -2772,20 +2744,4 @@ int cutest_color_vfprintf(cutest_print_color_t color, FILE* stream, const char* 
 #endif
 
     return ret;
-}
-
-void cutest_log(cutest_log_meta_t* info, const char* fmt, ...)
-{
-    va_list ap;
-
-    va_start(ap, fmt);
-    if (g_test_ctx.hook != NULL && g_test_ctx.hook->on_log_print != NULL)
-    {
-        g_test_ctx.hook->on_log_print(info, fmt, ap, _get_logfile());
-    }
-    else
-    {
-        _cutest_default_log(info, fmt, ap, _get_logfile());
-    }
-    va_end(ap);
 }
