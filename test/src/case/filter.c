@@ -1,7 +1,9 @@
-#undef NDEBUG
-#include "cutest.h"
+#include "test.h"
 #include <string.h>
-#include <assert.h>
+
+///////////////////////////////////////////////////////////////////////////////
+// Watchpoint
+///////////////////////////////////////////////////////////////////////////////
 
 typedef struct test_filter
 {
@@ -31,78 +33,76 @@ TEST_P(filter, p3)
 	s_test_filter.cnt_p3 += TEST_GET_PARAM();
 }
 
-static void _run_with_filter(const char* argv0, const char* pattern)
+///////////////////////////////////////////////////////////////////////////////
+// Verify
+///////////////////////////////////////////////////////////////////////////////
+
+DEFINE_SETUP(filter)
 {
-	/* Wrap command line arguments */
-	char* argv[] = {
-		(char*)argv0,
-		(char*)pattern,
-		NULL,
-	};
-	int argc = sizeof(argv) / sizeof(argv[0]) - 1;
-
-	/* Cleanup */
 	memset(&s_test_filter, 0, sizeof(s_test_filter));
-
-	/* Run tests */
-	assert(cutest_run_tests(argc, argv, NULL) == 0);
 }
 
-int main(int argc, char* argv[])
+DEFINE_TEARDOWN(filter)
 {
-	(void)argc;
+}
 
-	/*
-	 * filter:
-	 * + filter.p1
-	 * + filter.p2
-	 * + filter.p3/0
-	 * + filter.p3/1
-	 * + filter.p3/2
-	 */
-	_run_with_filter(argv[0], "--test_filter=*");
+/**
+ * filter:
+ * + filter.p1
+ * + filter.p2
+ * + filter.p3/0
+ * + filter.p3/1
+ * + filter.p3/2
+ */
+DEFINE_TEST_F(filter, any, "--test_filter=*")
+{
 	assert(s_test_filter.cnt_p1 == 1);
 	assert(s_test_filter.cnt_p2 == 1);
 	assert(s_test_filter.cnt_p3 == 6);
+}
 
-	/*
-	 * filter:
-	 */
-	_run_with_filter(argv[0], "--test_filter=asdf");
+DEFINE_TEST_F(filter, asdf, "--test_filter=asdf")
+{
 	assert(s_test_filter.cnt_p1 == 0);
 	assert(s_test_filter.cnt_p2 == 0);
 	assert(s_test_filter.cnt_p3 == 0);
+}
 
-	/*
-	 * filter:
-	 * + filter.p1
-	 * + filter.p2
-	 * + filter.p3/0
-	 * + filter.p3/1
-	 * + filter.p3/2
-	 */
-	_run_with_filter(argv[0], "--test_filter=filter.*");
+/**
+ * filter:
+ * + filter.p1
+ * + filter.p2
+ * + filter.p3/0
+ * + filter.p3/1
+ * + filter.p3/2
+ */
+DEFINE_TEST_F(filter, filter_dot_any, "--test_filter=filter.*")
+{
 	assert(s_test_filter.cnt_p1 == 1);
 	assert(s_test_filter.cnt_p2 == 1);
 	assert(s_test_filter.cnt_p3 == 6);
+}
 
-	/*
-	 * filter:
-	 * + filter.p1
-	 * + filter.p2
-	 */
-	_run_with_filter(argv[0], "--test_filter=filter.p?");
+/**
+ * filter:
+ * + filter.p1
+ * + filter.p2
+ */
+DEFINE_TEST_F(filter, p_dot_ask, "--test_filter=filter.p?")
+{
 	assert(s_test_filter.cnt_p1 == 1);
 	assert(s_test_filter.cnt_p2 == 1);
 	assert(s_test_filter.cnt_p3 == 0);
+}
 
-	/*
-	 * filter:
-	 * + filter.p3/0
-	 * + filter.p3/1
-	 * + filter.p3/2
-	 */
-	_run_with_filter(argv[0], "--test_filter=*/*");
+/**
+ * filter:
+ * + filter.p3/0
+ * + filter.p3/1
+ * + filter.p3/2
+ */
+DEFINE_TEST_F(filter, any_slash_any, "--test_filter=*/*")
+{
 	assert(s_test_filter.cnt_p1 == 0);
 	assert(s_test_filter.cnt_p2 == 0);
 	assert(s_test_filter.cnt_p3 == 6);
