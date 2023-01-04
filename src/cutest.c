@@ -1956,8 +1956,18 @@ static void _test_run_case_parameterized_body(test_case_info_t* info,
     cutest_parameterized_info_t* parameterized_info, size_t idx)
 {
     _test_hook_before_test(info);
+
+    int ret = 0;
+    if ((ret = setjmp(g_test_ctx.jmpbuf)) != 0)
+    {
+        SET_MASK(info->test_case_node->mask, ret);
+        goto after_body;
+    }
+
     info->test_case->stage.body(parameterized_info->test_data, idx);
-    _test_hook_after_test(info, -1);
+
+after_body:
+    _test_hook_after_test(info, ret);
 }
 
 static void _test_run_case_parameterized_idx(test_case_info_t* info,

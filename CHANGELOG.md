@@ -16,6 +16,7 @@
 ### Fixed
 1. Fix: pattern not working on parameterized tests
 2. Remove unsafe type cast
+3. Fix: parameterized test always report failed in hook
 
 
 ## v1.0.2 (2022/12/20)
