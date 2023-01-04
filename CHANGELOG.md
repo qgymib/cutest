@@ -15,6 +15,7 @@
 
 ### Fixed
 1. Fix: pattern not working on parameterized tests
+2. Remove unsafe type cast
 
 
 ## v1.0.2 (2022/12/20)

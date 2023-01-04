@@ -1885,7 +1885,7 @@ static int _test_run_case_normal_body(test_case_info_t* info)
     }
 
     _test_hook_before_test(info);
-    ((cutest_procedure_fn)info->test_case->stage.body)();
+    info->test_case->stage.body(NULL, 0);
 
 after_body:
     _test_hook_after_test(info, ret);
@@ -1956,7 +1956,7 @@ static void _test_run_case_parameterized_body(test_case_info_t* info,
     cutest_parameterized_info_t* parameterized_info, size_t idx)
 {
     _test_hook_before_test(info);
-    ((cutest_parameterized_fn)info->test_case->stage.body)(parameterized_info->test_data, idx);
+    info->test_case->stage.body(parameterized_info->test_data, idx);
     _test_hook_after_test(info, -1);
 }
 

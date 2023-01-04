@@ -40,7 +40,7 @@
 /**
  * @brief Development version.
  */
-#define CUTEST_VERSION_PREREL       8
+#define CUTEST_VERSION_PREREL       9
 
 #ifdef __cplusplus
 extern "C" {
@@ -164,7 +164,7 @@ extern "C" {
             {\
                 TEST_FIXTURE_SETUP_##fixture,\
                 TEST_FIXTURE_TEARDOWN_##fixture,\
-                (void*)TEST_BODY_##fixture##_##test,\
+                (void(*)(void*, size_t))TEST_BODY_##fixture##_##test,\
             }, /* stage */\
             s_test_parameterized_##fixture##_##test, /* parameterized */\
         };\
@@ -182,6 +182,11 @@ extern "C" {
  */
 #define TEST_F(fixture, test) \
     void TEST_BODY_##fixture##_##test(void);\
+    static void TEST_PROXY_##fixture##_##test(void* _test_parameterized_data,\
+        size_t _test_parameterized_idx) {\
+        TEST_PARAMETERIZED_SUPPRESS_UNUSED;\
+        TEST_BODY_##fixture##_##test();\
+    }\
     TEST_INITIALIZER(TEST_INIT_##fixture##_##test) {\
         static cutest_case_t _case_##fixture##_##test = {\
             {\
@@ -191,7 +196,7 @@ extern "C" {
             {\
                 TEST_FIXTURE_SETUP_##fixture,\
                 TEST_FIXTURE_TEARDOWN_##fixture,\
-                (void*)TEST_BODY_##fixture##_##test,\
+                TEST_PROXY_##fixture##_##test,\
             }, /* stage */\
             NULL, /* parameterized */\
         };\
@@ -207,6 +212,11 @@ extern "C" {
  */
 #define TEST(fixture, test)  \
     void TEST_BODY_##fixture##_##test(void);\
+    static void TEST_PROXY_##fixture##_##test(void* _test_parameterized_data,\
+        size_t _test_parameterized_idx) {\
+        TEST_PARAMETERIZED_SUPPRESS_UNUSED;\
+        TEST_BODY_##fixture##_##test();\
+    }\
     TEST_INITIALIZER(TEST_INIT_##fixture##_##test) {\
         static cutest_case_t _case_##fixture##_##test = {\
             {\
@@ -214,7 +224,8 @@ extern "C" {
                 #test,\
             }, /* .info */\
             {\
-                NULL, NULL, (void*)TEST_BODY_##fixture##_##test,\
+                NULL, NULL,\
+                TEST_PROXY_##fixture##_##test,\
             }, /* stage */\
             NULL, /* parameterized */\
         };\
@@ -1199,9 +1210,6 @@ typedef struct cunittest_map
     size_t                  size;       /**< Data size */
 }cutest_map_t;
 
-typedef void(*cutest_procedure_fn)(void);
-typedef void(*cutest_parameterized_fn)(void*, size_t);
-
 typedef struct cutest_case_node cutest_case_node_t;
 
 typedef struct cutest_parameterized_info
@@ -1226,9 +1234,9 @@ typedef struct cutest_case
 
     struct
     {
-        cutest_procedure_fn     setup;                  /**< setup */
-        cutest_procedure_fn     teardown;               /**< teardown */
-        void*                   body;                   /**< test body */
+        void                    (*setup)(void);         /**< setup */
+        void                    (*teardown)(void);      /**< teardown */
+        void                    (*body)(void*, size_t); /**< test body */
     } stage;
 
     cutest_parameterized_info_t* (*get_parameterized_info)(void);
