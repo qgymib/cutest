@@ -11,6 +11,7 @@
 ### BREAKING CHANGES
 1. Remove custom log
 2. Unified test hook
+3. Hide colorful print functions
 
 ### Fixed
 1. Fix: pattern not working on parameterized tests

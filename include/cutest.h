@@ -40,7 +40,7 @@
 /**
  * @brief Development version.
  */
-#define CUTEST_VERSION_PREREL       7
+#define CUTEST_VERSION_PREREL       8
 
 #ifdef __cplusplus
 extern "C" {
@@ -1164,14 +1164,6 @@ int cutest_timestamp_dif(const cutest_timestamp_t* t1, const cutest_timestamp_t*
 #define _ASSERT_INTERNAL_HELPER_GT(a, b)        ((a) > (b))
 #define _ASSERT_INTERNAL_HELPER_GE(a, b)        ((a) >= (b))
 
-typedef enum cutest_print_color
-{
-    CUTEST_PRINT_COLOR_DEFAULT  = 0,
-    CUTEST_PRINT_COLOR_RED      = 1,
-    CUTEST_PRINT_COLOR_GREEN    = 2,
-    CUTEST_PRINT_COLOR_YELLOW   = 4,
-} cutest_print_color_t;
-
 /**
  * @brief Map node
  */
@@ -1275,8 +1267,6 @@ int cutest_internal_assert_helper_double_eq(double a, double b);
 int cutest_internal_assert_helper_double_le(double a, double b);
 int cutest_internal_assert_helper_double_ge(double a, double b);
 int cutest_printf(const char* fmt, ...);
-int cutest_color_fprintf(cutest_print_color_t color, FILE* stream, const char* fmt, ...);
-int cutest_color_vfprintf(cutest_print_color_t color, FILE* stream, const char* fmt, va_list ap);
 const char* cutest_pretty_file(const char* file);
 
 /** @endcond */

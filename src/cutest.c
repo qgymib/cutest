@@ -45,9 +45,7 @@
         fprintf(stderr, fmt ": %s(%d).\n", ##__VA_ARGS__, buffer, err);\
     } while (0)
 
-#define COLOR_GREEN(str)                    "@G" str "@D"
-#define COLOR_RED(str)                      "@R" str "@D"
-#define COLOR_YELLO(str)                    "@Y" str "@D"
+#define ARRAY_SIZE(arr)                     (sizeof(arr) / sizeof(arr[0]))
 /*
  * Before Visual Studio 2015, there is a bug that a `do { } while (0)` will triger C4127 warning
  * https://docs.microsoft.com/en-us/cpp/error-messages/compiler-warnings/compiler-warning-level-4-c4127
@@ -1154,16 +1152,227 @@ int cutest_timestamp_dif(const cutest_timestamp_t* t1, const cutest_timestamp_t*
     return t1 == little_t ? -1 : 1;
 }
 
+///////////////////////////////////////////////////////////////////////////////
+// Print
+///////////////////////////////////////////////////////////////////////////////
+
+typedef enum cutest_print_color
+{
+    CUTEST_PRINT_COLOR_DEFAULT,
+    CUTEST_PRINT_COLOR_RED,
+    CUTEST_PRINT_COLOR_GREEN,
+    CUTEST_PRINT_COLOR_YELLOW,
+} cutest_print_color_t;
+
+#if defined(_WIN32)
+
+static int _should_use_color(int is_tty)
+{
+    /**
+     * On Windows the $TERM variable is usually not set, but the console there
+     * does support colors.
+     */
+    return is_tty;
+}
+
+static int _get_bit_offset(WORD color_mask)
+{
+    if (color_mask == 0) return 0;
+
+    int bitOffset = 0;
+    while ((color_mask & 1) == 0)
+    {
+        color_mask >>= 1;
+        ++bitOffset;
+    }
+    return bitOffset;
+}
+
+static WORD _get_color_attribute(cutest_print_color_t color)
+{
+    switch (color)
+    {
+    case CUTEST_PRINT_COLOR_RED:
+        return FOREGROUND_RED;
+    case CUTEST_PRINT_COLOR_GREEN:
+        return FOREGROUND_GREEN;
+    case CUTEST_PRINT_COLOR_YELLOW:
+        return FOREGROUND_RED | FOREGROUND_GREEN;
+    default:
+        return 0;
+    }
+}
+
+static WORD _get_new_color(cutest_print_color_t color, WORD old_color_attrs)
+{
+    // Let's reuse the BG
+    static const WORD background_mask = BACKGROUND_BLUE | BACKGROUND_GREEN |
+        BACKGROUND_RED | BACKGROUND_INTENSITY;
+    static const WORD foreground_mask = FOREGROUND_BLUE | FOREGROUND_GREEN |
+        FOREGROUND_RED | FOREGROUND_INTENSITY;
+    const WORD existing_bg = old_color_attrs & background_mask;
+
+    WORD new_color =
+        _get_color_attribute(color) | existing_bg | FOREGROUND_INTENSITY;
+    const int bg_bitOffset = _get_bit_offset(background_mask);
+    const int fg_bitOffset = _get_bit_offset(foreground_mask);
+
+    if (((new_color & background_mask) >> bg_bitOffset) ==
+        ((new_color & foreground_mask) >> fg_bitOffset))
+    {
+        new_color ^= FOREGROUND_INTENSITY;  // invert intensity
+    }
+    return new_color;
+}
+
+static int _test_color_vfprintf(FILE* stream, cutest_print_color_t color, const char* fmt, va_list ap)
+{
+    int ret;
+    const HANDLE stdout_handle = (HANDLE)_get_osfhandle(fileno(stream));
+
+    // Gets the current text color.
+    CONSOLE_SCREEN_BUFFER_INFO buffer_info;
+    GetConsoleScreenBufferInfo(stdout_handle, &buffer_info);
+    const WORD old_color_attrs = buffer_info.wAttributes;
+    const WORD new_color = _get_new_color(color, old_color_attrs);
+
+    // We need to flush the stream buffers into the console before each
+    // SetConsoleTextAttribute call lest it affect the text that is already
+    // printed but has not yet reached the console.
+    fflush(stream);
+    SetConsoleTextAttribute(stdout_handle, new_color);
+
+    ret = vfprintf(stream, fmt, ap);
+
+    fflush(stream);
+    // Restores the text color.
+    SetConsoleTextAttribute(stdout_handle, old_color_attrs);
+
+    return ret;
+}
+
+#else
+
+typedef struct color_printf_ctx
+{
+    int terminal_color_support;
+}color_printf_ctx_t;
+
+static color_printf_ctx_t g_color_printf = {
+    0,
+};
+
+static void _initlize_color_unix(void)
+{
+    static const char* support_color_term_list[] = {
+        "xterm",
+        "xterm-color",
+        "xterm-256color",
+        "screen",
+        "screen-256color",
+        "tmux",
+        "tmux-256color",
+        "rxvt-unicode",
+        "rxvt-unicode-256color",
+        "linux",
+        "cygwin",
+    };
+
+    /* On non-Windows platforms, we rely on the TERM variable. */
+    const char* term = getenv("TERM");
+    if (term == NULL)
+    {
+        return;
+    }
+
+    size_t i;
+    for (i = 0; i < ARRAY_SIZE(support_color_term_list); i++)
+    {
+        if (strcmp(term, support_color_term_list[i]) == 0)
+        {
+            g_color_printf.terminal_color_support = 1;
+            break;
+        }
+    }
+}
+
+static int _should_use_color(int is_tty)
+{
+    static pthread_once_t once_control = PTHREAD_ONCE_INIT;
+    pthread_once(&once_control, _initlize_color_unix);
+
+    return is_tty && g_color_printf.terminal_color_support;
+}
+
+static const char* _get_ansi_color_code_fg(cutest_print_color_t color)
+{
+    switch (color)
+    {
+    case CUTEST_PRINT_COLOR_RED:
+        return "31";
+    case CUTEST_PRINT_COLOR_GREEN:
+        return "32";
+    case CUTEST_PRINT_COLOR_YELLOW:
+        return "33";
+    default:
+        break;
+    }
+
+    return NULL;
+}
+
+static int _test_color_vfprintf(FILE* stream, cutest_print_color_t color, const char* fmt, va_list ap)
+{
+    int ret;
+    fprintf(stream, "\033[0;%sm", _get_ansi_color_code_fg(color));
+    ret = vfprintf(stream, fmt, ap);
+    fprintf(stream, "\033[m");  // Resets the terminal to default.
+    fflush(stream);
+    return ret;
+}
+
+#endif
+
+/**
+ * @brief Print data to \p stream.
+ */
+static int cutest_color_vfprintf(cutest_print_color_t color, FILE* stream, const char* fmt, va_list ap)
+{
+    assert(stream != NULL);
+
+    int stream_fd = fileno(stream);
+    if (!_should_use_color(isatty(stream_fd)) || (color == CUTEST_PRINT_COLOR_DEFAULT))
+    {
+        return vfprintf(stream, fmt, ap);
+    }
+
+    return _test_color_vfprintf(stream, color, fmt, ap);
+}
+
+static int cutest_color_fprintf(cutest_print_color_t color, FILE* stream, const char* fmt, ...)
+{
+    int ret;
+    va_list ap;
+
+    va_start(ap, fmt);
+    ret = cutest_color_vfprintf(color, stream, fmt, ap);
+    va_end(ap);
+
+    return ret;
+}
+
 /************************************************************************/
 /* test                                                                 */
 /************************************************************************/
+
+#define COLOR_GREEN(str)                    "@G" str "@D"
+#define COLOR_RED(str)                      "@R" str "@D"
+#define COLOR_YELLO(str)                    "@Y" str "@D"
 
 #define MASK_FAILURE                        (0x01 << 0x00)
 #define MASK_SKIPPED                        (0x01 << 0x01)
 #define SET_MASK(val, mask)                 do { (val) |= (mask); } while (0)
 #define HAS_MASK(val, mask)                 ((val) & (mask))
-
-#define ARRAY_SIZE(arr)                     (sizeof(arr) / sizeof(arr[0]))
 
 /**
  * @brief microseconds in one second
@@ -1355,61 +1564,6 @@ static const char* s_test_help_encoded =
 "      Turn assertion failures into debugger break-points.\n"
 ;
 
-#if defined(_MSC_VER)
-
-// Returns the character attribute for the given color.
-static WORD _test_get_color_attribute(cutest_print_color_t color)
-{
-    switch (color)
-    {
-    case CUTEST_PRINT_COLOR_RED:
-        return FOREGROUND_RED;
-    case CUTEST_PRINT_COLOR_GREEN:
-        return FOREGROUND_GREEN;
-    case CUTEST_PRINT_COLOR_YELLOW:
-        return FOREGROUND_RED | FOREGROUND_GREEN;
-    default:
-        return 0;
-    }
-}
-
-static int _test_get_bit_offset(WORD color_mask)
-{
-    if (color_mask == 0) return 0;
-
-    int bitOffset = 0;
-    while ((color_mask & 1) == 0)
-    {
-        color_mask >>= 1;
-        ++bitOffset;
-    }
-    return bitOffset;
-}
-
-static WORD _test_get_new_color(cutest_print_color_t color, WORD old_color_attrs)
-{
-    // Let's reuse the BG
-    static const WORD background_mask = BACKGROUND_BLUE | BACKGROUND_GREEN |
-        BACKGROUND_RED | BACKGROUND_INTENSITY;
-    static const WORD foreground_mask = FOREGROUND_BLUE | FOREGROUND_GREEN |
-        FOREGROUND_RED | FOREGROUND_INTENSITY;
-    const WORD existing_bg = old_color_attrs & background_mask;
-
-    WORD new_color =
-        _test_get_color_attribute(color) | existing_bg | FOREGROUND_INTENSITY;
-    const int bg_bitOffset = _test_get_bit_offset(background_mask);
-    const int fg_bitOffset = _test_get_bit_offset(foreground_mask);
-
-    if (((new_color & background_mask) >> bg_bitOffset) ==
-        ((new_color & foreground_mask) >> fg_bitOffset))
-    {
-        new_color ^= FOREGROUND_INTENSITY;  // invert intensity
-    }
-    return new_color;
-}
-
-#endif
-
 static void _test_srand(unsigned long long s)
 {
     g_test_ctx.runtime.seed = s - 1;
@@ -1500,138 +1654,6 @@ static int _test_check_pattern(const char* str, size_t str_sz)
 static int _test_check_disable(const char* name)
 {
     return !g_test_ctx.mask.also_run_disabled_tests && (strncmp("DISABLED_", name, 9) == 0);
-}
-
-#if defined(_WIN32)
-
-static int _get_bit_offset(WORD color_mask)
-{
-    if (color_mask == 0) return 0;
-
-    int bitOffset = 0;
-    while ((color_mask & 1) == 0)
-    {
-        color_mask >>= 1;
-        ++bitOffset;
-    }
-    return bitOffset;
-}
-
-static WORD _get_color_attribute(cutest_print_color_t color)
-{
-    switch (color)
-    {
-    case CUTEST_PRINT_COLOR_RED:
-        return FOREGROUND_RED;
-    case CUTEST_PRINT_COLOR_GREEN:
-        return FOREGROUND_GREEN;
-    case CUTEST_PRINT_COLOR_YELLOW:
-        return FOREGROUND_RED | FOREGROUND_GREEN;
-    default:
-        return 0;
-    }
-}
-
-static WORD _get_new_color(cutest_print_color_t color, WORD old_color_attrs)
-{
-    // Let's reuse the BG
-    static const WORD background_mask = BACKGROUND_BLUE | BACKGROUND_GREEN |
-        BACKGROUND_RED | BACKGROUND_INTENSITY;
-    static const WORD foreground_mask = FOREGROUND_BLUE | FOREGROUND_GREEN |
-        FOREGROUND_RED | FOREGROUND_INTENSITY;
-    const WORD existing_bg = old_color_attrs & background_mask;
-
-    WORD new_color =
-        _get_color_attribute(color) | existing_bg | FOREGROUND_INTENSITY;
-    const int bg_bitOffset = _get_bit_offset(background_mask);
-    const int fg_bitOffset = _get_bit_offset(foreground_mask);
-
-    if (((new_color & background_mask) >> bg_bitOffset) ==
-        ((new_color & foreground_mask) >> fg_bitOffset))
-    {
-        new_color ^= FOREGROUND_INTENSITY;  // invert intensity
-    }
-    return new_color;
-}
-
-#else
-
-typedef struct color_printf_ctx
-{
-    int terminal_color_support;
-}color_printf_ctx_t;
-
-static color_printf_ctx_t g_color_printf = {
-    0,
-};
-
-static void _initlize_color_unix(void)
-{
-    static const char* support_color_term_list[] = {
-        "xterm",
-        "xterm-color",
-        "xterm-256color",
-        "screen",
-        "screen-256color",
-        "tmux",
-        "tmux-256color",
-        "rxvt-unicode",
-        "rxvt-unicode-256color",
-        "linux",
-        "cygwin",
-    };
-
-    /* On non-Windows platforms, we rely on the TERM variable. */
-    const char* term = getenv("TERM");
-    if (term == NULL)
-    {
-        return;
-    }
-
-    size_t i;
-    for (i = 0; i < ARRAY_SIZE(support_color_term_list); i++)
-    {
-        if (strcmp(term, support_color_term_list[i]) == 0)
-        {
-            g_color_printf.terminal_color_support = 1;
-            break;
-        }
-    }
-}
-
-static const char* _get_ansi_color_code_fg(cutest_print_color_t color)
-{
-    switch (color)
-    {
-    case CUTEST_PRINT_COLOR_RED:
-        return "31";
-    case CUTEST_PRINT_COLOR_GREEN:
-        return "32";
-    case CUTEST_PRINT_COLOR_YELLOW:
-        return "33";
-    default:
-        break;
-    }
-
-    return NULL;
-}
-
-#endif
-
-static int _should_use_color(int is_tty)
-{
-#if defined(_WIN32)
-    /**
-     * On Windows the TERM variable is usually not set, but the console there
-     * does support colors.
-     */
-    return is_tty;
-#else
-    static pthread_once_t once_control = PTHREAD_ONCE_INIT;
-    pthread_once(&once_control, _initlize_color_unix);
-
-    return is_tty && g_color_printf.terminal_color_support;
-#endif
 }
 
 static int _print_encoded(FILE* stream, const char* str)
@@ -2674,62 +2696,8 @@ int cutest_printf(const char* fmt, ...)
     va_list ap;
 
     va_start(ap, fmt);
-    ret = cutest_color_vfprintf(CUTEST_PRINT_COLOR_DEFAULT, _get_logfile(),
-        fmt, ap);
+    ret = cutest_color_vfprintf(CUTEST_PRINT_COLOR_DEFAULT, _get_logfile(), fmt, ap);
     va_end(ap);
-
-    return ret;
-}
-
-int cutest_color_fprintf(cutest_print_color_t color, FILE* stream, const char* fmt, ...)
-{
-    int ret;
-    va_list ap;
-
-    va_start(ap, fmt);
-    ret = cutest_color_vfprintf(color, stream, fmt, ap);
-    va_end(ap);
-
-    return ret;
-}
-
-int cutest_color_vfprintf(cutest_print_color_t color, FILE* stream, const char* fmt, va_list ap)
-{
-    assert(stream != NULL);
-
-    int stream_fd = fileno(stream);
-    if (!_should_use_color(isatty(stream_fd)) || (color == CUTEST_PRINT_COLOR_DEFAULT))
-    {
-        return vfprintf(stream, fmt, ap);
-    }
-
-    int ret;
-#if defined(_WIN32)
-    const HANDLE stdout_handle = (HANDLE)_get_osfhandle(stream_fd);
-
-    // Gets the current text color.
-    CONSOLE_SCREEN_BUFFER_INFO buffer_info;
-    GetConsoleScreenBufferInfo(stdout_handle, &buffer_info);
-    const WORD old_color_attrs = buffer_info.wAttributes;
-    const WORD new_color = _get_new_color(color, old_color_attrs);
-
-    // We need to flush the stream buffers into the console before each
-    // SetConsoleTextAttribute call lest it affect the text that is already
-    // printed but has not yet reached the console.
-    fflush(stream);
-    SetConsoleTextAttribute(stdout_handle, new_color);
-
-    ret = vfprintf(stream, fmt, ap);
-
-    fflush(stream);
-    // Restores the text color.
-    SetConsoleTextAttribute(stdout_handle, old_color_attrs);
-#else
-    fprintf(stream, "\033[0;%sm", _get_ansi_color_code_fg(color));
-    ret = vfprintf(stream, fmt, ap);
-    fprintf(stream, "\033[m");  // Resets the terminal to default.
-    fflush(stream);
-#endif
 
     return ret;
 }
