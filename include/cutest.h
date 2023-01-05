@@ -40,7 +40,7 @@
 /**
  * @brief Development version.
  */
-#define CUTEST_VERSION_PREREL       10
+#define CUTEST_VERSION_PREREL       11
 
 #ifdef __cplusplus
 extern "C" {
@@ -116,7 +116,7 @@ extern "C" {
         static TYPE s_parameterized_userdata[] = { __VA_ARGS__ };\
         static cutest_case_node_t s_nodes[TEST_ARG_COUNT(__VA_ARGS__)];\
         static cutest_parameterized_info_t s_parameterized_info = {\
-            #TYPE, #__VA_ARGS__,\
+            #TYPE, TEST_STRINGIFY(__VA_ARGS__),\
             sizeof(s_parameterized_userdata) / sizeof(s_parameterized_userdata[0]),\
             (void*)s_parameterized_userdata,\
             s_nodes, sizeof(s_nodes) / sizeof(s_nodes[0]),\
@@ -1082,15 +1082,8 @@ int cutest_timestamp_dif(const cutest_timestamp_t* t1, const cutest_timestamp_t*
 #   define TEST_INTERNAL_GET_ARG_COUNT_PRIVATE(_0, _1_, _2_, _3_, _4_, _5_, _6_, _7_, _8_, _9_, _10_, _11_, _12_, _13_, _14_, _15_, _16_, count, ...) count
 #endif
 
-#define TEST_STRINGIFY_ARG(...)     TEST_JOIN(TEST_STRINGIFY_, TEST_ARG_COUNT(__VA_ARGS__))(__VA_ARGS__)
-#define TEST_STRINGIFY_1(x)         #x
-#define TEST_STRINGIFY_2(x, ...)    #x, TEST_STRINGIFY_1(__VA_ARGS__)
-#define TEST_STRINGIFY_3(x, ...)    #x, TEST_STRINGIFY_2(__VA_ARGS__)
-#define TEST_STRINGIFY_4(x, ...)    #x, TEST_STRINGIFY_3(__VA_ARGS__)
-#define TEST_STRINGIFY_5(x, ...)    #x, TEST_STRINGIFY_4(__VA_ARGS__)
-#define TEST_STRINGIFY_6(x, ...)    #x, TEST_STRINGIFY_5(__VA_ARGS__)
-#define TEST_STRINGIFY_7(x, ...)    #x, TEST_STRINGIFY_6(__VA_ARGS__)
-#define TEST_STRINGIFY_8(x, ...)    #x, TEST_STRINGIFY_7(__VA_ARGS__)
+#define TEST_STRINGIFY(...)     TEST_STRINGIFY_2(__VA_ARGS__)
+#define TEST_STRINGIFY_2(...)   #__VA_ARGS__
 
 #define TEST_EXPAND(x)      x
 #define TEST_JOIN(a, b)     TEST_JOIN2(a, b)

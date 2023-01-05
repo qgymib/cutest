@@ -2128,18 +2128,149 @@ static void _test_setup_arg_pattern(char* user_pattern)
     g_test_ctx.filter.pattern = _test_str(user_pattern);
 }
 
+/**
+ * @return The length of whole string, including double quotation marks.
+ */
+static size_t _test_parameterized_parser_peek_string(const char* str)
+{
+    assert(str[0] == '"');
+
+    size_t pos = 1;
+    int flag_escape = 0;
+
+    /* Find valid double quotation marks. */
+    for (; str[pos] != 0; pos++)
+    {
+        char c = str[pos];
+        if (flag_escape)
+        {
+            flag_escape = 0;
+            continue;
+        }
+
+        switch (c)
+        {
+        case '\\':
+            flag_escape = 1;
+            break;
+
+        case '"':
+            return pos + 1;
+        }
+    }
+
+    abort();
+}
+
+static size_t _test_parameterized_parser_peek_struct(const char* str)
+{
+    assert(str[0] == '{');
+
+    size_t pos = 1;
+    size_t left_bracket = 1;
+
+    for (; str[pos] != '\0'; pos++)
+    {
+        char c = str[pos];
+        switch (c)
+        {
+        case '"':
+            pos += _test_parameterized_parser_peek_string(str + pos) - 1;
+            break;
+
+        case '{':
+            left_bracket++;
+            break;
+
+        case '}':
+            left_bracket--;
+            if (left_bracket == 0)
+            {
+                return pos + 1;
+            }
+
+        default:
+            break;
+        }
+    }
+
+    abort();
+}
+
+/**
+ * @brief Parser static initialize code into sequence of tokens.
+ * @param[in] code  Initialize code.
+ * @param[in] idx   Index of element we want.
+ * @param[out] len  The length of element code in bytes.
+ * @return          The position of element code.
+ */
+static const char* _test_parameterized_parser(const char* code, size_t idx, int* len)
+{
+    const char* str = code;
+    size_t pos = 0;
+
+    for (; code[pos] != '\0'; pos++)
+    {
+        char c = code[pos];
+        switch (c)
+        {
+        case '"':
+            pos += _test_parameterized_parser_peek_string(code + pos) - 1;
+            break;
+
+        case ' ':
+            break;
+
+        case '{':
+            pos += _test_parameterized_parser_peek_struct(code + pos) - 1;
+            break;
+
+        case ',':
+            if (idx == 0)
+            {
+                goto finish;
+            }
+            else
+            {
+                idx--;
+                str = code + pos + 1;
+                while (*str == ' ')
+                {
+                    str++;
+                }
+            }
+            break;
+
+        default:
+            break;
+        }
+    }
+
+finish:
+    *len = (int)(code + pos - str);
+    return str;
+}
+
 static void _test_list_tests_print_name(const cutest_case_node_t* node)
 {
     cutest_case_t* test_case = node->test_case;
+    const char* case_name = test_case->info.case_name;
+
     if (test_case->get_parameterized_info == NULL)
     {
-        _cutest_color_printf(CUTEST_PRINT_COLOR_DEFAULT, "  %s\n", test_case->info.case_name);
+        _cutest_color_printf(CUTEST_PRINT_COLOR_DEFAULT, "  %s\n", case_name);
         return;
     }
 
     cutest_parameterized_info_t* parameterized_info = test_case->get_parameterized_info();
-    _cutest_color_printf(CUTEST_PRINT_COLOR_DEFAULT, "  %s/%u  # <%s> %s\n",
-        test_case->info.case_name, parameterized_info->test_data_sz, parameterized_info->type_name, parameterized_info->test_data_info);
+    const char* type_name = parameterized_info->type_name;
+    size_t parameterized_idx = node->parameterized_idx;
+
+    int len = 0;;
+    const char* str = _test_parameterized_parser(parameterized_info->test_data_info, parameterized_idx, &len);
+
+    _cutest_color_printf(CUTEST_PRINT_COLOR_DEFAULT, "  %s/%u  # <%s> %.*s\n",
+        case_name, (unsigned)parameterized_idx, type_name, len, str);
 }
 
 static void _test_list_tests(void)
