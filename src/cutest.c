@@ -1478,11 +1478,9 @@ typedef struct test_ctx
 
     struct
     {
-        FILE*               f_out;                          /**< Output file */
-        int                 need_close;                     /**< Need close */
-    } io;
+        jmp_buf             buf;                            /**< Jump buffer */
+    } jmp;
 
-    jmp_buf                 jmpbuf;                         /**< Jump buffer */
     const cutest_hook_t*    hook;
 }test_ctx_t;
 
@@ -1556,8 +1554,6 @@ static const char* s_test_help_encoded =
 "Test Output:\n"
 "  " COLOR_GREEN("--test_print_time=") COLOR_YELLO("(") COLOR_GREEN("0") COLOR_YELLO("|") COLOR_GREEN("1") COLOR_YELLO(")") "\n"
 "      Don't print the elapsed time of each test.\n"
-"  " COLOR_GREEN("--test_logfile=") COLOR_YELLO("[PATH]") "\n"
-"      Redirect console output to file. The file will be truncate to zero first.\n"
 "\n"
 "Assertion Behavior:\n"
 "  " COLOR_GREEN("--test_break_on_failure") "\n"
@@ -1730,7 +1726,7 @@ static int _test_fixture_run_setup(test_case_info_t* info)
         return 0;
     }
 
-    if ((ret = setjmp(g_test_ctx.jmpbuf)) != 0)
+    if ((ret = setjmp(g_test_ctx.jmp.buf)) != 0)
     {
         SET_MASK(info->test_case_node->mask, ret);
         goto after_setup;
@@ -1813,7 +1809,7 @@ static void _test_fixture_run_teardown(test_case_info_t* info)
         return;
     }
 
-    if ((ret = setjmp(g_test_ctx.jmpbuf)) != 0)
+    if ((ret = setjmp(g_test_ctx.jmp.buf)) != 0)
     {
         SET_MASK(info->test_case_node->mask, ret);
         goto after_teardown;
@@ -1828,7 +1824,7 @@ after_teardown:
 
 static FILE* _get_logfile(void)
 {
-    return g_test_ctx.io.f_out != NULL ? g_test_ctx.io.f_out : stdout;
+    return (g_test_ctx.hook != NULL && g_test_ctx.hook->out != NULL) ? g_test_ctx.hook->out : stdout;
 }
 
 static int _cutest_color_printf(cutest_print_color_t color, const char* fmt, ...)
@@ -1878,7 +1874,7 @@ static void _test_finishlize(test_case_info_t* info)
 static int _test_run_case_normal_body(test_case_info_t* info)
 {
     int ret = 0;
-    if ((ret = setjmp(g_test_ctx.jmpbuf)) != 0)
+    if ((ret = setjmp(g_test_ctx.jmp.buf)) != 0)
     {
         SET_MASK(info->test_case_node->mask, ret);
         goto after_body;
@@ -1958,7 +1954,7 @@ static void _test_run_case_parameterized_body(test_case_info_t* info,
     _test_hook_before_test(info);
 
     int ret = 0;
-    if ((ret = setjmp(g_test_ctx.jmpbuf)) != 0)
+    if ((ret = setjmp(g_test_ctx.jmp.buf)) != 0)
     {
         SET_MASK(info->test_case_node->mask, ret);
         goto after_body;
@@ -2370,42 +2366,6 @@ static void cutest_setup_once(void)
     test_once(&token, _test_setup_precision);
 }
 
-static void _test_close_logfile(void)
-{
-    if (g_test_ctx.io.need_close)
-    {
-        fclose(g_test_ctx.io.f_out);
-    }
-    g_test_ctx.io.f_out = NULL;
-    g_test_ctx.io.need_close = 0;
-}
-
-#if !defined(_WIN32)
-static int fopen_s(FILE** pFile, const char* filename, const char* mode)
-{
-    if ((*pFile = fopen(filename, mode)) == NULL)
-    {
-        return errno;
-    }
-    return 0;
-}
-#endif
-
-static int _test_setup_arg_logfile(const char* path)
-{
-    _test_close_logfile();
-
-    int errcode = fopen_s(&g_test_ctx.io.f_out, path, "w");
-    if (errcode != 0)
-    {
-        PERR(errcode, "open file `%s` failed", path);
-        return -1;
-    }
-
-    g_test_ctx.io.need_close = 1;
-    return 0;
-}
-
 static void _test_prepare(void)
 {
     _test_srand(time(NULL));
@@ -2428,6 +2388,7 @@ static int _test_setup(int argc, char* argv[], const cutest_hook_t* hook, int* b
     memset(&g_test_ctx, 0, sizeof(g_test_ctx));
     cutest_setup_once();
     _test_prepare();
+    g_test_ctx.hook = hook;
 
     enum test_opt
     {
@@ -2439,7 +2400,6 @@ static int _test_setup(int argc, char* argv[], const cutest_hook_t* hook, int* b
         test_random_seed,
         test_print_time,
         test_break_on_failure,
-        test_logfile,
         help,
     };
 
@@ -2452,7 +2412,6 @@ static int _test_setup(int argc, char* argv[], const cutest_hook_t* hook, int* b
         { "test_random_seed",               test_random_seed,               CUTEST_OPTPARSE_REQUIRED },
         { "test_print_time",                test_print_time,                CUTEST_OPTPARSE_REQUIRED },
         { "test_break_on_failure",          test_break_on_failure,          CUTEST_OPTPARSE_NONE },
-        { "test_logfile",                   test_logfile,                   CUTEST_OPTPARSE_REQUIRED },
         { "help",                           help,                           CUTEST_OPTPARSE_NONE },
         { 0,                                0,                              0 },
     };
@@ -2487,9 +2446,6 @@ static int _test_setup(int argc, char* argv[], const cutest_hook_t* hook, int* b
         case test_break_on_failure:
             g_test_ctx.mask.break_on_failure = 1;
             break;
-        case test_logfile:
-            _test_setup_arg_logfile(options.optarg);
-            break;
         case help:
             _print_encoded(_get_logfile(), s_test_help_encoded);
             *b_exit = 1;
@@ -2504,7 +2460,6 @@ static int _test_setup(int argc, char* argv[], const cutest_hook_t* hook, int* b
     {
         _test_shuffle_cases();
     }
-    g_test_ctx.hook = hook;
 
     return 0;
 }
@@ -2612,7 +2567,6 @@ static void _test_cleanup(void)
     memset(&g_test_ctx.mask, 0, sizeof(g_test_ctx.mask));
     memset(&g_test_ctx.filter, 0, sizeof(g_test_ctx.filter));
 
-    _test_close_logfile();
     g_test_ctx.hook = NULL;
 }
 
@@ -2794,7 +2748,7 @@ void cutest_internal_assert_failure(void)
     }
     else
     {
-        longjmp(g_test_ctx.jmpbuf, MASK_FAILURE);
+        longjmp(g_test_ctx.jmp.buf, MASK_FAILURE);
     }
 }
 

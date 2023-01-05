@@ -40,7 +40,7 @@
 /**
  * @brief Development version.
  */
-#define CUTEST_VERSION_PREREL       11
+#define CUTEST_VERSION_PREREL       12
 
 #ifdef __cplusplus
 extern "C" {
@@ -845,6 +845,8 @@ extern "C" {
  */
 typedef struct cutest_hook
 {
+    FILE*   out;    /**< Where the output should be written. */
+
     /**
      * @brief Hook before run all tests
      * @param[in] argc  The number of arguments

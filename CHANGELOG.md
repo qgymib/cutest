@@ -8,6 +8,7 @@
 3. Able to shuffle parameterized tests
 4. Get time stamp is now thread-safe
 5. Print parameterized test parameter in `--test_list_tests`
+6. Allow to redirect output to file in hook
 
 ### BREAKING CHANGES
 1. Remove custom log
