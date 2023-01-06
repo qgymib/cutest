@@ -2008,9 +2008,9 @@ static void _test_run_case_parameterized(cutest_case_node_t* node)
 }
 
 /**
-* run test case.
-* the target case was set to `g_test_ctx.runtime.cur_case`
-*/
+ * run test case.
+ * the target case was set to `g_test_ctx.runtime.cur_case`
+ */
 static void _test_run_case(cutest_case_node_t* node)
 {
     node->mask = 0;

@@ -4,9 +4,14 @@ set(test_case_list
     arg_count
     empty
     filter
+    list_parameterized_as_int
+    list_parameterized_as_string
+    list_parameterized_as_struct
     simple)
 
-add_library(test_runtime src/test.c)
+add_library(test_runtime
+    src/string_matrix.c
+    src/test.c)
 target_include_directories(${PROJECT_NAME}
     PUBLIC
         $<INSTALL_INTERFACE:include>
