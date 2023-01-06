@@ -14,6 +14,7 @@
 1. Remove custom log
 2. Unified test hook
 3. Hide colorful print functions
+4. Always assert regardless whether `--test_break_on_failure` is set
 
 ### Fixed
 1. Fix: pattern not working on parameterized tests
