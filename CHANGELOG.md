@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.0.4
+
+### Features
+1. Avoid global name conflict
+
+
 ## v1.0.3 (2023/01/07)
 
 ### Features

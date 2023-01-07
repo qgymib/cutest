@@ -35,12 +35,12 @@
 /**
  * @brief Patch version.
  */
-#define CUTEST_VERSION_PATCH        3
+#define CUTEST_VERSION_PATCH        4
 
 /**
  * @brief Development version.
  */
-#define CUTEST_VERSION_PREREL       0
+#define CUTEST_VERSION_PREREL       1
 
 #ifdef __cplusplus
 extern "C" {
@@ -74,14 +74,14 @@ extern "C" {
  * @param [in] fixture  The name of fixture
  */
 #define TEST_FIXTURE_SETUP(fixture)    \
-    static void TEST_FIXTURE_SETUP_##fixture(void)
+    static void s_cutest_fixture_setup_##fixture(void)
 
 /**
  * @brief TearDown test suit
  * @param [in] fixture  The name of fixture
  */
 #define TEST_FIXTURE_TEAREDOWN(fixture)    \
-    static void TEST_FIXTURE_TEARDOWN_##fixture(void)
+    static void s_cutest_fixture_teardown_##fixture(void)
 
 /**
  * Group: SetupAndTeardown
@@ -112,7 +112,7 @@ extern "C" {
  * @param [in] ...              Data values
  */
 #define TEST_PARAMETERIZED_DEFINE(fixture, test, TYPE, ...)  \
-    static cutest_parameterized_info_t* s_test_parameterized_##fixture##_##test(void){\
+    static cutest_parameterized_info_t* s_cutest_parameterized_##fixture##_##test(void){\
         static TYPE s_parameterized_userdata[] = { __VA_ARGS__ };\
         static cutest_case_node_t s_nodes[TEST_ARG_COUNT(__VA_ARGS__)];\
         static cutest_parameterized_info_t s_parameterized_info = {\
@@ -123,7 +123,7 @@ extern "C" {
         };\
         return &s_parameterized_info;\
     }\
-    typedef TYPE _parameterized_type_##fixture##_##test\
+    typedef TYPE u_cutest_parameterized_type_##fixture##_##test\
 
 /**
  * @brief Suppress unused parameter warning if #TEST_GET_PARAM() is not used.
@@ -154,7 +154,7 @@ extern "C" {
  * @snippet test_p.c
  */
 #define TEST_P(fixture, test) \
-    void TEST_BODY_##fixture##_##test(_parameterized_type_##fixture##_##test*, size_t);\
+    void u_cutest_body_##fixture##_##test(u_cutest_parameterized_type_##fixture##_##test*, size_t);\
     TEST_INITIALIZER(TEST_INIT_##fixture##_##test) {\
         static cutest_case_t _case_##fixture##_##test = {\
             {\
@@ -162,17 +162,17 @@ extern "C" {
                 #test,\
             }, /* .info */\
             {\
-                TEST_FIXTURE_SETUP_##fixture,\
-                TEST_FIXTURE_TEARDOWN_##fixture,\
-                (void(*)(void*, size_t))TEST_BODY_##fixture##_##test,\
+                s_cutest_fixture_setup_##fixture,\
+                s_cutest_fixture_teardown_##fixture,\
+                (void(*)(void*, size_t))u_cutest_body_##fixture##_##test,\
             }, /* stage */\
-            s_test_parameterized_##fixture##_##test, /* parameterized */\
+            s_cutest_parameterized_##fixture##_##test, /* parameterized */\
         };\
-        cutest_parameterized_info_t* info = s_test_parameterized_##fixture##_##test();\
+        cutest_parameterized_info_t* info = s_cutest_parameterized_##fixture##_##test();\
         cutest_register_case(&_case_##fixture##_##test, info->nodes, info->node_sz);\
     }\
-    void TEST_BODY_##fixture##_##test(\
-        _parameterized_type_##fixture##_##test* _test_parameterized_data,\
+    void u_cutest_body_##fixture##_##test(\
+        u_cutest_parameterized_type_##fixture##_##test* _test_parameterized_data,\
         size_t _test_parameterized_idx)
 
 /**
@@ -181,11 +181,11 @@ extern "C" {
  * @param [in] test     The name of test case
  */
 #define TEST_F(fixture, test) \
-    void TEST_BODY_##fixture##_##test(void);\
-    static void TEST_PROXY_##fixture##_##test(void* _test_parameterized_data,\
+    void u_cutest_body_##fixture##_##test(void);\
+    static void s_cutest_proxy_##fixture##_##test(void* _test_parameterized_data,\
         size_t _test_parameterized_idx) {\
         TEST_PARAMETERIZED_SUPPRESS_UNUSED;\
-        TEST_BODY_##fixture##_##test();\
+        u_cutest_body_##fixture##_##test();\
     }\
     TEST_INITIALIZER(TEST_INIT_##fixture##_##test) {\
         static cutest_case_t _case_##fixture##_##test = {\
@@ -194,16 +194,16 @@ extern "C" {
                 #test,\
             }, /* .info */\
             {\
-                TEST_FIXTURE_SETUP_##fixture,\
-                TEST_FIXTURE_TEARDOWN_##fixture,\
-                TEST_PROXY_##fixture##_##test,\
+                s_cutest_fixture_setup_##fixture,\
+                s_cutest_fixture_teardown_##fixture,\
+                s_cutest_proxy_##fixture##_##test,\
             }, /* stage */\
             NULL, /* parameterized */\
         };\
         static cutest_case_node_t s_node;\
         cutest_register_case(&_case_##fixture##_##test, &s_node, 1);\
     }\
-    void TEST_BODY_##fixture##_##test(void)
+    void u_cutest_body_##fixture##_##test(void)
 
 /**
  * @brief Simple Test
@@ -211,11 +211,11 @@ extern "C" {
  * @param [in] test     case name
  */
 #define TEST(fixture, test)  \
-    void TEST_BODY_##fixture##_##test(void);\
-    static void TEST_PROXY_##fixture##_##test(void* _test_parameterized_data,\
+    void u_cutest_body_##fixture##_##test(void);\
+    static void s_cutest_proxy_##fixture##_##test(void* _test_parameterized_data,\
         size_t _test_parameterized_idx) {\
         TEST_PARAMETERIZED_SUPPRESS_UNUSED;\
-        TEST_BODY_##fixture##_##test();\
+        u_cutest_body_##fixture##_##test();\
     }\
     TEST_INITIALIZER(TEST_INIT_##fixture##_##test) {\
         static cutest_case_t _case_##fixture##_##test = {\
@@ -225,14 +225,14 @@ extern "C" {
             }, /* .info */\
             {\
                 NULL, NULL,\
-                TEST_PROXY_##fixture##_##test,\
+                s_cutest_proxy_##fixture##_##test,\
             }, /* stage */\
             NULL, /* parameterized */\
         };\
         static cutest_case_node_t s_node;\
         cutest_register_case(&_case_##fixture##_##test, &s_node, 1);\
     }\
-    void TEST_BODY_##fixture##_##test(void)
+    void u_cutest_body_##fixture##_##test(void)
 
 /**
  * Group: DefineTest
