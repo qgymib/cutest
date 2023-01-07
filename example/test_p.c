@@ -37,11 +37,11 @@ TEST_PARAMETERIZED_DEFINE(example, test_p_simple, int, 1, 2, 3);
  */
 TEST_P(example, test_p_simple)
 {
-	/* We can get parameterized data by `TEST_GET_PARAM()`. */
-	int data = TEST_GET_PARAM();
+    /* We can get parameterized data by `TEST_GET_PARAM()`. */
+    int data = TEST_GET_PARAM();
 
-	/* You will always get the same result from `TEST_GET_PARAM()` */
-	ASSERT_EQ_D32(data, TEST_GET_PARAM());
+    /* You will always get the same result from `TEST_GET_PARAM()` */
+    ASSERT_EQ_D32(data, TEST_GET_PARAM());
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -50,9 +50,9 @@ TEST_P(example, test_p_simple)
 
 typedef struct test_p_2_data
 {
-	int	a;
-	int b;
-	int	c;
+    int a;
+    int b;
+    int c;
 } test_p_2_data_t;
 
 //! [ADD_COMPLEX_PARAMETERIZED_DEFINE]
@@ -68,14 +68,14 @@ TEST_PARAMETERIZED_DEFINE(example, test_p_structure, test_p_2_data_t, { 1, 2, 3 
 //! [GET_PARAMETERIZED_DATA]
 TEST_P(example, test_p_structure)
 {
-	/*
-	 * The `TEST_GET_PARAM()` is strong typed, it returns the same type as you
-	 * define.
-	 */
-	test_p_2_data_t data = TEST_GET_PARAM();
+    /*
+     * The `TEST_GET_PARAM()` is strong typed, it returns the same type as you
+     * define.
+     */
+    test_p_2_data_t data = TEST_GET_PARAM();
 
-	/* Let's do summation for test data. */
-	ASSERT_EQ_D32(data.a + data.b, data.c);
+    /* Let's do summation for test data. */
+    ASSERT_EQ_D32(data.a + data.b, data.c);
 }
 //! [GET_PARAMETERIZED_DATA]
 
@@ -95,10 +95,10 @@ TEST_PARAMETERIZED_DEFINE(example, test_p_repeat, int, 0, 0, 0);
 //! [SUPPRESS_UNUSED_PARAMETERIZED_DATA]
 TEST_P(example, test_p_repeat)
 {
-	/*
-	 * We don't call `TEST_GET_PARAM()`, so there might be some warnings during
-	 * code compile. Use `TEST_PARAMETERIZED_SUPPRESS_UNUSED` to suppress it.
-	 */
-	TEST_PARAMETERIZED_SUPPRESS_UNUSED;
+    /*
+     * We don't call `TEST_GET_PARAM()`, so there might be some warnings during
+     * code compile. Use `TEST_PARAMETERIZED_SUPPRESS_UNUSED` to suppress it.
+     */
+    TEST_PARAMETERIZED_SUPPRESS_UNUSED;
 }
 //! [SUPPRESS_UNUSED_PARAMETERIZED_DATA]
