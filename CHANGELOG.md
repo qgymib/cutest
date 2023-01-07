@@ -1,6 +1,6 @@
 # Changelog
 
-## v1.0.3
+## v1.0.3 (2023/01/07)
 
 ### Features
 1. Avoid memory allocation when print help
