@@ -22,6 +22,10 @@
 #include <stdio.h>
 #include <stdarg.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @brief Major version.
  */
@@ -46,10 +50,6 @@
 #define TEST_C_API  extern "C"
 #else
 #define TEST_C_API
-#endif
-
-#ifdef __cplusplus
-extern "C" {
 #endif
 
 /************************************************************************/
