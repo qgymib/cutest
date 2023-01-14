@@ -40,7 +40,13 @@
 /**
  * @brief Development version.
  */
-#define CUTEST_VERSION_PREREL       2
+#define CUTEST_VERSION_PREREL       3
+
+#if defined(__cplusplus)
+#define TEST_C_API  extern "C"
+#else
+#define TEST_C_API
+#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -74,14 +80,14 @@ extern "C" {
  * @param [in] fixture  The name of fixture
  */
 #define TEST_FIXTURE_SETUP(fixture)    \
-    static void s_cutest_fixture_setup_##fixture(void)
+    TEST_C_API static void s_cutest_fixture_setup_##fixture(void)
 
 /**
  * @brief TearDown test suit
  * @param [in] fixture  The name of fixture
  */
 #define TEST_FIXTURE_TEAREDOWN(fixture)    \
-    static void s_cutest_fixture_teardown_##fixture(void)
+    TEST_C_API static void s_cutest_fixture_teardown_##fixture(void)
 
 /**
  * Group: SetupAndTeardown
@@ -112,7 +118,7 @@ extern "C" {
  * @param [in] ...              Data values
  */
 #define TEST_PARAMETERIZED_DEFINE(fixture, test, TYPE, ...)  \
-    static cutest_parameterized_info_t* s_cutest_parameterized_##fixture##_##test(void){\
+    TEST_C_API static cutest_parameterized_info_t* s_cutest_parameterized_##fixture##_##test(void){\
         static TYPE s_parameterized_userdata[] = { __VA_ARGS__ };\
         static cutest_case_node_t s_nodes[TEST_ARG_COUNT(__VA_ARGS__)];\
         static cutest_parameterized_info_t s_parameterized_info = {\
@@ -154,7 +160,8 @@ extern "C" {
  * @snippet test_p.c
  */
 #define TEST_P(fixture, test) \
-    void u_cutest_body_##fixture##_##test(u_cutest_parameterized_type_##fixture##_##test*, size_t);\
+    TEST_C_API void u_cutest_body_##fixture##_##test(\
+        u_cutest_parameterized_type_##fixture##_##test*, size_t);\
     TEST_INITIALIZER(TEST_INIT_##fixture##_##test) {\
         static cutest_case_t _case_##fixture##_##test = {\
             {\
@@ -171,7 +178,7 @@ extern "C" {
         cutest_parameterized_info_t* info = s_cutest_parameterized_##fixture##_##test();\
         cutest_register_case(&_case_##fixture##_##test, info->nodes, info->node_sz);\
     }\
-    void u_cutest_body_##fixture##_##test(\
+    TEST_C_API void u_cutest_body_##fixture##_##test(\
         u_cutest_parameterized_type_##fixture##_##test* _test_parameterized_data,\
         size_t _test_parameterized_idx)
 
@@ -181,8 +188,8 @@ extern "C" {
  * @param [in] test     The name of test case
  */
 #define TEST_F(fixture, test) \
-    void u_cutest_body_##fixture##_##test(void);\
-    static void s_cutest_proxy_##fixture##_##test(void* _test_parameterized_data,\
+    TEST_C_API void u_cutest_body_##fixture##_##test(void);\
+    TEST_C_API static void s_cutest_proxy_##fixture##_##test(void* _test_parameterized_data,\
         size_t _test_parameterized_idx) {\
         TEST_PARAMETERIZED_SUPPRESS_UNUSED;\
         u_cutest_body_##fixture##_##test();\
@@ -203,7 +210,7 @@ extern "C" {
         static cutest_case_node_t s_node;\
         cutest_register_case(&_case_##fixture##_##test, &s_node, 1);\
     }\
-    void u_cutest_body_##fixture##_##test(void)
+    TEST_C_API void u_cutest_body_##fixture##_##test(void)
 
 /**
  * @brief Simple Test
@@ -211,8 +218,8 @@ extern "C" {
  * @param [in] test     case name
  */
 #define TEST(fixture, test)  \
-    void u_cutest_body_##fixture##_##test(void);\
-    static void s_cutest_proxy_##fixture##_##test(void* _test_parameterized_data,\
+    TEST_C_API void u_cutest_body_##fixture##_##test(void);\
+    TEST_C_API static void s_cutest_proxy_##fixture##_##test(void* _test_parameterized_data,\
         size_t _test_parameterized_idx) {\
         TEST_PARAMETERIZED_SUPPRESS_UNUSED;\
         u_cutest_body_##fixture##_##test();\
@@ -232,7 +239,7 @@ extern "C" {
         static cutest_case_node_t s_node;\
         cutest_register_case(&_case_##fixture##_##test, &s_node, 1);\
     }\
-    void u_cutest_body_##fixture##_##test(void)
+    TEST_C_API void u_cutest_body_##fixture##_##test(void)
 
 /**
  * Group: DefineTest
@@ -1098,16 +1105,16 @@ int cutest_timestamp_dif(const cutest_timestamp_t* t1, const cutest_timestamp_t*
  */
 #ifdef __cplusplus
 #   define TEST_INITIALIZER(f) \
-        void f(void); \
+        TEST_C_API void f(void); \
         struct f##_t_ { f##_t_(void) { f(); } }; f##_t_ f##_; \
-        void f(void)
+        TEST_C_API void f(void)
 #elif defined(_MSC_VER)
 #   pragma section(".CRT$XCU",read)
 #   define TEST_INITIALIZER2_(f,p) \
-        void f(void); \
+        TEST_C_API void f(void); \
         __declspec(allocate(".CRT$XCU")) void (*f##_)(void) = f; \
         __pragma(comment(linker,"/include:" p #f "_")) \
-        void f(void)
+        TEST_C_API void f(void)
 #   ifdef _WIN64
 #       define TEST_INITIALIZER(f) TEST_INITIALIZER2_(f,"")
 #   else
@@ -1115,8 +1122,8 @@ int cutest_timestamp_dif(const cutest_timestamp_t* t1, const cutest_timestamp_t*
 #   endif
 #elif defined(__GNUC__) || defined(__clang__) || defined(__llvm__)
 #   define TEST_INITIALIZER(f) \
-        void f(void) __attribute__((constructor)); \
-        void f(void)
+        TEST_C_API void f(void) __attribute__((constructor)); \
+        TEST_C_API void f(void)
 #else
 #   error "INITIALIZER not support on your compiler"
 #endif

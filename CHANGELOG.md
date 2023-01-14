@@ -4,6 +4,7 @@
 
 ### Features
 1. Avoid global name conflict
+2. Avoid namespace affect
 
 ### BREAKING CHANGES
 1. Hide unused function
