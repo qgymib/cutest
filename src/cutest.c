@@ -80,6 +80,32 @@
 #define RB_EMPTY_NODE(node)  \
     ((node)->__rb_parent_color == (cutest_map_node_t*)(node))
 
+/**
+ * @brief Compare function
+ * @param [in] key1     KEY1
+ * @param [in] key2     KEY2
+ * @param [in] arg      User defined argument
+ * @return              Compare result
+ */
+typedef int(*cutest_map_cmp_fn)(const cutest_map_node_t* key1,
+    const cutest_map_node_t* key2, void* arg);
+
+/**
+ * @brief Map handler
+ */
+typedef struct cunittest_map
+{
+    cutest_map_node_t*      rb_root;    /**< Root node */
+
+    struct
+    {
+        cutest_map_cmp_fn   cmp;        /**< Compare function */
+        void*               arg;        /**< User defined data for compare function */
+    }cmp;
+
+    size_t                  size;       /**< Data size */
+} cutest_map_t;
+
 static void _etest_map_link_node(cutest_map_node_t* node, cutest_map_node_t* parent, cutest_map_node_t** rb_link)
 {
     node->__rb_parent_color = parent;

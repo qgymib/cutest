@@ -40,7 +40,7 @@
 /**
  * @brief Development version.
  */
-#define CUTEST_VERSION_PREREL       1
+#define CUTEST_VERSION_PREREL       2
 
 #ifdef __cplusplus
 extern "C" {
@@ -1178,31 +1178,6 @@ typedef struct cutest_map_node
     struct cutest_map_node* rb_right;           /**< right child node */
     struct cutest_map_node* rb_left;            /**< left child node */
 }cutest_map_node_t;
-
-/**
- * @brief Compare function
- * @param [in] key1     KEY1
- * @param [in] key2     KEY2
- * @param [in] arg      User defined argument
- * @return              Compare result
- */
-typedef int(*cutest_map_cmp_fn)(const cutest_map_node_t* key1, const cutest_map_node_t* key2, void* arg);
-
-/**
- * @brief Map handler
- */
-typedef struct cunittest_map
-{
-    cutest_map_node_t*      rb_root;    /**< Root node */
-
-    struct
-    {
-        cutest_map_cmp_fn   cmp;        /**< Compare function */
-        void*               arg;        /**< User defined data for compare function */
-    }cmp;
-
-    size_t                  size;       /**< Data size */
-}cutest_map_t;
 
 typedef struct cutest_case_node cutest_case_node_t;
 

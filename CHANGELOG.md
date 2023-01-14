@@ -5,6 +5,9 @@
 ### Features
 1. Avoid global name conflict
 
+### BREAKING CHANGES
+1. Hide unused function
+
 
 ## v1.0.3 (2023/01/07)
 
