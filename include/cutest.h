@@ -839,13 +839,11 @@ extern "C" {
  * + Register type information by #TEST_REGISTER_TYPE()
  *
  *   ```c
- *   static int _on_cmp_foo(const void* addr1, const void* addr2) {
- *       foo_t* v1 = (foo_t*)addr1;
- *       foo_t* v2 = (foo_t*)addr1;
- *       return v1->a - v2->a;
+ *   static int _on_cmp_foo(const foo_t* addr1, const foo_t* addr2) {
+ *       return addr1->a - addr2->a;
  *   }
- *   static void _on_dump_foo(FILE* file, const void* addr) {
- *       return fprintf(file, "{ a:%d }", ((foo_t*)addr)->a);
+ *   static int _on_dump_foo(FILE* file, const foo_t* addr) {
+ *       return fprintf(file, "{ a:%d }", addr->a);
  *   }
  *   TEST_REGISTER_TYPE(foo_t, _on_cmp_foo, _on_dump_foo)
  *   ```
@@ -869,16 +867,20 @@ extern "C" {
 /**
  * @brief Declare and register custom type.
  * @param[in] TYPE  Data type.
- * @param[in] cmp   Compare function.
+ * @param[in] cmp   Compare function. It must have proto of `int (*)(const TYPE*, const TYPE*)`.
  * @param[in] dump  Dump function
  */
 #define TEST_REGISTER_TYPE(TYPE, cmp, dump)    \
     TEST_INITIALIZER(TEST_USER_TYPE_##TYPE) {\
+        /* Try our best to check function protocol. */\
+        int (*ckeck_type_cmp)(const TYPE*,const TYPE*) = cmp; (void)ckeck_type_cmp;\
+        int (*check_type_dump)(FILE*, const TYPE*) = dump; (void)check_type_dump;\
+        /* Register type information. */\
         static cutest_type_info_t info = {\
             { NULL, NULL, NULL },\
             #TYPE,\
-            cmp,\
-            dump,\
+            (cutest_custom_type_cmp_fn)cmp,\
+            (cutest_custom_type_dump_fn)dump,\
         };\
         cutest_register_type(&info);\
     }
@@ -891,29 +893,31 @@ typedef struct cutest_map_node
 } cutest_map_node_t;
 
 /**
+ * @brief Compare function for specific type.
+ * @param[in] addr1     Address of value1.
+ * @param[in] addr2     Address of value2.
+ * @return              0 if equal, <0 if value1 is less than value2, >0 if value1 is more than value2.
+ */
+typedef int (*cutest_custom_type_cmp_fn)(const void* addr1, const void* addr2);
+
+/**
+ * @brief Dump value.
+ * @param[in] file      The file to print.
+ * @param[in] addr      The address of value.
+ * @return              The number of characters printed.
+ */
+typedef int (*cutest_custom_type_dump_fn)(FILE* file, const void* addr);
+
+/**
  * @brief Custom type information.
  * @note It is for internal usage.
  */
 typedef struct cutest_type_info
 {
-    cutest_map_node_t   node;       /**< Map node. */
-    const char*         type_name;  /**< The name of type. */
-
-    /**
-     * @brief Compare function for specific type.
-     * @param[in] addr1     Address of value1.
-     * @param[in] addr2     Address of value2.
-     * @return              0 if equal, <0 if value1 is less than value2, >0 if value1 is more than value2.
-     */
-    int (*cmp)(const void* addr1, const void* addr2);
-
-    /**
-     * @brief Dump value.
-     * @param[in] file      The file to print.
-     * @param[in] addr      The address of value.
-     * @return              The number of characters printed.
-     */
-    int (*dump)(FILE* file, const void* addr);
+    cutest_map_node_t           node;       /**< Map node. */
+    const char*                 type_name;  /**< The name of type. */
+    cutest_custom_type_cmp_fn   cmp;        /**< Compare function. */
+    cutest_custom_type_dump_fn  dump;       /**< Dump function. */
 } cutest_type_info_t;
 
 /**

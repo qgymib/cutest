@@ -1454,20 +1454,21 @@ static int cutest_color_fprintf(cutest_print_color_t color, FILE* stream, const 
  * @param[in] fmt   Dump formatter.
  */
 #define TEST_GENERATE_NATIVE_COMPARE(TYPE, fmt)  \
-    static int _test_cmp_##TYPE(const void* addr1, const void* addr2) {\
-        TYPE v1 = ACCESS_AS(TYPE, addr1);\
-        TYPE v2 = ACCESS_AS(TYPE, addr2);\
+    static int _test_cmp_##TYPE(const TYPE* addr1, const TYPE* addr2) {\
+        TYPE v1 = *addr1;\
+        TYPE v2 = *addr2;\
         if (v1 == v2) {\
             return 0;\
         }\
         return v1 < v2 ? -1 : 1;\
     }\
-    static int _test_print_##TYPE(FILE* file, const void* addr) {\
-        TYPE v = ACCESS_AS(TYPE, addr);\
-        return fprintf(file, fmt, v);\
+    static int _test_print_##TYPE(FILE* file, const TYPE* addr) {\
+        return fprintf(file, fmt, *addr);\
     }\
     static cutest_type_info_t s_type_info_##TYPE = {\
-        { NULL, NULL, NULL }, #TYPE, _test_cmp_##TYPE, _test_print_##TYPE,\
+        { NULL, NULL, NULL }, #TYPE,\
+        (cutest_custom_type_cmp_fn)_test_cmp_##TYPE,\
+        (cutest_custom_type_dump_fn)_test_print_##TYPE,\
     }
 
 typedef union double_point
@@ -2494,21 +2495,23 @@ static cutest_type_info_t s_type_info_ptr = {
     { NULL, NULL, NULL }, "const void*", _test_cmp_ptr, _test_print_ptr,
 };
 
-static int _test_cmp_str(const void* addr1, const void* addr2)
+static int _test_cmp_str(const char** addr1, const char** addr2)
 {
-    const char* v1 = ACCESS_AS(const char*, addr1);
-    const char* v2 = ACCESS_AS(const char*, addr2);
+    const char* v1 = *addr1;
+    const char* v2 = *addr2;
     return strcmp(v1, v2);
 }
 
-static int _test_print_str(FILE* file, const void* addr)
+static int _test_print_str(FILE* file, const char** addr)
 {
-    const char* v = ACCESS_AS(const char*, addr);
+    const char* v = *addr;
     return fprintf(file, "%s", v);
 }
 
 static cutest_type_info_t s_type_info_str = {
-    { NULL, NULL, NULL }, "const char*", _test_cmp_str, _test_print_str,
+    { NULL, NULL, NULL }, "const char*",
+    (cutest_custom_type_cmp_fn)_test_cmp_str,
+    (cutest_custom_type_dump_fn)_test_print_str,
 };
 
 static uint32_t _test_float_point_sign_and_magnitude_to_biased(const uint32_t sam)
@@ -2561,10 +2564,10 @@ static int cutest_internal_assert_helper_float_eq(float a, float b)
         <= g_test_nature.precision.kMaxUlps;
 }
 
-static int _test_cmp_float(const void* addr1, const void* addr2)
+static int _test_cmp_float(const float* addr1, const float* addr2)
 {
-    float v1 = ACCESS_AS(float, addr1);
-    float v2 = ACCESS_AS(float, addr2);
+    float v1 = *addr1;
+    float v2 = *addr2;
 
     if (cutest_internal_assert_helper_float_eq(v1, v2))
     {
@@ -2573,14 +2576,15 @@ static int _test_cmp_float(const void* addr1, const void* addr2)
     return v1 < v2 ? -1 : 1;
 }
 
-static int _test_print_float(FILE* file, const void* addr)
+static int _test_dump_float(FILE* file, const float* addr)
 {
-    float v = ACCESS_AS(float, addr);
-    return fprintf(file, "%f", v);
+    return fprintf(file, "%f", *addr);
 }
 
 static cutest_type_info_t s_type_info_float = {
-    { NULL, NULL, NULL }, "float", _test_cmp_float, _test_print_float,
+    { NULL, NULL, NULL }, "float",
+    (cutest_custom_type_cmp_fn)_test_cmp_float,
+    (cutest_custom_type_dump_fn)_test_dump_float,
 };
 
 static uint64_t _test_double_point_exponent_bits(const double_point_t* p)
@@ -2633,10 +2637,10 @@ static int cutest_internal_assert_helper_double_eq(double a, double b)
         <= g_test_nature.precision.kMaxUlps;
 }
 
-static int _test_cmp_double(const void* addr1, const void* addr2)
+static int _test_cmp_double(const double* addr1, const double* addr2)
 {
-    double v1 = ACCESS_AS(double, addr1);
-    double v2 = ACCESS_AS(double, addr2);
+    double v1 = *addr1;
+    double v2 = *addr2;
 
     if (cutest_internal_assert_helper_double_eq(v1, v2))
     {
@@ -2645,14 +2649,15 @@ static int _test_cmp_double(const void* addr1, const void* addr2)
     return v1 < v2 ? -1 : 1;
 }
 
-static int _test_print_double(FILE* file, const void* addr)
+static int _test_dump_double(FILE* file, const double* addr)
 {
-    double v = ACCESS_AS(double, addr);
-    return fprintf(file, "%f", v);
+    return fprintf(file, "%f", *addr);
 }
 
 static cutest_type_info_t s_type_info_double = {
-    { NULL, NULL, NULL }, "double", _test_cmp_double, _test_print_double,
+    { NULL, NULL, NULL }, "double",
+    (cutest_custom_type_cmp_fn)_test_cmp_double,
+    (cutest_custom_type_dump_fn)_test_dump_double,
 };
 
 static void _test_setup_type(void)

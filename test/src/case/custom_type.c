@@ -9,17 +9,14 @@ typedef struct custom_type_s
 	int a;
 } custom_type_t;
 
-static int _on_cmp_custom(const void* addr1, const void* addr2)
+static int _on_cmp_custom(const custom_type_t* addr1, const custom_type_t* addr2)
 {
-	custom_type_t* v1 = (custom_type_t*)addr1;
-	custom_type_t* v2 = (custom_type_t*)addr2;
-	return v1->a - v2->a;
+	return addr1->a - addr2->a;
 }
 
-static int _on_print_custom(FILE* file, const void* addr)
+static int _on_print_custom(FILE* file, const custom_type_t* addr)
 {
-	custom_type_t* v = (custom_type_t*)addr;
-	return fprintf(file, "{ a:%d }", v->a);
+	return fprintf(file, "{ a:%d }", addr->a);
 }
 
 TEST_REGISTER_TYPE(custom_type_t, _on_cmp_custom, _on_print_custom)
