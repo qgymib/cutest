@@ -100,3 +100,24 @@ int main(int argc, char* argv[])
 
     return 0;
 }
+
+void test_print_file(FILE* dst, FILE* src)
+{
+    char buffer[1024];
+    long src_pos = ftell(src);
+
+    fseek(src, 0, SEEK_SET);
+
+    for (;;)
+    {
+        size_t read_size = fread(buffer, 1, sizeof(buffer), src);
+        if (read_size == 0)
+        {
+            break;
+        }
+
+        fwrite(buffer, 1, read_size, dst);
+    }
+    
+    fseek(src, src_pos, SEEK_SET);
+}

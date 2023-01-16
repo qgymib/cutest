@@ -35,17 +35,27 @@
 #endif
 
 /**
- * @brief Print information with error code.
+ * @brief Get static array element count.
+ * @param[in] arr   Static array.
  */
-#define PERR(errcode, fmt, ...)    \
-    do {\
-        char buffer[1024];\
-        int err = errcode;\
-        strerror_r(err, buffer, sizeof(buffer));\
-        fprintf(stderr, fmt ": %s(%d).\n", ##__VA_ARGS__, buffer, err);\
-    } while (0)
-
 #define ARRAY_SIZE(arr)                     (sizeof(arr) / sizeof(arr[0]))
+
+/**
+ * @brief Access \p ptr as type of \p TYPE.
+ * @param[in] TYPE  Data type.
+ * @param[in] ptr   Data address.
+ */
+#define ACCESS_AS(TYPE, ptr)    (*(TYPE*)ptr)
+
+/**
+ * @brief A correct format for print `size_t'
+ */
+#if defined(_MSC_VER) && (_MSC_VER < 1900)
+#   define TEST_PRIsize "Iu"
+#else
+#   define TEST_PRIsize "zu"
+#endif
+
 /*
  * Before Visual Studio 2015, there is a bug that a `do { } while (0)` will triger C4127 warning
  * https://docs.microsoft.com/en-us/cpp/error-messages/compiler-warnings/compiler-warning-level-4-c4127
@@ -646,10 +656,35 @@ static void ev_map_low_erase(cutest_map_t* root, cutest_map_node_t* node)
         ____rb_erase_color(rebalance, root);
 }
 
-static void ev_map_erase(cutest_map_t* handler, cutest_map_node_t* node)
+static void cutest_map_erase(cutest_map_t* handler, cutest_map_node_t* node)
 {
     handler->size--;
     ev_map_low_erase(handler, node);
+}
+
+static cutest_map_node_t* cutest_map_find(const cutest_map_t* handler, const cutest_map_node_t* key)
+{
+    cutest_map_node_t* node = handler->rb_root;
+
+    while (node)
+    {
+        int result = handler->cmp.cmp(key, node, handler->cmp.arg);
+
+        if (result < 0)
+        {
+            node = node->rb_left;
+        }
+        else if (result > 0)
+        {
+            node = node->rb_right;
+        }
+        else
+        {
+            return node;
+        }
+    }
+
+    return NULL;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -1408,7 +1443,32 @@ static int cutest_color_fprintf(cutest_print_color_t color, FILE* stream, const 
 #define CONTAINER_OF(ptr, TYPE, member) \
     ((TYPE*)((char*)(ptr) - (size_t)&((TYPE*)0)->member))
 
+/**
+ * @brief Static initializer for #test_nature_t::case_table.
+ */
 #define TEST_CASE_TABLE_INIT    CUTEST_MAP_INIT(_test_on_cmp_case, NULL)
+
+/**
+ * @brief Create compare context for \p TYPE.
+ * @param[in] TYPE  Data type.
+ * @param[in] fmt   Dump formatter.
+ */
+#define TEST_GENERATE_NATIVE_COMPARE(TYPE, fmt)  \
+    static int _test_cmp_##TYPE(const void* addr1, const void* addr2) {\
+        TYPE v1 = ACCESS_AS(TYPE, addr1);\
+        TYPE v2 = ACCESS_AS(TYPE, addr2);\
+        if (v1 == v2) {\
+            return 0;\
+        }\
+        return v1 < v2 ? -1 : 1;\
+    }\
+    static int _test_print_##TYPE(FILE* file, const void* addr) {\
+        TYPE v = ACCESS_AS(TYPE, addr);\
+        return fprintf(file, fmt, v);\
+    }\
+    static cutest_type_info_t s_type_info_##TYPE = {\
+        { NULL, NULL, NULL }, #TYPE, _test_cmp_##TYPE, _test_print_##TYPE,\
+    }
 
 typedef union double_point
 {
@@ -1436,7 +1496,8 @@ typedef struct test_case_info
 
 typedef struct test_nature_s
 {
-    cutest_map_t            case_table;                     /**< Cases in map */
+    cutest_map_t            case_table;             /**< Cases in map */
+    cutest_map_t            type_table;             /**< Type table. */
 
     struct
     {
@@ -1547,9 +1608,19 @@ static int _test_on_cmp_case(const cutest_map_node_t* key1, const cutest_map_nod
     return n1->parameterized_idx < n2->parameterized_idx ? -1 : 1;
 }
 
+static int _test_on_cmp_type(const cutest_map_node_t* key1, const cutest_map_node_t* key2, void* arg)
+{
+    (void)arg;
+    cutest_type_info_t* t1 = CONTAINER_OF(key1, cutest_type_info_t, node);
+    cutest_type_info_t* t2 = CONTAINER_OF(key2, cutest_type_info_t, node);
+
+    return strcmp(t1->type_name, t2->type_name);
+}
+
 static test_ctx_t           g_test_ctx;
 static test_nature_t        g_test_nature = {
     TEST_CASE_TABLE_INIT,                                               /* .case_table */
+    CUTEST_MAP_INIT(_test_on_cmp_type, NULL),                           /* .type_table */
     { 0, { 0, 0, 0, 0, 0, 0 }, { 0, 0, 0, 0, 0, 0 } },                  /* .precision */
 };
 
@@ -1561,6 +1632,8 @@ static const char* s_test_help_encoded =
 "  " COLOR_GREEN("--test_list_tests") "\n"
 "      List the names of all tests instead of running them. The name of\n"
 "      TEST(Foo, Bar) is \"Foo.Bar\".\n"
+"  " COLOR_GREEN("--test_list_types") "\n"
+"      List the names of all support types.\n"
 "  " COLOR_GREEN("--test_filter=") COLOR_YELLO("POSTIVE_PATTERNS[") COLOR_GREEN("-") COLOR_YELLO("NEGATIVE_PATTERNS]") "\n"
 "      Run only the tests whose name matches one of the positive patterns but\n"
 "      none of the negative patterns. '?' matches any single character; '*'\n"
@@ -2316,6 +2389,16 @@ static void _test_list_tests(void)
     }
 }
 
+static void _test_list_types(void)
+{
+    cutest_map_node_t* it = cutest_map_begin(&g_test_nature.type_table);
+    for (; it != NULL; it = cutest_map_next(it))
+    {
+        cutest_type_info_t* type_info = CONTAINER_OF(it, cutest_type_info_t, node);
+        cutest_printf("%s\n", type_info->type_name);
+    }
+}
+
 static void _test_setup_arg_repeat(const char* str)
 {
     int repeat = 1;
@@ -2375,12 +2458,220 @@ static void _test_shuffle_cases(void)
     {
         cutest_case_node_t* node = CONTAINER_OF(it, cutest_case_node_t, node);
         it = cutest_map_next(it);
-        ev_map_erase(&g_test_nature.case_table, &node->node);
+        cutest_map_erase(&g_test_nature.case_table, &node->node);
 
         node->randkey = _test_rand();
         cutest_map_insert(&copy_case_table, &node->node);
     }
     g_test_nature.case_table = copy_case_table;
+}
+
+TEST_GENERATE_NATIVE_COMPARE(int32_t, "%" PRId32);
+TEST_GENERATE_NATIVE_COMPARE(uint32_t, "%" PRIu32);
+TEST_GENERATE_NATIVE_COMPARE(int64_t, "%" PRId64);
+TEST_GENERATE_NATIVE_COMPARE(uint64_t, "%" PRIu64);
+TEST_GENERATE_NATIVE_COMPARE(size_t, "%" TEST_PRIsize);
+
+static int _test_cmp_ptr(const void* addr1, const void* addr2)
+{
+    char* v1 = ACCESS_AS(char*, addr1);
+    char* v2 = ACCESS_AS(char*, addr2);
+
+    if (v1 == v2)
+    {
+        return 0;
+    }
+    return v1 < v2 ? -1 : 1;
+}
+
+static int _test_print_ptr(FILE* file, const void* addr)
+{
+    char* v = ACCESS_AS(char*, addr);
+    return fprintf(file, "%p", v);
+}
+
+static cutest_type_info_t s_type_info_ptr = {
+    { NULL, NULL, NULL }, "const void*", _test_cmp_ptr, _test_print_ptr,
+};
+
+static int _test_cmp_str(const void* addr1, const void* addr2)
+{
+    const char* v1 = ACCESS_AS(const char*, addr1);
+    const char* v2 = ACCESS_AS(const char*, addr2);
+    return strcmp(v1, v2);
+}
+
+static int _test_print_str(FILE* file, const void* addr)
+{
+    const char* v = ACCESS_AS(const char*, addr);
+    return fprintf(file, "%s", v);
+}
+
+static cutest_type_info_t s_type_info_str = {
+    { NULL, NULL, NULL }, "const char*", _test_cmp_str, _test_print_str,
+};
+
+static uint32_t _test_float_point_sign_and_magnitude_to_biased(const uint32_t sam)
+{
+    if (g_test_nature.precision._float.kSignBitMask_32 & sam)
+    {
+        // sam represents a negative number.
+        return ~sam + 1;
+    }
+
+    // sam represents a positive number.
+    return g_test_nature.precision._float.kSignBitMask_32 | sam;
+}
+
+static uint32_t _test_float_point_distance_between_sign_and_magnitude_numbers(uint32_t sam1, uint32_t sam2)
+{
+    const uint32_t biased1 = _test_float_point_sign_and_magnitude_to_biased(sam1);
+    const uint32_t biased2 = _test_float_point_sign_and_magnitude_to_biased(sam2);
+
+    return (biased1 >= biased2) ? (biased1 - biased2) : (biased2 - biased1);
+}
+
+static uint32_t _test_float_point_exponent_bits(const float_point_t* p)
+{
+    return g_test_nature.precision._float.kExponentBitMask_32 & p->bits_;
+}
+
+static uint32_t _test_float_point_fraction_bits(const float_point_t* p)
+{
+    return g_test_nature.precision._float.kFractionBitMask_32 & p->bits_;
+}
+
+static int _test_float_point_is_nan(const float_point_t* p)
+{
+    return (_test_float_point_exponent_bits(p) == g_test_nature.precision._float.kExponentBitMask_32)
+        && (_test_float_point_fraction_bits(p) != 0);
+}
+
+static int cutest_internal_assert_helper_float_eq(float a, float b)
+{
+    float_point_t v_a; v_a.value_ = a;
+    float_point_t v_b; v_b.value_ = b;
+
+    if (_test_float_point_is_nan(&v_a) || _test_float_point_is_nan(&v_b))
+    {
+        return 0;
+    }
+
+    return _test_float_point_distance_between_sign_and_magnitude_numbers(v_a.bits_, v_b.bits_)
+        <= g_test_nature.precision.kMaxUlps;
+}
+
+static int _test_cmp_float(const void* addr1, const void* addr2)
+{
+    float v1 = ACCESS_AS(float, addr1);
+    float v2 = ACCESS_AS(float, addr2);
+
+    if (cutest_internal_assert_helper_float_eq(v1, v2))
+    {
+        return 0;
+    }
+    return v1 < v2 ? -1 : 1;
+}
+
+static int _test_print_float(FILE* file, const void* addr)
+{
+    float v = ACCESS_AS(float, addr);
+    return fprintf(file, "%f", v);
+}
+
+static cutest_type_info_t s_type_info_float = {
+    { NULL, NULL, NULL }, "float", _test_cmp_float, _test_print_float,
+};
+
+static uint64_t _test_double_point_exponent_bits(const double_point_t* p)
+{
+    return g_test_nature.precision._double.kExponentBitMask_64 & p->bits_;
+}
+
+static uint64_t _test_double_point_fraction_bits(const double_point_t* p)
+{
+    return g_test_nature.precision._double.kFractionBitMask_64 & p->bits_;
+}
+
+static int _test_double_point_is_nan(const double_point_t* p)
+{
+    return (_test_double_point_exponent_bits(p) == g_test_nature.precision._double.kExponentBitMask_64)
+        && (_test_double_point_fraction_bits(p) != 0);
+}
+
+static uint64_t _test_double_point_sign_and_magnitude_to_biased(const uint64_t sam)
+{
+    if (g_test_nature.precision._double.kSignBitMask_64 & sam)
+    {
+        // sam represents a negative number.
+        return ~sam + 1;
+    }
+
+    // sam represents a positive number.
+    return g_test_nature.precision._double.kSignBitMask_64 | sam;
+}
+
+static uint64_t _test_double_point_distance_between_sign_and_magnitude_numbers(uint64_t sam1, uint64_t sam2)
+{
+    const uint64_t biased1 = _test_double_point_sign_and_magnitude_to_biased(sam1);
+    const uint64_t biased2 = _test_double_point_sign_and_magnitude_to_biased(sam2);
+
+    return (biased1 >= biased2) ? (biased1 - biased2) : (biased2 - biased1);
+}
+
+static int cutest_internal_assert_helper_double_eq(double a, double b)
+{
+    double_point_t v_a; v_a.value_ = a;
+    double_point_t v_b; v_b.value_ = b;
+
+    if (_test_double_point_is_nan(&v_a) || _test_double_point_is_nan(&v_b))
+    {
+        return 0;
+    }
+
+    return _test_double_point_distance_between_sign_and_magnitude_numbers(v_a.bits_, v_b.bits_)
+        <= g_test_nature.precision.kMaxUlps;
+}
+
+static int _test_cmp_double(const void* addr1, const void* addr2)
+{
+    double v1 = ACCESS_AS(double, addr1);
+    double v2 = ACCESS_AS(double, addr2);
+
+    if (cutest_internal_assert_helper_double_eq(v1, v2))
+    {
+        return 0;
+    }
+    return v1 < v2 ? -1 : 1;
+}
+
+static int _test_print_double(FILE* file, const void* addr)
+{
+    double v = ACCESS_AS(double, addr);
+    return fprintf(file, "%f", v);
+}
+
+static cutest_type_info_t s_type_info_double = {
+    { NULL, NULL, NULL }, "double", _test_cmp_double, _test_print_double,
+};
+
+static void _test_setup_type(void)
+{
+    cutest_register_type(&s_type_info_int32_t);
+    cutest_register_type(&s_type_info_uint32_t);
+    cutest_register_type(&s_type_info_int64_t);
+    cutest_register_type(&s_type_info_uint64_t);
+    cutest_register_type(&s_type_info_size_t);
+    cutest_register_type(&s_type_info_float);
+    cutest_register_type(&s_type_info_double);
+    cutest_register_type(&s_type_info_ptr);
+    cutest_register_type(&s_type_info_str);
+}
+
+static void _test_setup_once(void)
+{
+    _test_setup_precision();
+    _test_setup_type();
 }
 
 /**
@@ -2389,7 +2680,7 @@ static void _test_shuffle_cases(void)
 static void cutest_setup_once(void)
 {
     static test_once_t token = TEST_ONCE_INIT;
-    test_once(&token, _test_setup_precision);
+    test_once(&token, _test_setup_once);
 }
 
 static void _test_prepare(void)
@@ -2419,6 +2710,7 @@ static int _test_setup(int argc, char* argv[], const cutest_hook_t* hook, int* b
     enum test_opt
     {
         test_list_tests = 1,
+        test_list_types,
         test_filter,
         test_also_run_disabled_tests,
         test_repeat,
@@ -2431,6 +2723,7 @@ static int _test_setup(int argc, char* argv[], const cutest_hook_t* hook, int* b
 
     static cutest_optparse_long_opt_t longopts[] = {
         { "test_list_tests",                test_list_tests,                CUTEST_OPTPARSE_NONE },
+        { "test_list_types",                test_list_types,                CUTEST_OPTPARSE_NONE },
         { "test_filter",                    test_filter,                    CUTEST_OPTPARSE_REQUIRED },
         { "test_also_run_disabled_tests",   test_also_run_disabled_tests,   CUTEST_OPTPARSE_NONE },
         { "test_repeat",                    test_repeat,                    CUTEST_OPTPARSE_REQUIRED },
@@ -2450,6 +2743,9 @@ static int _test_setup(int argc, char* argv[], const cutest_hook_t* hook, int* b
         switch (option) {
         case test_list_tests:
             _test_list_tests();
+            return -1;
+        case test_list_types:
+            _test_list_types();
             return -1;
         case test_filter:
             _test_setup_arg_pattern(options.optarg);
@@ -2512,78 +2808,6 @@ static void _run_all_test_once(void)
     cutest_timestamp_get(&tv_total_end);
 
     _test_show_report(&tv_total_start, &tv_total_end);
-}
-
-static uint32_t _test_float_point_exponent_bits(const float_point_t* p)
-{
-    return g_test_nature.precision._float.kExponentBitMask_32 & p->bits_;
-}
-
-static uint64_t _test_double_point_exponent_bits(const double_point_t* p)
-{
-    return g_test_nature.precision._double.kExponentBitMask_64 & p->bits_;
-}
-
-static uint32_t _test_float_point_fraction_bits(const float_point_t* p)
-{
-    return g_test_nature.precision._float.kFractionBitMask_32 & p->bits_;
-}
-
-static uint64_t _test_double_point_fraction_bits(const double_point_t* p)
-{
-    return g_test_nature.precision._double.kFractionBitMask_64 & p->bits_;
-}
-
-static int _test_float_point_is_nan(const float_point_t* p)
-{
-    return (_test_float_point_exponent_bits(p) == g_test_nature.precision._float.kExponentBitMask_32)
-        && (_test_float_point_fraction_bits(p) != 0);
-}
-
-static int _test_double_point_is_nan(const double_point_t* p)
-{
-    return (_test_double_point_exponent_bits(p) == g_test_nature.precision._double.kExponentBitMask_64)
-        && (_test_double_point_fraction_bits(p) != 0);
-}
-
-static uint32_t _test_float_point_sign_and_magnitude_to_biased(const uint32_t sam)
-{
-    if (g_test_nature.precision._float.kSignBitMask_32 & sam)
-    {
-        // sam represents a negative number.
-        return ~sam + 1;
-    }
-
-    // sam represents a positive number.
-    return g_test_nature.precision._float.kSignBitMask_32 | sam;
-}
-
-static uint64_t _test_double_point_sign_and_magnitude_to_biased(const uint64_t sam)
-{
-    if (g_test_nature.precision._double.kSignBitMask_64 & sam)
-    {
-        // sam represents a negative number.
-        return ~sam + 1;
-    }
-
-    // sam represents a positive number.
-    return g_test_nature.precision._double.kSignBitMask_64 | sam;
-}
-
-static uint32_t _test_float_point_distance_between_sign_and_magnitude_numbers(uint32_t sam1, uint32_t sam2)
-{
-    const uint32_t biased1 = _test_float_point_sign_and_magnitude_to_biased(sam1);
-    const uint32_t biased2 = _test_float_point_sign_and_magnitude_to_biased(sam2);
-
-    return (biased1 >= biased2) ? (biased1 - biased2) : (biased2 - biased1);
-}
-
-static uint64_t _test_double_point_distance_between_sign_and_magnitude_numbers(uint64_t sam1, uint64_t sam2)
-{
-    const uint64_t biased1 = _test_double_point_sign_and_magnitude_to_biased(sam1);
-    const uint64_t biased2 = _test_double_point_sign_and_magnitude_to_biased(sam2);
-
-    return (biased1 >= biased2) ? (biased1 - biased2) : (biased2 - biased1);
 }
 
 static void _test_cleanup(void)
@@ -2709,59 +2933,6 @@ const char* cutest_get_current_test(void)
     return g_test_ctx.runtime.cur_node->test_case->info.case_name;
 }
 
-int cutest_internal_assert_helper_str_eq(const char* a, const char* b)
-{
-    return strcmp(a, b) == 0;
-}
-
-int cutest_internal_assert_helper_float_eq(float a, float b)
-{
-    float_point_t v_a; v_a.value_ = a;
-    float_point_t v_b; v_b.value_ = b;
-
-    if (_test_float_point_is_nan(&v_a) || _test_float_point_is_nan(&v_b))
-    {
-        return 0;
-    }
-
-    return _test_float_point_distance_between_sign_and_magnitude_numbers(v_a.bits_, v_b.bits_)
-        <= g_test_nature.precision.kMaxUlps;
-}
-
-int cutest_internal_assert_helper_float_le(float a, float b)
-{
-    return (a < b) || cutest_internal_assert_helper_float_eq(a, b);
-}
-
-int cutest_internal_assert_helper_float_ge(float a, float b)
-{
-    return (a > b) || cutest_internal_assert_helper_float_eq(a, b);
-}
-
-int cutest_internal_assert_helper_double_eq(double a, double b)
-{
-    double_point_t v_a; v_a.value_ = a;
-    double_point_t v_b; v_b.value_ = b;
-
-    if (_test_double_point_is_nan(&v_a) || _test_double_point_is_nan(&v_b))
-    {
-        return 0;
-    }
-
-    return _test_double_point_distance_between_sign_and_magnitude_numbers(v_a.bits_, v_b.bits_)
-        <= g_test_nature.precision.kMaxUlps;
-}
-
-int cutest_internal_assert_helper_double_le(double a, double b)
-{
-    return (a < b) || cutest_internal_assert_helper_double_eq(a, b);
-}
-
-int cutest_internal_assert_helper_double_ge(double a, double b)
-{
-    return (a > b) || cutest_internal_assert_helper_double_eq(a, b);
-}
-
 void cutest_internal_assert_failure(void)
 {
     if (g_test_ctx.runtime.tid != GET_TID())
@@ -2783,11 +2954,6 @@ void cutest_skip_test(void)
     SET_MASK(g_test_ctx.runtime.cur_node->mask, MASK_SKIPPED);
 }
 
-void cutest_internal_flush(void)
-{
-    fflush(NULL);
-}
-
 int cutest_internal_break_on_failure(void)
 {
     return g_test_ctx.mask.break_on_failure;
@@ -2796,20 +2962,6 @@ int cutest_internal_break_on_failure(void)
 /************************************************************************/
 /* LOG                                                                  */
 /************************************************************************/
-
-const char* cutest_pretty_file(const char* file)
-{
-    const char* pos = file;
-
-    for (; *file; ++file)
-    {
-        if (*file == '\\' || *file == '/')
-        {
-            pos = file + 1;
-        }
-    }
-    return pos;
-}
 
 int cutest_printf(const char* fmt, ...)
 {
@@ -2821,4 +2973,73 @@ int cutest_printf(const char* fmt, ...)
     va_end(ap);
 
     return ret;
+}
+
+void cutest_register_type(cutest_type_info_t* info)
+{
+    if (cutest_map_insert(&g_test_nature.type_table, &info->node) < 0)
+    {
+        abort();
+    }
+}
+
+static cutest_type_info_t* _test_get_type_info(const char* type_name)
+{
+    cutest_type_info_t tmp;
+    tmp.type_name = type_name;
+
+    cutest_map_node_t* it = cutest_map_find(&g_test_nature.type_table, &tmp.node);
+    if (it == NULL)
+    {
+        return NULL;
+    }
+
+    return CONTAINER_OF(it, cutest_type_info_t, node);
+}
+
+int cutest_internal_compare(const char* type_name, const void* addr1, const void* addr2)
+{
+    cutest_type_info_t* type_info = _test_get_type_info(type_name);
+    if (type_info == NULL)
+    {
+        cutest_printf("%s not registered\n", type_name);
+        abort();
+    }
+
+    return type_info->cmp(addr1, addr2);
+}
+
+void cutest_internal_dump(const char* file, int line, const char* type_name,
+    const char* op, const char* op_l, const char* op_r,
+    const void* addr1, const void* addr2,
+    const char* fmt, ...)
+{
+    va_list ap;
+
+    cutest_type_info_t* type_info = _test_get_type_info(type_name);
+    if (type_info == NULL)
+    {
+        cutest_printf("%s not registered\n", type_name);
+        abort();
+    }
+
+    cutest_printf(
+        "%s:%d:failure:\n"
+        "            expected: `%s' %s `%s'\n"
+        "              actual: ",
+        file, line, op_l, op, op_r);
+    type_info->dump(_get_logfile(), addr1);
+    cutest_printf(" vs ");
+    type_info->dump(_get_logfile(), addr2);
+    cutest_printf("\n");
+
+    if (*fmt != '\0')
+    {
+        va_start(ap, fmt);
+        cutest_color_vfprintf(CUTEST_PRINT_COLOR_DEFAULT, _get_logfile(), fmt, ap);
+        cutest_printf("\n");
+        va_end(ap);
+    }
+
+    fflush(NULL);
 }

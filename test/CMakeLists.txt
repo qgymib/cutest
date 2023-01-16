@@ -2,6 +2,7 @@
 set(test_case_list
     all_assertion
     arg_count
+    custom_type
     empty
     filter
     list_parameterized_as_int

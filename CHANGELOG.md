@@ -5,6 +5,8 @@
 ### Features
 1. Avoid global name conflict
 2. Avoid namespace affect
+3. Able to compare any type using custom type system
+4. Use `--test_list_types` to list support types
 
 ### BREAKING CHANGES
 1. Hide unused function

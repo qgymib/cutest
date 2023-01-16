@@ -44,7 +44,7 @@ extern "C" {
 /**
  * @brief Development version.
  */
-#define CUTEST_VERSION_PREREL       3
+#define CUTEST_VERSION_PREREL       5
 
 #if defined(__cplusplus)
 #define TEST_C_API  extern "C"
@@ -66,12 +66,7 @@ extern "C" {
  */
 
 /**
- * @defgroup CUnitTest CUnitTest
- * @{
- */
-
-/**
- * @defgroup SetupAndTeardown Setup And Teardown
+ * @defgroup SETUP_AND_TEARDOWN Setup And Teardown
  * @{
  */
 
@@ -90,12 +85,12 @@ extern "C" {
     TEST_C_API static void s_cutest_fixture_teardown_##fixture(void)
 
 /**
- * Group: SetupAndTeardown
+ * Group: SETUP_AND_TEARDOWN
  * @}
  */
 
 /**
- * @defgroup DefineTest Define Test
+ * @defgroup DEFINE_TEST Define Test
  * @{
  */
 
@@ -242,12 +237,12 @@ extern "C" {
     TEST_C_API void u_cutest_body_##fixture##_##test(void)
 
 /**
- * Group: DefineTest
+ * Group: DEFINE_TEST
  * @}
  */
 
 /**
- * @defgroup Assertion Assertion
+ * @defgroup ASSERTION Assertion
  * @{
  */
 
@@ -328,12 +323,12 @@ extern "C" {
  * @param [in] b    Value b
  * @param [in] ...  User defined error message
  */
-#define ASSERT_EQ_D32(a, b, ...)        ASSERT_TEMPLATE_VA(__VA_ARGS__)(int32_t, "%" PRId32, ==, _ASSERT_INTERNAL_HELPER_EQ, a, b, ##__VA_ARGS__)
-#define ASSERT_NE_D32(a, b, ...)        ASSERT_TEMPLATE_VA(__VA_ARGS__)(int32_t, "%" PRId32, !=, _ASSERT_INTERNAL_HELPER_NE, a, b, ##__VA_ARGS__)
-#define ASSERT_LT_D32(a, b, ...)        ASSERT_TEMPLATE_VA(__VA_ARGS__)(int32_t, "%" PRId32, <,  _ASSERT_INTERNAL_HELPER_LT, a, b, ##__VA_ARGS__)
-#define ASSERT_LE_D32(a, b, ...)        ASSERT_TEMPLATE_VA(__VA_ARGS__)(int32_t, "%" PRId32, <=, _ASSERT_INTERNAL_HELPER_LE, a, b, ##__VA_ARGS__)
-#define ASSERT_GT_D32(a, b, ...)        ASSERT_TEMPLATE_VA(__VA_ARGS__)(int32_t, "%" PRId32, >,  _ASSERT_INTERNAL_HELPER_GT, a, b, ##__VA_ARGS__)
-#define ASSERT_GE_D32(a, b, ...)        ASSERT_TEMPLATE_VA(__VA_ARGS__)(int32_t, "%" PRId32, >=, _ASSERT_INTERNAL_HELPER_GE, a, b, ##__VA_ARGS__)
+#define ASSERT_EQ_D32(a, b, ...)        ASSERT_TEMPLATE_EXT(int32_t, ==, a, b, __VA_ARGS__)
+#define ASSERT_NE_D32(a, b, ...)        ASSERT_TEMPLATE_EXT(int32_t, !=, a, b, __VA_ARGS__)
+#define ASSERT_LT_D32(a, b, ...)        ASSERT_TEMPLATE_EXT(int32_t, <,  a, b, __VA_ARGS__)
+#define ASSERT_LE_D32(a, b, ...)        ASSERT_TEMPLATE_EXT(int32_t, <=, a, b, __VA_ARGS__)
+#define ASSERT_GT_D32(a, b, ...)        ASSERT_TEMPLATE_EXT(int32_t, >,  a, b, __VA_ARGS__)
+#define ASSERT_GE_D32(a, b, ...)        ASSERT_TEMPLATE_EXT(int32_t, >=, a, b, __VA_ARGS__)
 
 /**
  * @def ASSERT_EQ_U32
@@ -395,12 +390,12 @@ extern "C" {
  * @param [in] b    Value b
  * @param [in] ...  User defined error message
  */
-#define ASSERT_EQ_U32(a, b, ...)        ASSERT_TEMPLATE_VA(__VA_ARGS__)(uint32_t, "%" PRIu32, ==, _ASSERT_INTERNAL_HELPER_EQ, a, b, ##__VA_ARGS__)
-#define ASSERT_NE_U32(a, b, ...)        ASSERT_TEMPLATE_VA(__VA_ARGS__)(uint32_t, "%" PRIu32, !=, _ASSERT_INTERNAL_HELPER_NE, a, b, ##__VA_ARGS__)
-#define ASSERT_LT_U32(a, b, ...)        ASSERT_TEMPLATE_VA(__VA_ARGS__)(uint32_t, "%" PRIu32, <,  _ASSERT_INTERNAL_HELPER_LT, a, b, ##__VA_ARGS__)
-#define ASSERT_LE_U32(a, b, ...)        ASSERT_TEMPLATE_VA(__VA_ARGS__)(uint32_t, "%" PRIu32, <=, _ASSERT_INTERNAL_HELPER_LE, a, b, ##__VA_ARGS__)
-#define ASSERT_GT_U32(a, b, ...)        ASSERT_TEMPLATE_VA(__VA_ARGS__)(uint32_t, "%" PRIu32, >,  _ASSERT_INTERNAL_HELPER_GT, a, b, ##__VA_ARGS__)
-#define ASSERT_GE_U32(a, b, ...)        ASSERT_TEMPLATE_VA(__VA_ARGS__)(uint32_t, "%" PRIu32, >=, _ASSERT_INTERNAL_HELPER_GE, a, b, ##__VA_ARGS__)
+#define ASSERT_EQ_U32(a, b, ...)        ASSERT_TEMPLATE_EXT(uint32_t, ==, a, b, __VA_ARGS__)
+#define ASSERT_NE_U32(a, b, ...)        ASSERT_TEMPLATE_EXT(uint32_t, !=, a, b, __VA_ARGS__)
+#define ASSERT_LT_U32(a, b, ...)        ASSERT_TEMPLATE_EXT(uint32_t, <,  a, b, __VA_ARGS__)
+#define ASSERT_LE_U32(a, b, ...)        ASSERT_TEMPLATE_EXT(uint32_t, <=, a, b, __VA_ARGS__)
+#define ASSERT_GT_U32(a, b, ...)        ASSERT_TEMPLATE_EXT(uint32_t, >,  a, b, __VA_ARGS__)
+#define ASSERT_GE_U32(a, b, ...)        ASSERT_TEMPLATE_EXT(uint32_t, >=, a, b, __VA_ARGS__)
 
 /**
  * @def ASSERT_EQ_D64
@@ -462,12 +457,12 @@ extern "C" {
  * @param [in] b    Value b
  * @param [in] ...  User defined error message
  */
-#define ASSERT_EQ_D64(a, b, ...)        ASSERT_TEMPLATE_VA(__VA_ARGS__)(int64_t, "%" PRId64, ==, _ASSERT_INTERNAL_HELPER_EQ, a, b, ##__VA_ARGS__)
-#define ASSERT_NE_D64(a, b, ...)        ASSERT_TEMPLATE_VA(__VA_ARGS__)(int64_t, "%" PRId64, !=, _ASSERT_INTERNAL_HELPER_NE, a, b, ##__VA_ARGS__)
-#define ASSERT_LT_D64(a, b, ...)        ASSERT_TEMPLATE_VA(__VA_ARGS__)(int64_t, "%" PRId64, <,  _ASSERT_INTERNAL_HELPER_LT, a, b, ##__VA_ARGS__)
-#define ASSERT_LE_D64(a, b, ...)        ASSERT_TEMPLATE_VA(__VA_ARGS__)(int64_t, "%" PRId64, <=, _ASSERT_INTERNAL_HELPER_LE, a, b, ##__VA_ARGS__)
-#define ASSERT_GT_D64(a, b, ...)        ASSERT_TEMPLATE_VA(__VA_ARGS__)(int64_t, "%" PRId64, >,  _ASSERT_INTERNAL_HELPER_GT, a, b, ##__VA_ARGS__)
-#define ASSERT_GE_D64(a, b, ...)        ASSERT_TEMPLATE_VA(__VA_ARGS__)(int64_t, "%" PRId64, >=, _ASSERT_INTERNAL_HELPER_GE, a, b, ##__VA_ARGS__)
+#define ASSERT_EQ_D64(a, b, ...)        ASSERT_TEMPLATE_EXT(int64_t, ==, a, b, __VA_ARGS__)
+#define ASSERT_NE_D64(a, b, ...)        ASSERT_TEMPLATE_EXT(int64_t, !=, a, b, __VA_ARGS__)
+#define ASSERT_LT_D64(a, b, ...)        ASSERT_TEMPLATE_EXT(int64_t, <,  a, b, __VA_ARGS__)
+#define ASSERT_LE_D64(a, b, ...)        ASSERT_TEMPLATE_EXT(int64_t, <=, a, b, __VA_ARGS__)
+#define ASSERT_GT_D64(a, b, ...)        ASSERT_TEMPLATE_EXT(int64_t, >,  a, b, __VA_ARGS__)
+#define ASSERT_GE_D64(a, b, ...)        ASSERT_TEMPLATE_EXT(int64_t, >=, a, b, __VA_ARGS__)
 
 /**
  * @def ASSERT_EQ_U64
@@ -529,12 +524,12 @@ extern "C" {
  * @param [in] b    Value b
  * @param [in] ...  User defined error message
  */
-#define ASSERT_EQ_U64(a, b, ...)        ASSERT_TEMPLATE_VA(__VA_ARGS__)(uint64_t, "%" PRIu64, ==, _ASSERT_INTERNAL_HELPER_EQ, a, b, ##__VA_ARGS__)
-#define ASSERT_NE_U64(a, b, ...)        ASSERT_TEMPLATE_VA(__VA_ARGS__)(uint64_t, "%" PRIu64, !=, _ASSERT_INTERNAL_HELPER_NE, a, b, ##__VA_ARGS__)
-#define ASSERT_LT_U64(a, b, ...)        ASSERT_TEMPLATE_VA(__VA_ARGS__)(uint64_t, "%" PRIu64, <,  _ASSERT_INTERNAL_HELPER_LT, a, b, ##__VA_ARGS__)
-#define ASSERT_LE_U64(a, b, ...)        ASSERT_TEMPLATE_VA(__VA_ARGS__)(uint64_t, "%" PRIu64, <=, _ASSERT_INTERNAL_HELPER_LE, a, b, ##__VA_ARGS__)
-#define ASSERT_GT_U64(a, b, ...)        ASSERT_TEMPLATE_VA(__VA_ARGS__)(uint64_t, "%" PRIu64, >,  _ASSERT_INTERNAL_HELPER_GT, a, b, ##__VA_ARGS__)
-#define ASSERT_GE_U64(a, b, ...)        ASSERT_TEMPLATE_VA(__VA_ARGS__)(uint64_t, "%" PRIu64, >=, _ASSERT_INTERNAL_HELPER_GE, a, b, ##__VA_ARGS__)
+#define ASSERT_EQ_U64(a, b, ...)        ASSERT_TEMPLATE_EXT(uint64_t, ==, a, b, __VA_ARGS__)
+#define ASSERT_NE_U64(a, b, ...)        ASSERT_TEMPLATE_EXT(uint64_t, !=, a, b, __VA_ARGS__)
+#define ASSERT_LT_U64(a, b, ...)        ASSERT_TEMPLATE_EXT(uint64_t, <,  a, b, __VA_ARGS__)
+#define ASSERT_LE_U64(a, b, ...)        ASSERT_TEMPLATE_EXT(uint64_t, <=, a, b, __VA_ARGS__)
+#define ASSERT_GT_U64(a, b, ...)        ASSERT_TEMPLATE_EXT(uint64_t, >,  a, b, __VA_ARGS__)
+#define ASSERT_GE_U64(a, b, ...)        ASSERT_TEMPLATE_EXT(uint64_t, >=, a, b, __VA_ARGS__)
 
 /**
  * @def ASSERT_EQ_SIZE
@@ -596,12 +591,12 @@ extern "C" {
  * @param [in] b    Value b
  * @param [in] ...  User defined error message
  */
-#define ASSERT_EQ_SIZE(a, b, ...)       ASSERT_TEMPLATE_VA(__VA_ARGS__)(size_t, "%" TEST_PRIsize, ==, _ASSERT_INTERNAL_HELPER_EQ, a, b, ##__VA_ARGS__)
-#define ASSERT_NE_SIZE(a, b, ...)       ASSERT_TEMPLATE_VA(__VA_ARGS__)(size_t, "%" TEST_PRIsize, !=, _ASSERT_INTERNAL_HELPER_NE, a, b, ##__VA_ARGS__)
-#define ASSERT_LT_SIZE(a, b, ...)       ASSERT_TEMPLATE_VA(__VA_ARGS__)(size_t, "%" TEST_PRIsize, <,  _ASSERT_INTERNAL_HELPER_LT, a, b, ##__VA_ARGS__)
-#define ASSERT_LE_SIZE(a, b, ...)       ASSERT_TEMPLATE_VA(__VA_ARGS__)(size_t, "%" TEST_PRIsize, <=, _ASSERT_INTERNAL_HELPER_LE, a, b, ##__VA_ARGS__)
-#define ASSERT_GT_SIZE(a, b, ...)       ASSERT_TEMPLATE_VA(__VA_ARGS__)(size_t, "%" TEST_PRIsize, >,  _ASSERT_INTERNAL_HELPER_GT, a, b, ##__VA_ARGS__)
-#define ASSERT_GE_SIZE(a, b, ...)       ASSERT_TEMPLATE_VA(__VA_ARGS__)(size_t, "%" TEST_PRIsize, >=, _ASSERT_INTERNAL_HELPER_GE, a, b, ##__VA_ARGS__)
+#define ASSERT_EQ_SIZE(a, b, ...)       ASSERT_TEMPLATE_EXT(size_t, ==, a, b, __VA_ARGS__)
+#define ASSERT_NE_SIZE(a, b, ...)       ASSERT_TEMPLATE_EXT(size_t, !=, a, b, __VA_ARGS__)
+#define ASSERT_LT_SIZE(a, b, ...)       ASSERT_TEMPLATE_EXT(size_t, <,  a, b, __VA_ARGS__)
+#define ASSERT_LE_SIZE(a, b, ...)       ASSERT_TEMPLATE_EXT(size_t, <=, a, b, __VA_ARGS__)
+#define ASSERT_GT_SIZE(a, b, ...)       ASSERT_TEMPLATE_EXT(size_t, >,  a, b, __VA_ARGS__)
+#define ASSERT_GE_SIZE(a, b, ...)       ASSERT_TEMPLATE_EXT(size_t, >=, a, b, __VA_ARGS__)
 
 /**
  * @def ASSERT_EQ_PTR
@@ -663,12 +658,12 @@ extern "C" {
  * @param [in] b    Value b
  * @param [in] ...  User defined error message
  */
-#define ASSERT_EQ_PTR(a, b, ...)        ASSERT_TEMPLATE_VA(__VA_ARGS__)(const void*, "%p", ==, _ASSERT_INTERNAL_HELPER_EQ, a, b, ##__VA_ARGS__)
-#define ASSERT_NE_PTR(a, b, ...)        ASSERT_TEMPLATE_VA(__VA_ARGS__)(const void*, "%p", !=, _ASSERT_INTERNAL_HELPER_NE, a, b, ##__VA_ARGS__)
-#define ASSERT_LT_PTR(a, b, ...)        ASSERT_TEMPLATE_VA(__VA_ARGS__)(const void*, "%p", <,  _ASSERT_INTERNAL_HELPER_LT, a, b, ##__VA_ARGS__)
-#define ASSERT_LE_PTR(a, b, ...)        ASSERT_TEMPLATE_VA(__VA_ARGS__)(const void*, "%p", <=, _ASSERT_INTERNAL_HELPER_LE, a, b, ##__VA_ARGS__)
-#define ASSERT_GT_PTR(a, b, ...)        ASSERT_TEMPLATE_VA(__VA_ARGS__)(const void*, "%p", >,  _ASSERT_INTERNAL_HELPER_GT, a, b, ##__VA_ARGS__)
-#define ASSERT_GE_PTR(a, b, ...)        ASSERT_TEMPLATE_VA(__VA_ARGS__)(const void*, "%p", >=, _ASSERT_INTERNAL_HELPER_GE, a, b, ##__VA_ARGS__)
+#define ASSERT_EQ_PTR(a, b, ...)        ASSERT_TEMPLATE_EXT(const void*, ==, a, b, __VA_ARGS__)
+#define ASSERT_NE_PTR(a, b, ...)        ASSERT_TEMPLATE_EXT(const void*, !=, a, b, __VA_ARGS__)
+#define ASSERT_LT_PTR(a, b, ...)        ASSERT_TEMPLATE_EXT(const void*, <,  a, b, __VA_ARGS__)
+#define ASSERT_LE_PTR(a, b, ...)        ASSERT_TEMPLATE_EXT(const void*, <=, a, b, __VA_ARGS__)
+#define ASSERT_GT_PTR(a, b, ...)        ASSERT_TEMPLATE_EXT(const void*, >,  a, b, __VA_ARGS__)
+#define ASSERT_GE_PTR(a, b, ...)        ASSERT_TEMPLATE_EXT(const void*, >=, a, b, __VA_ARGS__)
 
 /**
  * @def ASSERT_EQ_FLOAT
@@ -730,12 +725,12 @@ extern "C" {
  * @param [in] b    Value b
  * @param [in] ...  User defined error message
  */
-#define ASSERT_EQ_FLOAT(a, b, ...)      ASSERT_TEMPLATE_VA(__VA_ARGS__)(float, "%f", ==, cutest_internal_assert_helper_float_eq,  a, b, ##__VA_ARGS__)
-#define ASSERT_NE_FLOAT(a, b, ...)      ASSERT_TEMPLATE_VA(__VA_ARGS__)(float, "%f", !=, !cutest_internal_assert_helper_float_eq, a, b, ##__VA_ARGS__)
-#define ASSERT_LT_FLOAT(a, b, ...)      ASSERT_TEMPLATE_VA(__VA_ARGS__)(float, "%f", <,  !cutest_internal_assert_helper_float_ge, a, b, ##__VA_ARGS__)
-#define ASSERT_LE_FLOAT(a, b, ...)      ASSERT_TEMPLATE_VA(__VA_ARGS__)(float, "%f", <=, cutest_internal_assert_helper_float_le,  a, b, ##__VA_ARGS__)
-#define ASSERT_GT_FLOAT(a, b, ...)      ASSERT_TEMPLATE_VA(__VA_ARGS__)(float, "%f", >,  !cutest_internal_assert_helper_float_le, a, b, ##__VA_ARGS__)
-#define ASSERT_GE_FLOAT(a, b, ...)      ASSERT_TEMPLATE_VA(__VA_ARGS__)(float, "%f", >=, cutest_internal_assert_helper_float_ge,  a, b, ##__VA_ARGS__)
+#define ASSERT_EQ_FLOAT(a, b, ...)      ASSERT_TEMPLATE_EXT(float, ==, a, b, __VA_ARGS__)
+#define ASSERT_NE_FLOAT(a, b, ...)      ASSERT_TEMPLATE_EXT(float, !=, a, b, __VA_ARGS__)
+#define ASSERT_LT_FLOAT(a, b, ...)      ASSERT_TEMPLATE_EXT(float, <,  a, b, __VA_ARGS__)
+#define ASSERT_LE_FLOAT(a, b, ...)      ASSERT_TEMPLATE_EXT(float, <=, a, b, __VA_ARGS__)
+#define ASSERT_GT_FLOAT(a, b, ...)      ASSERT_TEMPLATE_EXT(float, >,  a, b, __VA_ARGS__)
+#define ASSERT_GE_FLOAT(a, b, ...)      ASSERT_TEMPLATE_EXT(float, >=, a, b, __VA_ARGS__)
 
 /**
  * @def ASSERT_EQ_DOUBLE
@@ -797,12 +792,12 @@ extern "C" {
  * @param [in] b    Value b
  * @param [in] ...  User defined error message
  */
-#define ASSERT_EQ_DOUBLE(a, b, ...)     ASSERT_TEMPLATE_VA(__VA_ARGS__)(double, "%f", ==, cutest_internal_assert_helper_double_eq,  a, b, ##__VA_ARGS__)
-#define ASSERT_NE_DOUBLE(a, b, ...)     ASSERT_TEMPLATE_VA(__VA_ARGS__)(double, "%f", !=, !cutest_internal_assert_helper_double_eq, a, b, ##__VA_ARGS__)
-#define ASSERT_LT_DOUBLE(a, b, ...)     ASSERT_TEMPLATE_VA(__VA_ARGS__)(double, "%f", <,  !cutest_internal_assert_helper_double_ge, a, b, ##__VA_ARGS__)
-#define ASSERT_LE_DOUBLE(a, b, ...)     ASSERT_TEMPLATE_VA(__VA_ARGS__)(double, "%f", <=, cutest_internal_assert_helper_double_le,  a, b, ##__VA_ARGS__)
-#define ASSERT_GT_DOUBLE(a, b, ...)     ASSERT_TEMPLATE_VA(__VA_ARGS__)(double, "%f", >,  !cutest_internal_assert_helper_double_le, a, b, ##__VA_ARGS__)
-#define ASSERT_GE_DOUBLE(a, b, ...)     ASSERT_TEMPLATE_VA(__VA_ARGS__)(double, "%f", >=, cutest_internal_assert_helper_double_ge,  a, b, ##__VA_ARGS__)
+#define ASSERT_EQ_DOUBLE(a, b, ...)     ASSERT_TEMPLATE_EXT(double, ==, a, b, __VA_ARGS__)
+#define ASSERT_NE_DOUBLE(a, b, ...)     ASSERT_TEMPLATE_EXT(double, !=, a, b, __VA_ARGS__)
+#define ASSERT_LT_DOUBLE(a, b, ...)     ASSERT_TEMPLATE_EXT(double, <,  a, b, __VA_ARGS__)
+#define ASSERT_LE_DOUBLE(a, b, ...)     ASSERT_TEMPLATE_EXT(double, <=, a, b, __VA_ARGS__)
+#define ASSERT_GT_DOUBLE(a, b, ...)     ASSERT_TEMPLATE_EXT(double, >,  a, b, __VA_ARGS__)
+#define ASSERT_GE_DOUBLE(a, b, ...)     ASSERT_TEMPLATE_EXT(double, >=, a, b, __VA_ARGS__)
 
 /**
  * @def ASSERT_EQ_STR
@@ -824,28 +819,118 @@ extern "C" {
  * @param [in] b        Value b
  * @param [in] ...      User defined error message
  */
-#define ASSERT_EQ_STR(a, b, ...)        ASSERT_TEMPLATE_VA(__VA_ARGS__)(const char*, "%s", ==, cutest_internal_assert_helper_str_eq,  a, b, ##__VA_ARGS__)
-#define ASSERT_NE_STR(a, b, ...)        ASSERT_TEMPLATE_VA(__VA_ARGS__)(const char*, "%s", !=, !cutest_internal_assert_helper_str_eq, a, b, ##__VA_ARGS__)
+#define ASSERT_EQ_STR(a, b, ...)        ASSERT_TEMPLATE_EXT(const char*, ==, a, b, __VA_ARGS__)
+#define ASSERT_NE_STR(a, b, ...)        ASSERT_TEMPLATE_EXT(const char*, !=, a, b, __VA_ARGS__)
 
 /**
- * Group: Assertion
+ * Group: ASSERTION
  * @}
  */
 
-/************************************************************************/
-/* log                                                                  */
-/************************************************************************/
-
 /**
- * @defgroup Log Log
+ * @defgroup CUSTOM_TYPE Custom type
+ * 
+ * Even though cutest have rich set of assertion macros, there might be some cases that need to compare custom type.
+ * 
+ * We have a custom type register system to support such scene.
+ *
+ * Suppose we have a custom type: `typedef struct { int a; } foo_t`, to add type support:
+ *
+ * + Register type information by #TEST_REGISTER_TYPE()
+ *
+ *   ```c
+ *   static int _on_cmp_foo(const void* addr1, const void* addr2) {
+ *       foo_t* v1 = (foo_t*)addr1;
+ *       foo_t* v2 = (foo_t*)addr1;
+ *       return v1->a - v2->a;
+ *   }
+ *   static void _on_dump_foo(FILE* file, const void* addr) {
+ *       return fprintf(file, "{ a:%d }", ((foo_t*)addr)->a);
+ *   }
+ *   TEST_REGISTER_TYPE(foo_t, _on_cmp_foo, _on_dump_foo)
+ *   ```
+ * 
+ * + Define assertion macros
+ * 
+ *   ```c
+ *   #define ASSERT_EQ_FOO(a, b, ...)   ASSERT_TEMPLATE_EXT(foo_t, ==, a, b, __VA_ARGS__)
+ *   #define ASSERT_NE_FOO(a, b, ...)   ASSERT_TEMPLATE_EXT(foo_t, !=, a, b, __VA_ARGS__)
+ *   #define ASSERT_LT_FOO(a, b, ...)   ASSERT_TEMPLATE_EXT(foo_t, <,  a, b, __VA_ARGS__)
+ *   #define ASSERT_LE_FOO(a, b, ...)   ASSERT_TEMPLATE_EXT(foo_t, <=, a, b, __VA_ARGS__)
+ *   #define ASSERT_GT_FOO(a, b, ...)   ASSERT_TEMPLATE_EXT(foo_t, >,  a, b, __VA_ARGS__)
+ *   #define ASSERT_GE_FOO(a, b, ...)   ASSERT_TEMPLATE_EXT(foo_t, >=, a, b, __VA_ARGS__)
+ *   ```
+ * 
+ * Now you can use `ASSERT_EQ_FOO()` / `ASSERT_NE_FOO()` / etc to do assertion.
+ * 
  * @{
  */
 
+/**
+ * @brief Declare and register custom type.
+ * @param[in] TYPE  Data type.
+ * @param[in] cmp   Compare function.
+ * @param[in] dump  Dump function
+ */
+#define TEST_REGISTER_TYPE(TYPE, cmp, dump)    \
+    TEST_INITIALIZER(TEST_USER_TYPE_##TYPE) {\
+        static cutest_type_info_t info = {\
+            { NULL, NULL, NULL },\
+            #TYPE,\
+            cmp,\
+            dump,\
+        };\
+        cutest_register_type(&info);\
+    }
 
+typedef struct cutest_map_node
+{
+    struct cutest_map_node* __rb_parent_color;  /**< father node | color */
+    struct cutest_map_node* rb_right;           /**< right child node */
+    struct cutest_map_node* rb_left;            /**< left child node */
+} cutest_map_node_t;
 
 /**
+ * @brief Custom type information.
+ * @note It is for internal usage.
+ */
+typedef struct cutest_type_info
+{
+    cutest_map_node_t   node;       /**< Map node. */
+    const char*         type_name;  /**< The name of type. */
+
+    /**
+     * @brief Compare function for specific type.
+     * @param[in] addr1     Address of value1.
+     * @param[in] addr2     Address of value2.
+     * @return              0 if equal, <0 if value1 is less than value2, >0 if value1 is more than value2.
+     */
+    int (*cmp)(const void* addr1, const void* addr2);
+
+    /**
+     * @brief Dump value.
+     * @param[in] file      The file to print.
+     * @param[in] addr      The address of value.
+     * @return              The number of characters printed.
+     */
+    int (*dump)(FILE* file, const void* addr);
+} cutest_type_info_t;
+
+/**
+ * @brief Register custom type.
+ * @note It is for internal usage. Use #TEST_REGISTER_TYPE() instead.
+ */
+void cutest_register_type(cutest_type_info_t* info);
+
+/**
+ * Group: CUSTOM_TYPE
  * @}
  */
+
+ /**
+  * @defgroup RUN Run
+  * @{
+  */
 
 /**
  * @brief CUnitTest hook
@@ -938,7 +1023,7 @@ const char* cutest_get_current_test(void);
 void cutest_skip_test(void);
 
 /**
- * Group: CUnitTest
+ * Group: RUN
  * @}
  */
 
@@ -1063,17 +1148,6 @@ int cutest_timestamp_dif(const cutest_timestamp_t* t1, const cutest_timestamp_t*
 
 /**
  * @internal
- * @def TEST_PRIsize
- * @brief A correct format for print `size_t'
- */
-#if defined(_MSC_VER) && (_MSC_VER < 1900)
-#   define TEST_PRIsize "Iu"
-#else
-#   define TEST_PRIsize "zu"
-#endif
-
-/**
- * @internal
  * @def TEST_ARG_COUNT
  * @brief Get the number of arguments
  */
@@ -1129,62 +1203,27 @@ int cutest_timestamp_dif(const cutest_timestamp_t* t1, const cutest_timestamp_t*
 #endif
 
 /**
- * @internal
- * @brief   A user defined assert template
- * @param[in] TYPE  Data type
- * @param[in] FMT   Print format
- * @param[in] OP    Compare operation
- * @param[in] CMP   Compare function
- * @param[in] a     Value a
- * @param[in] b     Value b
- * @param[in] u_fmt User defined error message
- * @param[in] ...   User defined error message parameters
+ * @brief Compare template.
+ * @param[in] TYPE  Type name.
+ * @param[in] OP    Compare operation.
+ * @param[in] a     Left operator.
+ * @param[in] b     Right operator.
+ * @param[in] fmt   Extra print format when assert failure.
+ * @param[in] ...   Print arguments.
  */
-#define ASSERT_TEMPLATE(TYPE, FMT, OP, CMP, a, b, u_fmt, ...)   \
+#define ASSERT_TEMPLATE_EXT(TYPE, OP, a, b, fmt, ...) \
     do {\
-        TYPE _L = (TYPE)(a); TYPE _R = (TYPE)(b);\
-        if (CMP(_L, _R)) {\
+        TYPE _L = (a); TYPE _R = (b);\
+        if (cutest_internal_compare(#TYPE, (void*)&_L, (void*)&_R) OP 0) {\
             break;\
         }\
-        cutest_printf("%s:%d:failure:" u_fmt "\n"\
-            "            expected:    `%s' %s `%s'\n"\
-            "              actual:    " FMT " vs " FMT "\n",\
-            __FILE__, __LINE__, ##__VA_ARGS__, #a, #OP, #b, _L, _R);\
-        cutest_internal_flush();\
+        cutest_internal_dump(__FILE__, __LINE__, #TYPE, #OP, #a, #b, (void*)&_L, (void*)&_R,\
+            "" fmt, ##__VA_ARGS__);\
         if (cutest_internal_break_on_failure()) {\
             TEST_DEBUGBREAK;\
         }\
         cutest_internal_assert_failure();\
     } TEST_MSVC_WARNNING_GUARD(while (0), 4127)
-
-#define ASSERT_TEMPLATE_VA(...)                                 TEST_JOIN(ASSERT_TEMPLATE_VA_, TEST_ARG_COUNT(__VA_ARGS__))
-#define ASSERT_TEMPLATE_VA_0(TYPE, FMT, OP, CMP, a, b, ...)     TEST_EXPAND(ASSERT_TEMPLATE(TYPE, FMT, OP, CMP, a, b, __VA_ARGS__))
-#define ASSERT_TEMPLATE_VA_1(TYPE, FMT, OP, CMP, a, b, ...)     TEST_EXPAND(ASSERT_TEMPLATE(TYPE, FMT, OP, CMP, a, b, __VA_ARGS__))
-#define ASSERT_TEMPLATE_VA_2(TYPE, FMT, OP, CMP, a, b, ...)     TEST_EXPAND(ASSERT_TEMPLATE(TYPE, FMT, OP, CMP, a, b, __VA_ARGS__))
-#define ASSERT_TEMPLATE_VA_3(TYPE, FMT, OP, CMP, a, b, ...)     TEST_EXPAND(ASSERT_TEMPLATE(TYPE, FMT, OP, CMP, a, b, __VA_ARGS__))
-#define ASSERT_TEMPLATE_VA_4(TYPE, FMT, OP, CMP, a, b, ...)     TEST_EXPAND(ASSERT_TEMPLATE(TYPE, FMT, OP, CMP, a, b, __VA_ARGS__))
-#define ASSERT_TEMPLATE_VA_5(TYPE, FMT, OP, CMP, a, b, ...)     TEST_EXPAND(ASSERT_TEMPLATE(TYPE, FMT, OP, CMP, a, b, __VA_ARGS__))
-#define ASSERT_TEMPLATE_VA_6(TYPE, FMT, OP, CMP, a, b, ...)     TEST_EXPAND(ASSERT_TEMPLATE(TYPE, FMT, OP, CMP, a, b, __VA_ARGS__))
-#define ASSERT_TEMPLATE_VA_7(TYPE, FMT, OP, CMP, a, b, ...)     TEST_EXPAND(ASSERT_TEMPLATE(TYPE, FMT, OP, CMP, a, b, __VA_ARGS__))
-#define ASSERT_TEMPLATE_VA_8(TYPE, FMT, OP, CMP, a, b, ...)     TEST_EXPAND(ASSERT_TEMPLATE(TYPE, FMT, OP, CMP, a, b, __VA_ARGS__))
-#define ASSERT_TEMPLATE_VA_9(TYPE, FMT, OP, CMP, a, b, ...)     TEST_EXPAND(ASSERT_TEMPLATE(TYPE, FMT, OP, CMP, a, b, __VA_ARGS__))
-
-#define _ASSERT_INTERNAL_HELPER_EQ(a, b)        ((a) == (b))
-#define _ASSERT_INTERNAL_HELPER_NE(a, b)        ((a) != (b))
-#define _ASSERT_INTERNAL_HELPER_LT(a, b)        ((a) < (b))
-#define _ASSERT_INTERNAL_HELPER_LE(a, b)        ((a) <= (b))
-#define _ASSERT_INTERNAL_HELPER_GT(a, b)        ((a) > (b))
-#define _ASSERT_INTERNAL_HELPER_GE(a, b)        ((a) >= (b))
-
-/**
- * @brief Map node
- */
-typedef struct cutest_map_node
-{
-    struct cutest_map_node* __rb_parent_color;  /**< father node | color */
-    struct cutest_map_node* rb_right;           /**< right child node */
-    struct cutest_map_node* rb_left;            /**< left child node */
-}cutest_map_node_t;
 
 typedef struct cutest_case_node cutest_case_node_t;
 
@@ -1241,17 +1280,13 @@ void cutest_register_case(cutest_case_t* test_case, cutest_case_node_t* node, si
  */
 TEST_NORETURN void cutest_internal_assert_failure(void);
 TEST_NORETURN void cutest_unwrap_assert_fail(const char *expr, const char *file, int line, const char *func);
-void cutest_internal_flush(void);
 int cutest_internal_break_on_failure(void);
-int cutest_internal_assert_helper_str_eq(const char* a, const char* b);
-int cutest_internal_assert_helper_float_eq(float a, float b);
-int cutest_internal_assert_helper_float_le(float a, float b);
-int cutest_internal_assert_helper_float_ge(float a, float b);
-int cutest_internal_assert_helper_double_eq(double a, double b);
-int cutest_internal_assert_helper_double_le(double a, double b);
-int cutest_internal_assert_helper_double_ge(double a, double b);
 int cutest_printf(const char* fmt, ...);
-const char* cutest_pretty_file(const char* file);
+
+int cutest_internal_compare(const char* type_name, const void* addr1, const void* addr2);
+void cutest_internal_dump(const char* file, int line, const char* type_name,
+    const char* op, const char* op_l, const char* op_r,
+    const void* addr1, const void* addr2, const char* fmt, ...);
 
 /** @endcond */
 

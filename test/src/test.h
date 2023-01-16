@@ -96,7 +96,18 @@ typedef struct test_runtime_s
 
 extern test_runtime_t _TEST;
 
+/**
+ * @brief Register test case.
+ * @param[in] test_case Test case.
+ */
 void test_register_case(test_case_t* test_case);
+
+/**
+ * @brief Copy content of \p src into \p dst.
+ * @param[in] dst   Destination file.
+ * @param[in] src   Source file.
+ */
+void test_print_file(FILE* dst, FILE* src);
 
 #ifdef __cplusplus
 }
