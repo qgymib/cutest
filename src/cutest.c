@@ -20,18 +20,18 @@
 #   define fileno(x)                        _fileno(x)
 #   define GET_TID()                        ((unsigned long)GetCurrentThreadId())
 #   define snprintf(str, size, fmt, ...)    _snprintf_s(str, size, _TRUNCATE, fmt, ##__VA_ARGS__)
-#   ifndef strdup
-#       define strdup(str)                  _strdup(str)
-#   endif
-#   define strncasecmp(s1, s2, n)           _strnicmp(s1, s2, n)
 #   define sscanf(str, fmt, ...)            sscanf_s(str, fmt, ##__VA_ARGS__)
-#   define strerror_r(errnum, buf, buflen)  strerror_s(buf, buflen, errnum)
 #elif defined(__linux__)
 #   include <sys/time.h>
 #   include <unistd.h>
 #   include <pthread.h>
 #   define GET_TID()                        ((unsigned long)pthread_self())
 #else
+#   define GET_TID()                        0
+#endif
+
+#if defined(CUTEST_NO_MULTITHREADING_SUPPORT)
+#   undef GET_TID
 #   define GET_TID()                        0
 #endif
 
@@ -1050,7 +1050,21 @@ static void cutest_optparse_init(cutest_optparse_t * options, char** argv)
 // Once
 ///////////////////////////////////////////////////////////////////////////////
 
-#if defined(_WIN32)
+#if defined(CUTEST_NO_MULTITHREADING_SUPPORT)
+
+typedef int test_once_t;
+#define TEST_ONCE_INIT  0
+
+static void test_once(test_once_t* token, void (*routine)(void))
+{
+    if (*token == 0)
+    {
+        *token = 1;
+        routine();
+    }
+}
+
+#elif defined(_WIN32)
 
 typedef INIT_ONCE test_once_t;
 #define TEST_ONCE_INIT  INIT_ONCE_STATIC_INIT
@@ -1086,7 +1100,28 @@ static void test_once(test_once_t* token, void (*routine)(void))
 // Timestamp
 ///////////////////////////////////////////////////////////////////////////////
 
-#if defined(_WIN32)
+/**
+ * @brief The timestamp
+ */
+typedef struct cutest_timestamp
+{
+    uint64_t    sec;        /**< seconds */
+    uint64_t    usec;       /**< microseconds */
+}cutest_timestamp_t;
+
+#if defined(CUTEST_NO_ELAPSED_TIME_MEASUREMENT)
+
+/**
+ * @brief Monotonic time since some unspecified starting point
+ * @param[out] t    Timestamp.
+ */
+static void cutest_timestamp_get(cutest_timestamp_t* ts)
+{
+    ts->sec = 0;
+    ts->usec = 0;
+}
+
+#elif defined(_WIN32)
 
 typedef struct test_timestamp_win32
 {
@@ -1135,7 +1170,7 @@ static void _test_init_timestamp_win32(void)
     }
 }
 
-void cutest_timestamp_get(cutest_timestamp_t* ts)
+static void cutest_timestamp_get(cutest_timestamp_t* ts)
 {
     /* One time initialize */
     static test_once_t token = TEST_ONCE_INIT;
@@ -1149,7 +1184,7 @@ void cutest_timestamp_get(cutest_timestamp_t* ts)
     }
     else
     {
-        FILETIME                f;
+        FILETIME f;
         GetSystemTimeAsFileTime(&f);
 
         t.QuadPart = f.dwHighDateTime;
@@ -1171,7 +1206,7 @@ void cutest_timestamp_get(cutest_timestamp_t* ts)
 
 #else
 
-void cutest_timestamp_get(cutest_timestamp_t* ts)
+static void cutest_timestamp_get(cutest_timestamp_t* ts)
 {
     struct timespec tmp_ts;
     if (clock_gettime(CLOCK_MONOTONIC, &tmp_ts) < 0)
@@ -1185,7 +1220,14 @@ void cutest_timestamp_get(cutest_timestamp_t* ts)
 
 #endif
 
-int cutest_timestamp_dif(const cutest_timestamp_t* t1, const cutest_timestamp_t* t2, cutest_timestamp_t* dif)
+/**
+ * @brief Compare timestamp
+ * @param [in] t1       timestamp t1
+ * @param [in] t2       timestamp t2
+ * @param [in] dif      diff
+ * @return              -1 if t1 < t2; 1 if t1 > t2; 0 if t1 == t2
+ */
+static int cutest_timestamp_dif(const cutest_timestamp_t* t1, const cutest_timestamp_t* t2, cutest_timestamp_t* dif)
 {
     cutest_timestamp_t tmp_dif;
     const cutest_timestamp_t* large_t = t1->sec > t2->sec ? t1 : (t1->sec < t2->sec ? t2 : (t1->usec > t2->usec ? t1 : t2));
@@ -1226,7 +1268,11 @@ typedef enum cutest_print_color
     CUTEST_PRINT_COLOR_YELLOW,
 } cutest_print_color_t;
 
-#if defined(_WIN32)
+#if defined(CUTEST_NO_COLORFUL_SUPPORT)
+
+/* do nothing */
+
+#elif defined(_WIN32)
 
 static int _should_use_color(int is_tty)
 {
@@ -1360,8 +1406,8 @@ static void _initlize_color_unix(void)
 
 static int _should_use_color(int is_tty)
 {
-    static pthread_once_t once_control = PTHREAD_ONCE_INIT;
-    pthread_once(&once_control, _initlize_color_unix);
+    static test_once_t once_control = TEST_ONCE_INIT;
+    test_once(&once_control, _initlize_color_unix);
 
     return is_tty && g_color_printf.terminal_color_support;
 }
@@ -1402,6 +1448,9 @@ static int cutest_color_vfprintf(cutest_print_color_t color, FILE* stream, const
 {
     assert(stream != NULL);
 
+#if defined(CUTEST_NO_COLORFUL_SUPPORT)
+    return vfprintf(stream, fmt, ap);
+#else
     int stream_fd = fileno(stream);
     if (!_should_use_color(isatty(stream_fd)) || (color == CUTEST_PRINT_COLOR_DEFAULT))
     {
@@ -1409,6 +1458,7 @@ static int cutest_color_vfprintf(cutest_print_color_t color, FILE* stream, const
     }
 
     return _test_color_vfprintf(stream, color, fmt, ap);
+#endif
 }
 
 static int cutest_color_fprintf(cutest_print_color_t color, FILE* stream, const char* fmt, ...)
@@ -1652,10 +1702,12 @@ static const char* s_test_help_encoded =
 "      Random number seed to use for shuffling test orders (between 0 and\n"
 "      99999. By default a seed based on the current time is used for shuffle).\n"
 "\n"
+#if !defined(CUTEST_NO_ELAPSED_TIME_MEASUREMENT)
 "Test Output:\n"
 "  " COLOR_GREEN("--test_print_time=") COLOR_YELLO("(") COLOR_GREEN("0") COLOR_YELLO("|") COLOR_GREEN("1") COLOR_YELLO(")") "\n"
 "      Don't print the elapsed time of each test.\n"
 "\n"
+#endif
 "Assertion Behavior:\n"
 "  " COLOR_GREEN("--test_break_on_failure") "\n"
 "      Turn assertion failures into debugger break-points.\n"
@@ -2691,9 +2743,17 @@ static void cutest_setup_once(void)
 
 static void _test_prepare(void)
 {
-    _test_srand(time(NULL));
+    unsigned long long seed = 0;
+#if !defined(CUTEST_NO_TIME_BASED_SHUFFLE)
+    seed = time(NULL);
+#endif
+    _test_srand(seed);
     g_test_ctx.runtime.tid = GET_TID();
     g_test_ctx.counter.repeat.repeat = 1;
+
+#if defined(CUTEST_NO_ELAPSED_TIME_MEASUREMENT)
+    g_test_ctx.mask.no_print_time = 1;
+#endif
 }
 
 /**
@@ -2735,7 +2795,9 @@ static int _test_setup(int argc, char* argv[], const cutest_hook_t* hook, int* b
         { "test_repeat",                    test_repeat,                    CUTEST_OPTPARSE_REQUIRED },
         { "test_shuffle",                   test_shuffle,                   CUTEST_OPTPARSE_NONE },
         { "test_random_seed",               test_random_seed,               CUTEST_OPTPARSE_REQUIRED },
+#if !defined(CUTEST_NO_ELAPSED_TIME_MEASUREMENT)
         { "test_print_time",                test_print_time,                CUTEST_OPTPARSE_REQUIRED },
+#endif
         { "test_break_on_failure",          test_break_on_failure,          CUTEST_OPTPARSE_NONE },
         { "help",                           help,                           CUTEST_OPTPARSE_NONE },
         { 0,                                0,                              0 },
@@ -2964,10 +3026,6 @@ int cutest_internal_break_on_failure(void)
 {
     return g_test_ctx.mask.break_on_failure;
 }
-
-/************************************************************************/
-/* LOG                                                                  */
-/************************************************************************/
 
 int cutest_printf(const char* fmt, ...)
 {

@@ -43,7 +43,7 @@ extern "C" {
 /**
  * @brief Development version.
  */
-#define CUTEST_VERSION_PREREL       5
+#define CUTEST_VERSION_PREREL       6
 
 /**
  * @brief Ensure the api is exposed as C function.
@@ -53,10 +53,6 @@ extern "C" {
 #else
 #define TEST_C_API
 #endif
-
-/************************************************************************/
-/* CUnitTest                                                            */
-/************************************************************************/
 
 /**
  * @example main.c
@@ -1322,37 +1318,57 @@ void cutest_skip_test(void);
  */
 
 /**
- * @defgroup TEST_TIMESTAMP Timestamp
- * @{
- */
-
-/**
- * @brief The timestamp
- */
-typedef struct cutest_timestamp
-{
-    uint64_t    sec;        /**< seconds */
-    uint64_t    usec;       /**< microseconds */
-}cutest_timestamp_t;
-
-/**
- * @brief Monotonic time since some unspecified starting point
- * @param[out] t    Timestamp.
- */
-void cutest_timestamp_get(cutest_timestamp_t* t);
-
-/**
- * @brief Compare timestamp
- * @param [in] t1       timestamp t1
- * @param [in] t2       timestamp t2
- * @param [in] dif      diff
- * @return              -1 if t1 < t2; 1 if t1 > t2; 0 if t1 == t2
- */
-int cutest_timestamp_dif(const cutest_timestamp_t* t1, const cutest_timestamp_t* t2, cutest_timestamp_t* dif);
-
-/**
- * Group: TEST_TIMESTAMP
- * @}
+ * @page TEST_SYSTEM_API_DEPENDENCY System API dependency
+ * 
+ * [cutest](https://github.com/qgymib/cutest/) rely on system standard API,
+ * which should be available on most modern operation system. But on some
+ * embedded operation system, there might be only a subset of APIs available.
+ * So we list the API dependency here and show how to bypass it.
+ *
+ * The following API is non-optional and operation system must provide it:
+ * + [setjmp()](https://man7.org/linux/man-pages/man3/setjmp.3.html)
+ * + [longjmp()](https://man7.org/linux/man-pages/man3/longjmp.3p.html)
+ * + [va_start()](https://linux.die.net/man/3/va_start)
+ * + [va_end()](https://linux.die.net/man/3/va_end)
+ * + [fprintf()](https://man7.org/linux/man-pages/man3/fprintf.3p.html)
+ * + [vfprintf()](https://man7.org/linux/man-pages/man3/vfprintf.3p.html)
+ * + [memcmp()](https://man7.org/linux/man-pages/man3/memcmp.3.html)
+ * + [memset()](https://man7.org/linux/man-pages/man3/memset.3.html)
+ * + [strlen()](https://man7.org/linux/man-pages/man3/strlen.3.html)
+ * + [fflush()](https://man7.org/linux/man-pages/man3/fflush.3.html)
+ * + [strcmp()](https://man7.org/linux/man-pages/man3/strcmp.3.html)
+ * + [strncmp()](https://man7.org/linux/man-pages/man3/strcmp.3.html)
+ * + [strchr()](https://man7.org/linux/man-pages/man3/strchr.3.html)
+ * + [abort()](https://man7.org/linux/man-pages/man3/abort.3.html)
+ * + [snprintf()](https://man7.org/linux/man-pages/man3/snprintf.3p.html)
+ * + [sscanf()](https://man7.org/linux/man-pages/man3/sscanf.3p.html)
+ *
+ * The following API is optional and can be bypassed by `CUTEST_NO_MULTITHREADING_SUPPORT`:
+ * + [InitOnceExecuteOnce()](https://learn.microsoft.com/en-us/windows/win32/api/synchapi/nf-synchapi-initonceexecuteonce)(Windows)
+ * + [GetCurrentThreadId()](https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-getcurrentthreadid)(Windows)
+ * + [pthread_once()](https://man7.org/linux/man-pages/man3/pthread_once.3p.html)(Unix)
+ * + [pthread_self()](https://man7.org/linux/man-pages/man3/pthread_self.3.html)(Unix)
+ *
+ * The following API is optional and can be bypassed by `CUTEST_NO_COLORFUL_SUPPORT`:
+ * + [_get_osfhandle()](https://learn.microsoft.com/en-us/cpp/c-runtime-library/reference/get-osfhandle)(Windows)
+ * + [GetConsoleScreenBufferInfo()](https://learn.microsoft.com/en-us/windows/console/getconsolescreenbufferinfo)(Windows)
+ * + [SetConsoleTextAttribute()](https://learn.microsoft.com/en-us/windows/console/setconsoletextattribute)(Windows)
+ * + [_fileno()](https://learn.microsoft.com/en-us/cpp/c-runtime-library/reference/fileno)(Windows)
+ * + [_isatty()](https://learn.microsoft.com/en-us/cpp/c-runtime-library/reference/isatty)(Windows)
+ * + [getenv()](https://man7.org/linux/man-pages/man3/getenv.3.html)(Unix)
+ * + [fileno()](https://man7.org/linux/man-pages/man3/fileno.3.html)(Unix)
+ * + [isatty()](https://man7.org/linux/man-pages/man3/isatty.3.html)(Unix)
+ *
+ * The following API is optional and can be bypassed by `CUTEST_NO_TIME_BASED_SHUFFLE`:
+ * + [time()](https://man7.org/linux/man-pages/man2/time.2.html)
+ *
+ * The following API is optional and can be bypassed by `CUTEST_NO_ELAPSED_TIME_MEASUREMENT`:
+ * + [SystemTimeToFileTime()](https://learn.microsoft.com/en-us/windows/win32/api/timezoneapi/nf-timezoneapi-systemtimetofiletime)(Windows)
+ * + [QueryPerformanceFrequency()](https://learn.microsoft.com/en-us/windows/win32/api/profileapi/nf-profileapi-queryperformancefrequency)(Windows)
+ * + [QueryPerformanceCounter()](https://learn.microsoft.com/en-us/windows/win32/api/profileapi/nf-profileapi-queryperformancecounter)(Windows)
+ * + [GetSystemTimeAsFileTime()](https://learn.microsoft.com/en-us/windows/win32/api/sysinfoapi/nf-sysinfoapi-getsystemtimeasfiletime)(Windows)
+ * + [clock_gettime()](https://linux.die.net/man/3/clock_gettime)(Unix)
+ *
  */
 
 #ifdef __cplusplus

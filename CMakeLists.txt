@@ -2,6 +2,22 @@ cmake_minimum_required(VERSION 3.2)
 project(cutest)
 
 ###############################################################################
+# Options
+###############################################################################
+option(CUTEST_NO_COLORFUL_SUPPORT
+    "Do not detect colorful support and always use pain text."
+    OFF)
+option(CUTEST_NO_MULTITHREADING_SUPPORT
+    "Disable multithreading support."
+    OFF)
+option(CUTEST_NO_TIME_BASED_SHUFFLE
+    "If --test_shuffle is used, use 0 instead of time(NULL) as default seed."
+    OFF)
+option(CUTEST_NO_ELAPSED_TIME_MEASUREMENT
+    "Disable elapsed time measurement."
+    OFF)
+
+###############################################################################
 # Functions
 ###############################################################################
 
@@ -29,6 +45,19 @@ target_include_directories(${PROJECT_NAME}
         ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
 setup_target_wall(${PROJECT_NAME})
+
+if (CUTEST_NO_COLORFUL_SUPPORT)
+    target_compile_options(${name} PRIVATE -DCUTEST_NO_COLORFUL_SUPPORT)
+endif()
+if (CUTEST_NO_MULTITHREADING_SUPPORT)
+    target_compile_options(${name} PRIVATE -DCUTEST_NO_MULTITHREADING_SUPPORT)
+endif ()
+if (CUTEST_NO_TIME_BASED_SHUFFLE)
+    target_compile_options(${name} PRIVATE -DCUTEST_NO_TIME_BASED_SHUFFLE)
+endif ()
+if (CUTEST_NO_ELAPSED_TIME_MEASUREMENT)
+    target_compile_options(${name} PRIVATE -DCUTEST_NO_ELAPSED_TIME_MEASUREMENT)
+endif ()
 
 ###############################################################################
 # Dependency

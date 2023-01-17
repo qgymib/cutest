@@ -10,6 +10,7 @@
 
 ### BREAKING CHANGES
 1. Hide unused function
+2. Hide time measurement functions
 
 
 ## v1.0.3 (2023/01/07)
