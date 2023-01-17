@@ -20,7 +20,6 @@
 #include <stddef.h>
 #include <inttypes.h>
 #include <stdio.h>
-#include <stdarg.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -46,6 +45,9 @@ extern "C" {
  */
 #define CUTEST_VERSION_PREREL       5
 
+/**
+ * @brief Ensure the api is exposed as C function.
+ */
 #if defined(__cplusplus)
 #define TEST_C_API  extern "C"
 #else
@@ -66,7 +68,45 @@ extern "C" {
  */
 
 /**
- * @defgroup SETUP_AND_TEARDOWN Setup And Teardown
+ * @defgroup TEST_DEFINE Define Test
+ *
+ * There are three ways to define a test:
+ * + by #TEST().
+ * + by #TEST_F().
+ * + by #TEST_P().
+ *
+ * #TEST() define a simple test unit, which should be self contained.
+ * 
+ * ```c
+ * TEST(foo, self) {\
+ *     ASSERT_EQ_D32(0, 0);
+ * }
+ * ```
+ *
+ * Both #TEST_F() and #TEST_P() define a set of shared test unit, which share
+ * the same setup and teardown procedure defined by #TEST_FIXTURE_SETUP() and
+ * #TEST_FIXTURE_TEAREDOWN().
+ *
+ * ```c
+ * TEST_FIXTURE_SETUP(foo) {
+ *     printf("setup of foo.\n");
+ * }
+ * TEST_FIXTURE_TEAREDOWN(foo) {
+ *     printf("teardown of foo.\n");
+ * }
+ * 
+ * TEST_F(foo, normal) {
+ *     ASSERT_NE_D32(0, 0);
+ * }
+ *
+ * TEST_PARAMETERIZED_DEFINE(foo, param, int, 0, 1, 2);
+ * TEST_P(foo, param) {
+ *     printf("param:%d\n", TEST_GET_PARAM());
+ * }
+ * ```
+ *
+ * The #TEST_P() define a parameterized test, which require #TEST_PARAMETERIZED_DEFINE() define a set of parameterized data.
+ * 
  * @{
  */
 
@@ -85,16 +125,6 @@ extern "C" {
     TEST_C_API static void s_cutest_fixture_teardown_##fixture(void)
 
 /**
- * Group: SETUP_AND_TEARDOWN
- * @}
- */
-
-/**
- * @defgroup DEFINE_TEST Define Test
- * @{
- */
-
-/**
  * @brief Get parameterized data
  * @snippet test_p.c GET_PARAMETERIZED_DATA
  * @see TEST_PARAMETERIZED_DEFINE
@@ -108,9 +138,10 @@ extern "C" {
  * @brief Define parameterized data for fixture
  * @snippet test_p.c ADD_SIMPLE_PARAMETERIZED_DEFINE
  * @snippet test_p.c ADD_COMPLEX_PARAMETERIZED_DEFINE
- * @param [in] fixture_name     Which fixture you want to parameterized
- * @param [in] TYPE             Data type
- * @param [in] ...              Data values
+ * @param[in] fixture   Which fixture you want to parameterized
+ * @param[in] test      Which test you want to parameterized
+ * @param[in] TYPE      Data type
+ * @param[in] ...       Data values
  */
 #define TEST_PARAMETERIZED_DEFINE(fixture, test, TYPE, ...)  \
     TEST_C_API static cutest_parameterized_info_t* s_cutest_parameterized_##fixture##_##test(void){\
@@ -236,32 +267,183 @@ extern "C" {
     }\
     TEST_C_API void u_cutest_body_##fixture##_##test(void)
 
+/** @cond */
+
 /**
- * Group: DEFINE_TEST
+ * @def TEST_INITIALIZER(f)
+ * @brief Run the following code before main() invoke.
+ */
+#ifdef __cplusplus
+#   define TEST_INITIALIZER(f) \
+        TEST_C_API void f(void); \
+        struct f##_t_ { f##_t_(void) { f(); } }; f##_t_ f##_; \
+        TEST_C_API void f(void)
+#elif defined(_MSC_VER)
+#   pragma section(".CRT$XCU",read)
+#   define TEST_INITIALIZER2_(f,p) \
+        TEST_C_API void f(void); \
+        __declspec(allocate(".CRT$XCU")) void (*f##_)(void) = f; \
+        __pragma(comment(linker,"/include:" p #f "_")) \
+        TEST_C_API void f(void)
+#   ifdef _WIN64
+#       define TEST_INITIALIZER(f) TEST_INITIALIZER2_(f,"")
+#   else
+#       define TEST_INITIALIZER(f) TEST_INITIALIZER2_(f,"_")
+#   endif
+#elif defined(__GNUC__) || defined(__clang__) || defined(__llvm__)
+#   define TEST_INITIALIZER(f) \
+        TEST_C_API void f(void) __attribute__((constructor)); \
+        TEST_C_API void f(void)
+#else
+#   error "INITIALIZER not support on your compiler"
+#endif
+
+/**
+ * @def TEST_ARG_COUNT
+ * @brief Get the number of arguments
+ */
+#ifdef _MSC_VER // Microsoft compilers
+#   define TEST_ARG_COUNT(...)  \
+        TEST_INTERNAL_EXPAND_ARGS_PRIVATE(TEST_INTERNAL_ARGS_AUGMENTER(__VA_ARGS__))
+#   define TEST_INTERNAL_ARGS_AUGMENTER(...)    \
+        unused, __VA_ARGS__
+#   define TEST_INTERNAL_EXPAND_ARGS_PRIVATE(...)   \
+        TEST_EXPAND(TEST_INTERNAL_GET_ARG_COUNT_PRIVATE(__VA_ARGS__, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0))
+#   define TEST_INTERNAL_GET_ARG_COUNT_PRIVATE(_1_, _2_, _3_, _4_, _5_, _6_, _7_, _8_, _9_, _10_, _11_, _12_, _13_, _14_, _15_, _16_, count, ...) count
+#else // Non-Microsoft compilers
+#   define TEST_ARG_COUNT(...)  \
+        TEST_INTERNAL_GET_ARG_COUNT_PRIVATE(0, ## __VA_ARGS__, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0)
+#   define TEST_INTERNAL_GET_ARG_COUNT_PRIVATE(_0, _1_, _2_, _3_, _4_, _5_, _6_, _7_, _8_, _9_, _10_, _11_, _12_, _13_, _14_, _15_, _16_, count, ...) count
+#endif
+
+#define TEST_STRINGIFY(...)     TEST_STRINGIFY_2(__VA_ARGS__)
+#define TEST_STRINGIFY_2(...)   #__VA_ARGS__
+
+#define TEST_EXPAND(x)          x
+#define TEST_JOIN(a, b)         TEST_JOIN2(a, b)
+#define TEST_JOIN2(a, b)        a##b
+
+typedef struct cutest_case_node cutest_case_node_t;
+
+typedef struct cutest_map_node
+{
+    struct cutest_map_node*     __rb_parent_color;      /**< father node | color */
+    struct cutest_map_node*     rb_right;               /**< right child node */
+    struct cutest_map_node*     rb_left;                /**< left child node */
+} cutest_map_node_t;
+
+typedef struct cutest_parameterized_info
+{
+    const char*                 type_name;              /**< User type name. */
+
+    const char*                 test_data_info;         /**< The C string of user test data. */
+    size_t                      test_data_sz;           /**< parameterized data size */
+    void*                       test_data;              /**< parameterized data */
+
+    cutest_case_node_t*         nodes;
+    size_t                      node_sz;
+} cutest_parameterized_info_t;
+
+typedef struct cutest_case
+{
+    struct
+    {
+        const char*             fixture;                /**< suit name */
+        const char*             case_name;              /**< case name */
+    } info;
+
+    struct
+    {
+        void                    (*setup)(void);         /**< setup */
+        void                    (*teardown)(void);      /**< teardown */
+        void                    (*body)(void*, size_t); /**< test body */
+    } stage;
+
+    cutest_parameterized_info_t* (*get_parameterized_info)(void);
+} cutest_case_t;
+
+struct cutest_case_node
+{
+    cutest_map_node_t           node;
+    cutest_case_t*              test_case;
+    unsigned                    mask;                   /**< internal mask */
+    unsigned long               randkey;
+    size_t                      parameterized_idx;
+};
+
+/**
+ * @brief Register test case
+ * @param[in] test_case     Test case
+ */
+void cutest_register_case(cutest_case_t* test_case, cutest_case_node_t* node, size_t node_sz);
+
+ /** @endcond */
+
+/**
+ * Group: TEST_DEFINE
  * @}
  */
 
 /**
- * @defgroup ASSERTION Assertion
+ * @defgroup TEST_ASSERTION Assertion
+ * 
+ * [cutest](https://github.com/qgymib/cutest/) support rich set of assertion. An assertion typically have following syntax:
+ * 
+ * ```c
+ * ASSERT_OP_TYPE(a, b)
+ * ASSERT_OP_TYPE(a, b, fmt, ...)
+ * ```
+ * 
+ * The `OP` means which compare operation you want to use:
+ * + EQ: `a` is equal to `b`.
+ * + NE: `a` is not equal to `b`.
+ * + LT: `a` is less than `b`.
+ * + LE: `a` is equal to `b` or less than `b`.
+ * + GT: `a` is greater than `b`.
+ * + GE: `a` is equal to `b` or greater than `b`.
+ *
+ * The `TYPE` means the type of value `a` and `b`.
+ * + D32: int32_t
+ * + U32: uint32_t
+ * + D64: int64_t
+ * + U64: uint64_t
+ * + STR: const char*
+ * + PTR: const void*
+ * + SIZE: size_t
+ * + FLOAT: float
+ * + DOUBLE: double
+ *
+ * > To support more types, checkout #TEST_REGISTER_TYPE().
+ *
+ * So, an assertion like #ASSERT_EQ_D32() means except `a` and `b` have type of `int32_t` and they are the same value.
+ *
+ * You may notice all assertions have syntax of `ASSERT_OP_TYPE(a, b, fmt, ...)`, it means custom print is available if assertion fails. For example, the following code
+ * 
+ * ```c
+ * int errcode = ENOENT;
+ * ASSERT_EQ_D32(0, errcode, "%s(%d)", strerror(errcode), errcode);
+ * ```
+ *
+ * Will print something like:
+ *
+ * ```
+ * No such file or directory(2)
+ * ```
+ *
+ * You may also want to refer to the actual value of operator, you can use `_L` to refer to left operator and `_R` to refer to right operator:
+ * 
+ * ```c
+ * ASSERT_EQ_D32(0, 1+2, "%d is not %d", _L, _R);
+ * ```
+ *
+ * The output will be something like:
+ *
+ * ```
+ * 0 is not 3
+ * ```
+ *
  * @{
  */
-
-/**
- * @brief Prints an error message to standard error and terminates the program
- *   by calling abort(3) if expression is false.
- * @note `NDEBUG' has no affect on this macro.
- * @param [in] x        expression
- */
-#define ASSERT(x)   \
-    do {\
-        if (x) {\
-            break;\
-        }\
-        if (cutest_internal_break_on_failure()) {\
-            TEST_DEBUGBREAK;\
-        }\
-        cutest_unwrap_assert_fail(#x, __FILE__, __LINE__, __FUNCTION__);\
-    } TEST_MSVC_WARNNING_GUARD(while (0), 4127)
 
 /**
  * @def ASSERT_EQ_D32
@@ -823,12 +1005,12 @@ extern "C" {
 #define ASSERT_NE_STR(a, b, ...)        ASSERT_TEMPLATE_EXT(const char*, !=, a, b, __VA_ARGS__)
 
 /**
- * Group: ASSERTION
+ * Group: TEST_ASSERTION
  * @}
  */
 
 /**
- * @defgroup CUSTOM_TYPE Custom type
+ * @defgroup TEST_CUSTOM_TYPE Custom type
  * 
  * Even though cutest have rich set of assertion macros, there might be some cases that need to compare custom type.
  * 
@@ -885,12 +1067,72 @@ extern "C" {
         cutest_register_type(&info);\
     }
 
-typedef struct cutest_map_node
-{
-    struct cutest_map_node* __rb_parent_color;  /**< father node | color */
-    struct cutest_map_node* rb_right;           /**< right child node */
-    struct cutest_map_node* rb_left;            /**< left child node */
-} cutest_map_node_t;
+ /** @cond */
+
+ /**
+  * @brief Compare template.
+  * @warning It is for internal usage.
+  * @param[in] TYPE  Type name.
+  * @param[in] OP    Compare operation.
+  * @param[in] a     Left operator.
+  * @param[in] b     Right operator.
+  * @param[in] fmt   Extra print format when assert failure.
+  * @param[in] ...   Print arguments.
+  */
+#define ASSERT_TEMPLATE_EXT(TYPE, OP, a, b, fmt, ...) \
+    do {\
+        TYPE _L = (a); TYPE _R = (b);\
+        if (cutest_internal_compare(#TYPE, (void*)&_L, (void*)&_R) OP 0) {\
+            break;\
+        }\
+        cutest_internal_dump(__FILE__, __LINE__, #TYPE, #OP, #a, #b, (void*)&_L, (void*)&_R,\
+            "" fmt, ##__VA_ARGS__);\
+        if (cutest_internal_break_on_failure()) {\
+            TEST_DEBUGBREAK;\
+        }\
+        cutest_internal_assert_failure();\
+    } TEST_MSVC_WARNNING_GUARD(while (0), 4127)
+
+/**
+ * @def TEST_MSVC_WARNNING_GUARD(exp, code)
+ * @brief Disable warning for `code'.
+ * @note This macro only works for MSVC.
+ */
+#if defined(_MSC_VER)
+#   define TEST_MSVC_WARNNING_GUARD(exp, code)  \
+        __pragma(warning(push))\
+        __pragma(warning(disable : code))\
+        exp\
+        __pragma(warning(pop))
+#else
+#   define TEST_MSVC_WARNNING_GUARD(exp, code) \
+        exp
+#endif
+
+/**
+ * @def TEST_DEBUGBREAK
+ * @brief Causes a breakpoint in your code, where the user will be prompted to
+ *   run the debugger.
+ */
+#if defined(_MSC_VER)
+#   define TEST_DEBUGBREAK      __debugbreak()
+#elif (defined(__clang__) || defined(__GNUC__)) && (defined(__x86_64__) || defined(__i386__))
+#   define TEST_DEBUGBREAK      __asm__ volatile("int $0x03")
+#elif (defined(__clang__) || defined(__GNUC__)) && defined(__thumb__)
+#   define TEST_DEBUGBREAK      __asm__ volatile(".inst 0xde01")
+#elif (defined(__clang__) || defined(__GNUC__)) && defined(__arm__) && !defined(__thumb__)
+#   define TEST_DEBUGBREAK      __asm__ volatile(".inst 0xe7f001f0")
+#elif (defined(__clang__) || defined(__GNUC__)) && defined(__aarch64__) && defined(__APPLE__)
+#   define TEST_DEBUGBREAK      __builtin_debugtrap()
+#elif (defined(__clang__) || defined(__GNUC__)) && defined(__aarch64__)
+#   define TEST_DEBUGBREAK      __asm__ volatile(".inst 0xd4200000")
+#elif (defined(__clang__) || defined(__GNUC__)) && defined(__powerpc__)
+#   define TEST_DEBUGBREAK      __asm__ volatile(".4byte 0x7d821008")
+#elif (defined(__clang__) || defined(__GNUC__)) && defined(__riscv)
+#   define TEST_DEBUGBREAK      __asm__ volatile(".4byte 0x00100073")
+#else
+#   define TEST_DEBUGBREAK      *(volatile int*)NULL = 1
+#endif
 
 /**
  * @brief Compare function for specific type.
@@ -927,21 +1169,69 @@ typedef struct cutest_type_info
 void cutest_register_type(cutest_type_info_t* info);
 
 /**
- * Group: CUSTOM_TYPE
+ * @brief Compare value1 and value2 of specific type.
+ * @param[in] type_name The name of type.
+ * @param[in] addr1     The address of value1.
+ * @param[in] addr2     The address of value2.
+ * @return              Compare result.
+ */
+int cutest_internal_compare(const char* type_name, const void* addr1, const void* addr2);
+
+/**
+ * @brief Dump compare result.
+ * @param[in] file      The file name.
+ * @param[in] line      The line number.
+ * @param[in] type_name The name of type.
+ * @param[in] op        The string of operation.
+ * @param[in] op_l      The string of left operator.
+ * @param[in] op_r      The string of right operator.
+ * @param[in] addr1     The address of value1.
+ * @param[in] addr2     The address of value2.
+ * @param[in] fmt       User defined print format.
+ * @param[in] ...       Print arguments to \p fmt.
+ */
+void cutest_internal_dump(const char* file, int line, const char* type_name,
+    const char* op, const char* op_l, const char* op_r,
+    const void* addr1, const void* addr2, const char* fmt, ...);
+
+/**
+ * @brief Check if `--test_break_on_failure` is set.
+ * @return              Boolean.
+ */
+int cutest_internal_break_on_failure(void);
+
+/**
+ * @brief Set current test as failure
+ * @note This function is available in setup stage and test body.
+ * @warning Call this function in TearDown stage will cause assert.
+ */
+void cutest_internal_assert_failure(void);
+
+void cutest_unwrap_assert_fail(const char* expr, const char* file, int line, const char* func);
+int cutest_printf(const char* fmt, ...);
+/** @endcond */
+
+/**
+ * Group: TEST_CUSTOM_TYPE
  * @}
  */
 
- /**
-  * @defgroup RUN Run
-  * @{
-  */
+/**
+ * @defgroup TEST_RUN Run
+ * @{
+ */
 
 /**
  * @brief CUnitTest hook
  */
 typedef struct cutest_hook
 {
-    FILE*   out;    /**< Where the output should be written. */
+    /**
+     * @brief Where the output should be written.
+     *
+     * If set to NULL, `stdout` is used.
+     */
+    FILE*   out;
 
     /**
      * @brief Hook before run all tests
@@ -1027,16 +1317,12 @@ const char* cutest_get_current_test(void);
 void cutest_skip_test(void);
 
 /**
- * Group: RUN
+ * Group: TEST_RUN
  * @}
  */
 
-/************************************************************************/
-/* time                                                                 */
-/************************************************************************/
-
 /**
- * @defgroup Timestamp Timestamp
+ * @defgroup TEST_TIMESTAMP Timestamp
  * @{
  */
 
@@ -1065,234 +1351,9 @@ void cutest_timestamp_get(cutest_timestamp_t* t);
 int cutest_timestamp_dif(const cutest_timestamp_t* t1, const cutest_timestamp_t* t2, cutest_timestamp_t* dif);
 
 /**
+ * Group: TEST_TIMESTAMP
  * @}
  */
-
-/************************************************************************/
-/* internal interface                                                   */
-/************************************************************************/
-
-/** @cond */
-
-/**
- * @internal
- * @def TEST_NOINLINE
- * @brief Prevents a function from being considered for inlining.
- * @note If the function does not have side-effects, there are optimizations
- *   other than inlining that causes function calls to be optimized away,
- *   although the function call is live.
- */
-/**
- * @internal
- * @def TEST_NORETURN
- * @brief Define function that never return.
- */
-/**
- * @internal
- * @def TEST_UNREACHABLE
- * @brief If control flow reaches the point of the TEST_UNREACHABLE, the
- *   program is undefined.
- */
-#if defined(__GNUC__) || defined(__clang__)
-#   define TEST_NOINLINE    __attribute__((noinline))
-#   define TEST_NORETURN    __attribute__((noreturn))
-#   define TEST_UNREACHABLE __builtin_unreachable()
-#elif defined(_MSC_VER)
-#   define TEST_NOINLINE    __declspec(noinline)
-#   define TEST_NORETURN    __declspec(noreturn)
-#   define TEST_UNREACHABLE __assume(0)
-#else
-#   define TEST_NOINLINE
-#   define TEST_NORETURN
-#   define TEST_UNREACHABLE
-#endif
-
-/**
- * @internal
- * @def TEST_MSVC_WARNNING_GUARD(exp, code)
- * @brief Disable warning for `code'.
- * @note This macro only works for MSVC.
- */
-#if defined(_MSC_VER)
-#   define TEST_MSVC_WARNNING_GUARD(exp, code)  \
-        __pragma(warning(push))\
-        __pragma(warning(disable : code))\
-        exp\
-        __pragma(warning(pop))
-#else
-#   define TEST_MSVC_WARNNING_GUARD(exp, code) \
-        exp
-#endif
-
-/**
- * @internal
- * @def TEST_DEBUGBREAK
- * @brief Causes a breakpoint in your code, where the user will be prompted to
- *   run the debugger.
- */
-#if defined(_MSC_VER)
-#   define TEST_DEBUGBREAK      __debugbreak()
-#elif (defined(__clang__) || defined(__GNUC__)) && (defined(__x86_64__) || defined(__i386__))
-#   define TEST_DEBUGBREAK      __asm__ volatile("int $0x03")
-#elif (defined(__clang__) || defined(__GNUC__)) && defined(__thumb__)
-#   define TEST_DEBUGBREAK      __asm__ volatile(".inst 0xde01")
-#elif (defined(__clang__) || defined(__GNUC__)) && defined(__arm__) && !defined(__thumb__)
-#   define TEST_DEBUGBREAK      __asm__ volatile(".inst 0xe7f001f0")
-#elif (defined(__clang__) || defined(__GNUC__)) && defined(__aarch64__) && defined(__APPLE__)
-#   define TEST_DEBUGBREAK      __builtin_debugtrap()
-#elif (defined(__clang__) || defined(__GNUC__)) && defined(__aarch64__)
-#   define TEST_DEBUGBREAK      __asm__ volatile(".inst 0xd4200000")
-#elif (defined(__clang__) || defined(__GNUC__)) && defined(__powerpc__)
-#   define TEST_DEBUGBREAK      __asm__ volatile(".4byte 0x7d821008")
-#elif (defined(__clang__) || defined(__GNUC__)) && defined(__riscv)
-#   define TEST_DEBUGBREAK      __asm__ volatile(".4byte 0x00100073")
-#else
-#   define TEST_DEBUGBREAK      *(volatile int*)NULL = 1
-#endif
-
-/**
- * @internal
- * @def TEST_ARG_COUNT
- * @brief Get the number of arguments
- */
-#ifdef _MSC_VER // Microsoft compilers
-#   define TEST_ARG_COUNT(...)  \
-        TEST_INTERNAL_EXPAND_ARGS_PRIVATE(TEST_INTERNAL_ARGS_AUGMENTER(__VA_ARGS__))
-#   define TEST_INTERNAL_ARGS_AUGMENTER(...)    \
-        unused, __VA_ARGS__
-#   define TEST_INTERNAL_EXPAND_ARGS_PRIVATE(...)   \
-        TEST_EXPAND(TEST_INTERNAL_GET_ARG_COUNT_PRIVATE(__VA_ARGS__, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0))
-#   define TEST_INTERNAL_GET_ARG_COUNT_PRIVATE(_1_, _2_, _3_, _4_, _5_, _6_, _7_, _8_, _9_, _10_, _11_, _12_, _13_, _14_, _15_, _16_, count, ...) count
-#else // Non-Microsoft compilers
-#   define TEST_ARG_COUNT(...)  \
-        TEST_INTERNAL_GET_ARG_COUNT_PRIVATE(0, ## __VA_ARGS__, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0)
-#   define TEST_INTERNAL_GET_ARG_COUNT_PRIVATE(_0, _1_, _2_, _3_, _4_, _5_, _6_, _7_, _8_, _9_, _10_, _11_, _12_, _13_, _14_, _15_, _16_, count, ...) count
-#endif
-
-#define TEST_STRINGIFY(...)     TEST_STRINGIFY_2(__VA_ARGS__)
-#define TEST_STRINGIFY_2(...)   #__VA_ARGS__
-
-#define TEST_EXPAND(x)      x
-#define TEST_JOIN(a, b)     TEST_JOIN2(a, b)
-#define TEST_JOIN2(a, b)    a##b
-
-/**
- * @internal
- * @def TEST_INITIALIZER(f)
- * @brief Run the following code before main() invoke.
- */
-#ifdef __cplusplus
-#   define TEST_INITIALIZER(f) \
-        TEST_C_API void f(void); \
-        struct f##_t_ { f##_t_(void) { f(); } }; f##_t_ f##_; \
-        TEST_C_API void f(void)
-#elif defined(_MSC_VER)
-#   pragma section(".CRT$XCU",read)
-#   define TEST_INITIALIZER2_(f,p) \
-        TEST_C_API void f(void); \
-        __declspec(allocate(".CRT$XCU")) void (*f##_)(void) = f; \
-        __pragma(comment(linker,"/include:" p #f "_")) \
-        TEST_C_API void f(void)
-#   ifdef _WIN64
-#       define TEST_INITIALIZER(f) TEST_INITIALIZER2_(f,"")
-#   else
-#       define TEST_INITIALIZER(f) TEST_INITIALIZER2_(f,"_")
-#   endif
-#elif defined(__GNUC__) || defined(__clang__) || defined(__llvm__)
-#   define TEST_INITIALIZER(f) \
-        TEST_C_API void f(void) __attribute__((constructor)); \
-        TEST_C_API void f(void)
-#else
-#   error "INITIALIZER not support on your compiler"
-#endif
-
-/**
- * @brief Compare template.
- * @param[in] TYPE  Type name.
- * @param[in] OP    Compare operation.
- * @param[in] a     Left operator.
- * @param[in] b     Right operator.
- * @param[in] fmt   Extra print format when assert failure.
- * @param[in] ...   Print arguments.
- */
-#define ASSERT_TEMPLATE_EXT(TYPE, OP, a, b, fmt, ...) \
-    do {\
-        TYPE _L = (a); TYPE _R = (b);\
-        if (cutest_internal_compare(#TYPE, (void*)&_L, (void*)&_R) OP 0) {\
-            break;\
-        }\
-        cutest_internal_dump(__FILE__, __LINE__, #TYPE, #OP, #a, #b, (void*)&_L, (void*)&_R,\
-            "" fmt, ##__VA_ARGS__);\
-        if (cutest_internal_break_on_failure()) {\
-            TEST_DEBUGBREAK;\
-        }\
-        cutest_internal_assert_failure();\
-    } TEST_MSVC_WARNNING_GUARD(while (0), 4127)
-
-typedef struct cutest_case_node cutest_case_node_t;
-
-typedef struct cutest_parameterized_info
-{
-    const char*                 type_name;              /**< User type name. */
-
-    const char*                 test_data_info;         /**< The C string of user test data. */
-    size_t                      test_data_sz;           /**< parameterized data size */
-    void*                       test_data;              /**< parameterized data */
-
-    cutest_case_node_t*         nodes;
-    size_t                      node_sz;
-} cutest_parameterized_info_t;
-
-typedef struct cutest_case
-{
-    struct
-    {
-        const char*             fixture;                /**< suit name */
-        const char*             case_name;              /**< case name */
-    } info;
-
-    struct
-    {
-        void                    (*setup)(void);         /**< setup */
-        void                    (*teardown)(void);      /**< teardown */
-        void                    (*body)(void*, size_t); /**< test body */
-    } stage;
-
-    cutest_parameterized_info_t* (*get_parameterized_info)(void);
-} cutest_case_t;
-
-struct cutest_case_node
-{
-    cutest_map_node_t           node;
-    cutest_case_t*              test_case;
-    unsigned                    mask;                   /**< internal mask */
-    unsigned long               randkey;
-    size_t                      parameterized_idx;
-};
-
-/**
- * @brief Register test case
- * @param[in] test_case     Test case
- */
-void cutest_register_case(cutest_case_t* test_case, cutest_case_node_t* node, size_t node_sz);
-
-/**
- * @internal
- * @brief Set current test as failure
- * @note This function is available in setup stage and test body.
- * @warning Call this function in TearDown stage will cause assert.
- */
-TEST_NORETURN void cutest_internal_assert_failure(void);
-TEST_NORETURN void cutest_unwrap_assert_fail(const char *expr, const char *file, int line, const char *func);
-int cutest_internal_break_on_failure(void);
-int cutest_printf(const char* fmt, ...);
-
-int cutest_internal_compare(const char* type_name, const void* addr1, const void* addr2);
-void cutest_internal_dump(const char* file, int line, const char* type_name,
-    const char* op, const char* op_l, const char* op_r,
-    const void* addr1, const void* addr2, const char* fmt, ...);
-
-/** @endcond */
 
 #ifdef __cplusplus
 }

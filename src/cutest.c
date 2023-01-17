@@ -10,6 +10,7 @@
 #include <limits.h>
 #include <errno.h>
 #include <float.h>
+#include <stdarg.h>
 
 #if defined(_MSC_VER)
 #   include <windows.h>
