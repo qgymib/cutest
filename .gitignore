@@ -82,3 +82,4 @@ dkms.conf
 /.vs
 /out
 /CMakeSettings.json
+/TestResults

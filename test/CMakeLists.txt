@@ -1,16 +1,18 @@
 
 set(test_case_list
-    all_assertion
-    arg_count
-    custom_type
-    empty
-    failure
-    filter
-    list_parameterized_as_int
-    list_parameterized_as_string
-    list_parameterized_as_struct
-    repeat
-    simple)
+    cmd_also_run_disabled_tests
+    cmd_filter
+    cmd_help
+    cmd_list_tests_list_parameterized_as_int
+    cmd_list_tests_list_parameterized_as_string
+    cmd_list_tests_list_parameterized_as_struct
+    cmd_repeat
+    feature_all_assertion
+    feature_arg_count
+    feature_assertion_failure
+    feature_custom_type
+    feature_empty
+    feature_simple)
 
 add_library(test_runtime
     src/string_matrix.c
