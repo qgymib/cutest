@@ -1,8 +1,6 @@
 #ifndef __TEST_H__
 #define __TEST_H__
 
-#undef NDEBUG
-#include <assert.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -50,7 +48,7 @@
             NULL\
         };\
         int argc = sizeof(argv) / sizeof(argv[0]) - 1;\
-        _TEST.rret = cutest_run_tests(argc, argv, &_TEST.hook);\
+        _TEST.rret = cutest_run_tests(argc, argv, _TEST.out, &_TEST.hook);\
         fn();\
     }
 
@@ -67,6 +65,9 @@
             abort();\
         }\
     } while (0);
+
+#define CUTEST_PORTING_ASSERT(x) \
+    ((x) ? (void)0 : cutest_porting_assert_fail_2(#x, __FILE__, __LINE__, __FUNCTION__))
 
 #ifdef __cplusplus
 extern "C" {
@@ -91,6 +92,7 @@ typedef struct test_runtime_s
     char**              argv;
 
     cutest_hook_t       hook;
+    FILE*               out;
     int                 rret;       /**< Run result. */
 } test_runtime_t;
 
@@ -108,6 +110,8 @@ void test_register_case(test_case_t* test_case);
  * @param[in] src   Source file.
  */
 void test_print_file(FILE* dst, FILE* src);
+
+void cutest_porting_assert_fail_2(const char* expr, const char* file, int line, const char* func);
 
 #ifdef __cplusplus
 }

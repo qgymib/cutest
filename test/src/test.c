@@ -45,10 +45,10 @@ static int tmpfile_s(FILE** pFilePtr)
 
 static void _close_tmpfile(void)
 {
-    if (_TEST.hook.out != NULL)
+    if (_TEST.out != NULL)
     {
-        fclose(_TEST.hook.out);
-        _TEST.hook.out = NULL;
+        fclose(_TEST.out);
+        _TEST.out = NULL;
     }
 }
 
@@ -57,7 +57,7 @@ static void _reset_tmpfile(void)
     _close_tmpfile();
 
     int errcode;
-    if ((errcode = tmpfile_s(&_TEST.hook.out)) != 0)
+    if ((errcode = tmpfile_s(&_TEST.out)) != 0)
     {
         abort();
     }
@@ -111,4 +111,26 @@ void test_print_file(FILE* dst, FILE* src)
     }
     
     fseek(src, src_pos, SEEK_SET);
+}
+
+static int cutest_porting_cprintf_2(FILE* stream, int color, const char* fmt, ...)
+{
+    int ret;
+    va_list ap;
+
+    va_start(ap, fmt);
+    ret = cutest_porting_cvprintf(stream, color, fmt, ap);
+    va_end(ap);
+
+    return ret;
+}
+
+void cutest_porting_assert_fail_2(const char* expr, const char* file, int line, const char* func)
+{
+    cutest_porting_cprintf_2(stderr, CUTEST_COLOR_DEFAULT,
+        "Assertion failed: %s (%s: %s: %d)\n", expr, file, func, line);
+    cutest_porting_cprintf_2(stderr, CUTEST_COLOR_DEFAULT, "CUTEST OUTPUT:\n");
+    test_print_file(stderr, _TEST.out);
+    cutest_porting_cprintf_2(stderr, CUTEST_COLOR_DEFAULT, "<< EOF\n");
+    cutest_porting_abort();
 }

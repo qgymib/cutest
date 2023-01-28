@@ -56,16 +56,16 @@ DEFINE_TEARDOWN(filter)
  */
 DEFINE_TEST_F(filter, any, "--test_filter=*")
 {
-    assert(s_test_filter.cnt_p1 == 1);
-    assert(s_test_filter.cnt_p2 == 1);
-    assert(s_test_filter.cnt_p3 == 6);
+    CUTEST_PORTING_ASSERT(s_test_filter.cnt_p1 == 1);
+    CUTEST_PORTING_ASSERT(s_test_filter.cnt_p2 == 1);
+    CUTEST_PORTING_ASSERT(s_test_filter.cnt_p3 == 6);
 }
 
 DEFINE_TEST_F(filter, asdf, "--test_filter=asdf")
 {
-    assert(s_test_filter.cnt_p1 == 0);
-    assert(s_test_filter.cnt_p2 == 0);
-    assert(s_test_filter.cnt_p3 == 0);
+    CUTEST_PORTING_ASSERT(s_test_filter.cnt_p1 == 0);
+    CUTEST_PORTING_ASSERT(s_test_filter.cnt_p2 == 0);
+    CUTEST_PORTING_ASSERT(s_test_filter.cnt_p3 == 0);
 }
 
 /**
@@ -78,9 +78,9 @@ DEFINE_TEST_F(filter, asdf, "--test_filter=asdf")
  */
 DEFINE_TEST_F(filter, filter_dot_any, "--test_filter=filter.*")
 {
-    assert(s_test_filter.cnt_p1 == 1);
-    assert(s_test_filter.cnt_p2 == 1);
-    assert(s_test_filter.cnt_p3 == 6);
+    CUTEST_PORTING_ASSERT(s_test_filter.cnt_p1 == 1);
+    CUTEST_PORTING_ASSERT(s_test_filter.cnt_p2 == 1);
+    CUTEST_PORTING_ASSERT(s_test_filter.cnt_p3 == 6);
 }
 
 /**
@@ -90,9 +90,9 @@ DEFINE_TEST_F(filter, filter_dot_any, "--test_filter=filter.*")
  */
 DEFINE_TEST_F(filter, p_dot_ask, "--test_filter=filter.p?")
 {
-    assert(s_test_filter.cnt_p1 == 1);
-    assert(s_test_filter.cnt_p2 == 1);
-    assert(s_test_filter.cnt_p3 == 0);
+    CUTEST_PORTING_ASSERT(s_test_filter.cnt_p1 == 1);
+    CUTEST_PORTING_ASSERT(s_test_filter.cnt_p2 == 1);
+    CUTEST_PORTING_ASSERT(s_test_filter.cnt_p3 == 0);
 }
 
 /**
@@ -103,7 +103,7 @@ DEFINE_TEST_F(filter, p_dot_ask, "--test_filter=filter.p?")
  */
 DEFINE_TEST_F(filter, any_slash_any, "--test_filter=*/*")
 {
-    assert(s_test_filter.cnt_p1 == 0);
-    assert(s_test_filter.cnt_p2 == 0);
-    assert(s_test_filter.cnt_p3 == 6);
+    CUTEST_PORTING_ASSERT(s_test_filter.cnt_p1 == 0);
+    CUTEST_PORTING_ASSERT(s_test_filter.cnt_p2 == 0);
+    CUTEST_PORTING_ASSERT(s_test_filter.cnt_p3 == 6);
 }

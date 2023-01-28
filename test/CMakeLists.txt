@@ -4,10 +4,12 @@ set(test_case_list
     arg_count
     custom_type
     empty
+    failure
     filter
     list_parameterized_as_int
     list_parameterized_as_string
     list_parameterized_as_struct
+    repeat
     simple)
 
 add_library(test_runtime

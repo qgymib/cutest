@@ -32,7 +32,7 @@ TEST_P(parameterized, as_struct)
 DEFINE_TEST(parameterized, as_struct, "--test_list_tests")
 {
     const char* pattern;
-    string_matrix_t* matrix = string_matrix_create_from_file(_TEST.hook.out, "");
+    string_matrix_t* matrix = string_matrix_create_from_file(_TEST.out, "");
 
     pattern = "  as_struct/0  # <as_struct_t> { 0, \"hello\" }";
     ASSERT_STRING_EQ(string_matrix_access(matrix, 1, 0), pattern);

@@ -20,6 +20,7 @@
 #include <stddef.h>
 #include <inttypes.h>
 #include <stdio.h>
+#include <stdarg.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -43,7 +44,7 @@ extern "C" {
 /**
  * @brief Development version.
  */
-#define CUTEST_VERSION_PREREL       6
+#define CUTEST_VERSION_PREREL       7
 
 /**
  * @brief Ensure the api is exposed as C function.
@@ -362,8 +363,8 @@ struct cutest_case_node
 {
     cutest_map_node_t           node;
     cutest_case_t*              test_case;
-    unsigned                    mask;                   /**< internal mask */
-    unsigned long               randkey;
+    uint32_t                    mask;                   /**< internal mask */
+    uint32_t                    randkey;
     size_t                      parameterized_idx;
 };
 
@@ -1008,11 +1009,13 @@ void cutest_register_case(cutest_case_t* test_case, cutest_case_node_t* node, si
 /**
  * @defgroup TEST_CUSTOM_TYPE Custom type
  * 
- * Even though cutest have rich set of assertion macros, there might be some cases that need to compare custom type.
+ * Even though cutest have rich set of assertion macros, there might be some
+ * cases that need to compare custom type.
  * 
  * We have a custom type register system to support such scene.
  *
- * Suppose we have a custom type: `typedef struct { int a; } foo_t`, to add type support:
+ * Suppose we have a custom type: `typedef struct { int a; } foo_t`, to add
+ * type support:
  *
  * + Register type information by #TEST_REGISTER_TYPE()
  *
@@ -1020,14 +1023,14 @@ void cutest_register_case(cutest_case_t* test_case, cutest_case_node_t* node, si
  *   static int _on_cmp_foo(const foo_t* addr1, const foo_t* addr2) {
  *       return addr1->a - addr2->a;
  *   }
- *   static int _on_dump_foo(FILE* file, const foo_t* addr) {
- *       return fprintf(file, "{ a:%d }", addr->a);
+ *   static int _on_dump_foo(FILE* stream, const foo_t* addr) {
+ *       return fprintf(stream, "{ a:%d }", addr->a);
  *   }
  *   TEST_REGISTER_TYPE(foo_t, _on_cmp_foo, _on_dump_foo)
  *   ```
- * 
+ *
  * + Define assertion macros
- * 
+ *
  *   ```c
  *   #define ASSERT_EQ_FOO(a, b, ...)   ASSERT_TEMPLATE_EXT(foo_t, ==, a, b, __VA_ARGS__)
  *   #define ASSERT_NE_FOO(a, b, ...)   ASSERT_TEMPLATE_EXT(foo_t, !=, a, b, __VA_ARGS__)
@@ -1036,9 +1039,9 @@ void cutest_register_case(cutest_case_t* test_case, cutest_case_node_t* node, si
  *   #define ASSERT_GT_FOO(a, b, ...)   ASSERT_TEMPLATE_EXT(foo_t, >,  a, b, __VA_ARGS__)
  *   #define ASSERT_GE_FOO(a, b, ...)   ASSERT_TEMPLATE_EXT(foo_t, >=, a, b, __VA_ARGS__)
  *   ```
- * 
+ *
  * Now you can use `ASSERT_EQ_FOO()` / `ASSERT_NE_FOO()` / etc to do assertion.
- * 
+ *
  * @{
  */
 
@@ -1140,11 +1143,11 @@ typedef int (*cutest_custom_type_cmp_fn)(const void* addr1, const void* addr2);
 
 /**
  * @brief Dump value.
- * @param[in] file      The file to print.
+ * @param[in] stream    The file stream to print.
  * @param[in] addr      The address of value.
  * @return              The number of characters printed.
  */
-typedef int (*cutest_custom_type_dump_fn)(FILE* file, const void* addr);
+typedef int (*cutest_custom_type_dump_fn)(FILE* stream, const void* addr);
 
 /**
  * @brief Custom type information.
@@ -1203,8 +1206,6 @@ int cutest_internal_break_on_failure(void);
  */
 void cutest_internal_assert_failure(void);
 
-void cutest_unwrap_assert_fail(const char* expr, const char* file, int line, const char* func);
-int cutest_printf(const char* fmt, ...);
 /** @endcond */
 
 /**
@@ -1222,13 +1223,6 @@ int cutest_printf(const char* fmt, ...);
  */
 typedef struct cutest_hook
 {
-    /**
-     * @brief Where the output should be written.
-     *
-     * If set to NULL, `stdout` is used.
-     */
-    FILE*   out;
-
     /**
      * @brief Hook before run all tests
      * @param[in] argc  The number of arguments
@@ -1286,12 +1280,13 @@ typedef struct cutest_hook
 /**
  * @brief Run all test cases
  * @snippet main.c ENTRYPOINT
- * @param[in] argc      The number of arguments
- * @param[in] argv      The argument list
- * @param[in] hook      Test hook
- * @return              The number of failure test
+ * @param[in] argc      The number of arguments.
+ * @param[in] argv      The argument list.
+ * @param[in] out       Output stream, cannot be NULL.
+ * @param[in] hook      Test hook.
+ * @return              0 if success, otherwise failure.
  */
-int cutest_run_tests(int argc, char* argv[], const cutest_hook_t* hook);
+int cutest_run_tests(int argc, char* argv[], FILE* out, const cutest_hook_t* hook);
 
 /**
  * @brief Get current running suit name
@@ -1318,57 +1313,168 @@ void cutest_skip_test(void);
  */
 
 /**
- * @page TEST_SYSTEM_API_DEPENDENCY System API dependency
- * 
- * [cutest](https://github.com/qgymib/cutest/) rely on system standard API,
- * which should be available on most modern operation system. But on some
- * embedded operation system, there might be only a subset of APIs available.
- * So we list the API dependency here and show how to bypass it.
+ * @defgroup TEST_PORTING Porting
  *
- * The following API is non-optional and operation system must provide it:
- * + [setjmp()](https://man7.org/linux/man-pages/man3/setjmp.3.html)
- * + [longjmp()](https://man7.org/linux/man-pages/man3/longjmp.3p.html)
+ * By default [cutest](https://github.com/qgymib/cutest) support Windows/Linux,
+ * and if you need to porting it to some other OS, you need to implementation
+ * all the interfaces listed in this chapter.
+ *
+ * Do note that the following API is non-optional and operation system must provide it:
  * + [va_start()](https://linux.die.net/man/3/va_start)
  * + [va_end()](https://linux.die.net/man/3/va_end)
- * + [fprintf()](https://man7.org/linux/man-pages/man3/fprintf.3p.html)
- * + [vfprintf()](https://man7.org/linux/man-pages/man3/vfprintf.3p.html)
- * + [memcmp()](https://man7.org/linux/man-pages/man3/memcmp.3.html)
- * + [memset()](https://man7.org/linux/man-pages/man3/memset.3.html)
- * + [strlen()](https://man7.org/linux/man-pages/man3/strlen.3.html)
- * + [fflush()](https://man7.org/linux/man-pages/man3/fflush.3.html)
- * + [strcmp()](https://man7.org/linux/man-pages/man3/strcmp.3.html)
- * + [strncmp()](https://man7.org/linux/man-pages/man3/strcmp.3.html)
- * + [strchr()](https://man7.org/linux/man-pages/man3/strchr.3.html)
- * + [abort()](https://man7.org/linux/man-pages/man3/abort.3.html)
- * + [snprintf()](https://man7.org/linux/man-pages/man3/snprintf.3p.html)
- * + [sscanf()](https://man7.org/linux/man-pages/man3/sscanf.3p.html)
  *
- * The following API is optional and can be bypassed by `CUTEST_NO_MULTITHREADING_SUPPORT`:
- * + [InitOnceExecuteOnce()](https://learn.microsoft.com/en-us/windows/win32/api/synchapi/nf-synchapi-initonceexecuteonce)(Windows)
- * + [GetCurrentThreadId()](https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-getcurrentthreadid)(Windows)
- * + [pthread_once()](https://man7.org/linux/man-pages/man3/pthread_once.3p.html)(Unix)
- * + [pthread_self()](https://man7.org/linux/man-pages/man3/pthread_self.3.html)(Unix)
+ * @{
+ */
+
+/**
+ * @defgroup TEST_PORTING_SYSTEM_API System API
+ * 
+ * To use porting interface, add `CUTEST_USE_PORTING` (eg. `-DCUTEST_USE_PORTING`)
+ * when compile [cutest](https://github.com/qgymib/cutest).
  *
- * The following API is optional and can be bypassed by `CUTEST_NO_COLORFUL_SUPPORT`:
- * + [_get_osfhandle()](https://learn.microsoft.com/en-us/cpp/c-runtime-library/reference/get-osfhandle)(Windows)
- * + [GetConsoleScreenBufferInfo()](https://learn.microsoft.com/en-us/windows/console/getconsolescreenbufferinfo)(Windows)
- * + [SetConsoleTextAttribute()](https://learn.microsoft.com/en-us/windows/console/setconsoletextattribute)(Windows)
- * + [_fileno()](https://learn.microsoft.com/en-us/cpp/c-runtime-library/reference/fileno)(Windows)
- * + [_isatty()](https://learn.microsoft.com/en-us/cpp/c-runtime-library/reference/isatty)(Windows)
- * + [getenv()](https://man7.org/linux/man-pages/man3/getenv.3.html)(Unix)
- * + [fileno()](https://man7.org/linux/man-pages/man3/fileno.3.html)(Unix)
- * + [isatty()](https://man7.org/linux/man-pages/man3/isatty.3.html)(Unix)
+ * @{
+ */
+
+typedef enum cutest_porting_color
+{
+    CUTEST_COLOR_DEFAULT,
+    CUTEST_COLOR_RED,
+    CUTEST_COLOR_GREEN,
+    CUTEST_COLOR_YELLOW,
+} cutest_porting_color_t;
+
+typedef struct cutest_porting_timespec
+{
+    long    tv_sec;
+    long    tv_nsec;
+} cutest_porting_timespec_t;
+
+typedef struct cutest_porting_jmpbuf cutest_porting_jmpbuf_t;
+
+/**
+ * 
+ * ```c
+ * struct cutest_porting_jmpbuf
+ * {
+ *     jmp_buf buf;
+ * };
+ * void cutest_porting_setjmp(void (*execute)(cutest_porting_jmpbuf_t* buf, int val, void* data),
+ *     void* data)
+ * {
+ *     cutest_porting_jmpbuf_t jmpbuf;
+ *     execute(&jmpbuf, setjmp(jmpbuf.buf), data);
+ * }
+ * ```
+ * 
+ * @see https://man7.org/linux/man-pages/man3/setjmp.3.html
+ */
+void cutest_porting_setjmp(void (*execute)(cutest_porting_jmpbuf_t* buf, int val, void* data), void* data);
+
+/**
+ * ```c
+ * void cutest_porting_longjmp(cutest_porting_jmpbuf_t* buf, int val)
+ * {
+ *     longjmp(buf->buf, val);
+ * }
+ * ```
+ * @see https://man7.org/linux/man-pages/man3/longjmp.3p.html
+ */
+void cutest_porting_longjmp(cutest_porting_jmpbuf_t* buf, int val);
+
+/**
+ * @see https://linux.die.net/man/3/clock_gettime
+ */
+void cutest_porting_clock_gettime(cutest_porting_timespec_t* tp);
+
+/**
+ * @see https://man7.org/linux/man-pages/man3/abort.3.html
+ * @return This function does not return.
+ */
+int cutest_porting_abort(void);
+
+/**
+ * @brief Get current thread ID.
  *
- * The following API is optional and can be bypassed by `CUTEST_NO_TIME_BASED_SHUFFLE`:
- * + [time()](https://man7.org/linux/man-pages/man2/time.2.html)
+ * This function is used for check whether ASSERTION macros are called from
+ * main thread. If your system does not support multithread, just return NULL.
  *
- * The following API is optional and can be bypassed by `CUTEST_NO_ELAPSED_TIME_MEASUREMENT`:
- * + [SystemTimeToFileTime()](https://learn.microsoft.com/en-us/windows/win32/api/timezoneapi/nf-timezoneapi-systemtimetofiletime)(Windows)
- * + [QueryPerformanceFrequency()](https://learn.microsoft.com/en-us/windows/win32/api/profileapi/nf-profileapi-queryperformancefrequency)(Windows)
- * + [QueryPerformanceCounter()](https://learn.microsoft.com/en-us/windows/win32/api/profileapi/nf-profileapi-queryperformancecounter)(Windows)
- * + [GetSystemTimeAsFileTime()](https://learn.microsoft.com/en-us/windows/win32/api/sysinfoapi/nf-sysinfoapi-getsystemtimeasfiletime)(Windows)
- * + [clock_gettime()](https://linux.die.net/man/3/clock_gettime)(Unix)
+ * @see https://man7.org/linux/man-pages/man3/pthread_self.3.html
+ * @see https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-getcurrentthreadid
+ */
+void* cutest_porting_gettid(void);
+
+/**
+ * @brief Colorful print.
  *
+ * Different system have different solutions to do colorful print, so we have a
+ * interface to do it.
+ *
+ * Below is a simple implementation that works just fine except drop colorful
+ * support:
+ *
+ * ```c
+ * int cutest_porting_cvprintf(FILE* stream, int color, const char* fmt, va_list ap)
+ * {
+ *     (void)color;
+ *     return fprintf(stream, fmt, ap);
+ * }
+ * ```
+ *
+ * @note The color support is optional, it only affects the vision on console.
+ *   If you do not known how to add support for it, just ignore the parameter
+ *   \p color.
+ *
+ * @warning If you want to support colorful print, do remember to distinguish
+ *   whether data is print to console. If \p stream is a normal file and the
+ *   color control charasters are printed into the file, this file is highly
+ *   possible mess up.
+ *
+ * @param[in] stream    The stream to print.
+ * @param[in] color     Print color. Checkout #cutest_porting_color_t.
+ * @param[in] fmt       Print format.
+ * @param[in] ap        Print arguments.
+ */
+int cutest_porting_cvprintf(FILE* stream, int color, const char* fmt, va_list ap);
+
+/**
+ * Group: TEST_PORTING_SYSTEM_API
+ * @}
+ */
+
+/**
+ * @defgroup TEST_FLOATING_NUMBER Floating-Point Numbers
+ *
+ * By default we use `EPSILON` and `ULP` to do floating number compre, which
+ * assume all floating numbers are matching IEEE 754 Standard (both `float` and
+ * `double`).
+ *
+ * This works fine on most time, but there are indeed some hardware does
+ * not follow this standard, and this technology just broken.
+ *
+ * To use custom compare algorithm, define `CUTEST_USE_PORTING_FLOATING_COMPARE_ALGORITHM`
+ * (eg. `-DCUTEST_USE_PORTING_FLOATING_COMPARE_ALGORITHM`) when compile.
+ *
+ * @see https://bitbashing.io/comparing-floats.html
+ *
+ * @{
+ */
+
+/**
+ * @brief Floating number compare.
+ * @param[in] type  The type of \p v1 and \p v2. 0 is float, 1 is double.
+ * @param[in] v1    The address to value1.
+ * @param[in] v2    The address to value2.
+ * @return          <0, =0, >0 if \p v1 is less than, equal to, more than \p v2.
+ */
+int cutest_porting_compare_floating_number(int type, const void* v1, const void* v2);
+
+/**
+ * Group: TEST_FLOATING_NUMBER
+ * @}
+ */
+
+/**
+ * @}
  */
 
 #ifdef __cplusplus

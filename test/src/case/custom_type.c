@@ -37,5 +37,5 @@ TEST(custom_type, 0)
 
 DEFINE_TEST(custom_type, 0)
 {
-	test_print_file(stderr, _TEST.hook.out);
+	test_print_file(stderr, _TEST.out);
 }

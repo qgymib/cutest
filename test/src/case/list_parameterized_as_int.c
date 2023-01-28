@@ -25,7 +25,7 @@ TEST_P(parameterized, as_int)
 
 DEFINE_TEST(parameterized, as_int, "--test_list_tests")
 {
-    string_matrix_t* matrix = string_matrix_create_from_file(_TEST.hook.out, " ");
+    string_matrix_t* matrix = string_matrix_create_from_file(_TEST.out, " ");
 
     ASSERT_STRING_EQ(string_matrix_access(matrix, 1, 3), "0");
     ASSERT_STRING_EQ(string_matrix_access(matrix, 2, 3), "1");
