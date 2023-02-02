@@ -41,7 +41,7 @@ extern "C" {
 /**
  * @brief Development version.
  */
-#define CUTEST_VERSION_PREREL       7
+#define CUTEST_VERSION_PREREL       8
 
 /**
  * @brief Ensure the api is exposed as C function.
@@ -381,7 +381,8 @@ void cutest_register_case(cutest_case_t* test_case, cutest_case_node_t* node, un
 /**
  * @defgroup TEST_ASSERTION Assertion
  * 
- * [cutest](https://github.com/qgymib/cutest/) support rich set of assertion. An assertion typically have following syntax:
+ * [cutest](https://github.com/qgymib/cutest/) support rich set of assertion. An
+ * assertion typically have following syntax:
  * 
  * ```c
  * ASSERT_OP_TYPE(a, b)
@@ -407,7 +408,7 @@ void cutest_register_case(cutest_case_t* test_case, cutest_case_node_t* node, un
  * + FLOAT: float
  * + DOUBLE: double
  *
- * > To support more types, checkout #TEST_REGISTER_TYPE().
+ * > To support more types, checkout #TEST_REGISTER_TYPE_ONCE().
  *
  * So, an assertion like #ASSERT_EQ_D32() means except `a` and `b` have type of
  * `int32_t` and they are the same value.
@@ -681,7 +682,7 @@ void cutest_register_case(cutest_case_t* test_case, cutest_case_node_t* node, un
  *
  * @note To use these assertions, you need `<stdint.h>` and `<inttypes.h>` header
  *   files which are not included.
- * 
+ *
  * @note These assertions are enabled by default. To disable all of them, add
  * `CUTEST_NO_C99_SUPPORT` (eg. `-DCUTEST_NO_C99_SUPPORT`) during compile cutest.
  *
@@ -913,17 +914,17 @@ void cutest_register_case(cutest_case_t* test_case, cutest_case_node_t* node, un
  */
 
 /**
- * @defgroup TEST_CUSTOM_TYPE Custom type
- * 
+ * @defgroup TEST_CUSTOM_TYPE Custom type assertion support
+ *
  * Even though cutest have rich set of assertion macros, there might be some
  * cases that need to compare custom type.
- * 
+ *
  * We have a custom type register system to support such scene.
  *
  * Suppose we have a custom type: `typedef struct { int a; } foo_t`, to add
  * type support:
  *
- * + Register type information by #TEST_REGISTER_TYPE()
+ * + Register type information by #TEST_REGISTER_TYPE_ONCE()
  *
  *   ```c
  *   static int _on_cmp_foo(const foo_t* addr1, const foo_t* addr2) {
@@ -932,7 +933,10 @@ void cutest_register_case(cutest_case_t* test_case, cutest_case_node_t* node, un
  *   static int _on_dump_foo(FILE* stream, const foo_t* addr) {
  *       return fprintf(stream, "{ a:%d }", addr->a);
  *   }
- *   TEST_REGISTER_TYPE(foo_t, _on_cmp_foo, _on_dump_foo)
+ *   int main(int argc, char* argv[]) {
+ *       TEST_REGISTER_TYPE_ONCE(foo_t, _on_cmp_foo, _on_dump_foo);
+ *       return cutest_run_tests(argc, argv, stdout, NULL);
+ *   }
  *   ```
  *
  * + Define assertion macros
@@ -953,37 +957,71 @@ void cutest_register_case(cutest_case_t* test_case, cutest_case_node_t* node, un
 
 /**
  * @brief Declare and register custom type.
+ *
+ * This function does following things:
+ * 1. Try best to check function prototype of \p cmp and \p dump. Note this depends on comiler so might not work.
+ * 2. Generate information for \p TYPE.
+ * 3. Ensure this register code only run once.
+ *
+ * For example:
+ *
+ * + If \p TYPE is `unsigned`, the protocol of \p cmp and \p dump should be:
+ *   ```c
+ *   int (*)(const unsigned* addr1, const unsigned* addr2) {\
+ *       unsigned v1 = *addr1, v2 = *addr2;
+ *       if (v1 == v2)
+ *           return 0;
+ *       return v1 < v2 ? -1 : 1;
+ *   }
+ *   int (*)(FILE* stream, const unsigned* addr) {
+ *       fprintf(stream, "%u", *addr);
+ *   }
+ *   ```
+ *
+ * + If \p TYPE is `const char*`, the protocol of \p cmp and \p dump should be:
+ *   ```c
+ *   int (*)(const char** addr1, const char** addr2) {\
+ *       return strcmp(*addr1, *addr2);
+ *   }
+ *   int (*)(FILE* stream, const char** addr) {
+ *       fprintf(stream, "%s", *addr);
+ *   }
+ *   ```
+ *
+ * @note Although not restricted, it is recommend to register all custom type before run any test.
  * @param[in] TYPE  Data type.
  * @param[in] cmp   Compare function. It must have proto of `int (*)(const TYPE*, const TYPE*)`.
- * @param[in] dump  Dump function
+ * @param[in] dump  Dump function. It must have proto of `int (*)(FILE*, const TYPE*)`.
  */
-#define TEST_REGISTER_TYPE(TYPE, cmp, dump)    \
-    TEST_INITIALIZER(TEST_USER_TYPE_##TYPE) {\
+#define TEST_REGISTER_TYPE_ONCE(TYPE, cmp, dump)    \
+    do {\
         /* Try our best to check function protocol. */\
         int (*ckeck_type_cmp)(const TYPE*,const TYPE*) = cmp; (void)ckeck_type_cmp;\
         int (*check_type_dump)(FILE*, const TYPE*) = dump; (void)check_type_dump;\
         /* Register type information. */\
-        static cutest_type_info_t info = {\
+        static cutest_type_info_t s_info = {\
             { NULL, NULL, NULL },\
             #TYPE,\
             (cutest_custom_type_cmp_fn)cmp,\
             (cutest_custom_type_dump_fn)dump,\
         };\
-        cutest_register_type(&info);\
-    }
+        static int s_token = 0;\
+        if (s_token == 0) {\
+            s_token = 1;\
+            cutest_internal_register_type(&s_info);\
+        }\
+    } TEST_MSVC_WARNNING_GUARD(while (0), 4127)
 
- /** @cond */
-
- /**
-  * @brief Compare template.
-  * @warning It is for internal usage.
-  * @param[in] TYPE  Type name.
-  * @param[in] OP    Compare operation.
-  * @param[in] a     Left operator.
-  * @param[in] b     Right operator.
-  * @param[in] fmt   Extra print format when assert failure.
-  * @param[in] ...   Print arguments.
-  */
+/**
+ * @brief Compare template.
+ * @warning It is for internal usage.
+ * @param[in] TYPE  Type name.
+ * @param[in] OP    Compare operation.
+ * @param[in] a     Left operator.
+ * @param[in] b     Right operator.
+ * @param[in] fmt   Extra print format when assert failure.
+ * @param[in] ...   Print arguments.
+ */
 #define ASSERT_TEMPLATE_EXT(TYPE, OP, a, b, fmt, ...) \
     do {\
         TYPE _L = (a); TYPE _R = (b);\
@@ -998,46 +1036,7 @@ void cutest_register_case(cutest_case_t* test_case, cutest_case_node_t* node, un
         cutest_internal_assert_failure();\
     } TEST_MSVC_WARNNING_GUARD(while (0), 4127)
 
-/**
- * @def TEST_MSVC_WARNNING_GUARD(exp, code)
- * @brief Disable warning for `code'.
- * @note This macro only works for MSVC.
- */
-#if defined(_MSC_VER)
-#   define TEST_MSVC_WARNNING_GUARD(exp, code)  \
-        __pragma(warning(push))\
-        __pragma(warning(disable : code))\
-        exp\
-        __pragma(warning(pop))
-#else
-#   define TEST_MSVC_WARNNING_GUARD(exp, code) \
-        exp
-#endif
-
-/**
- * @def TEST_DEBUGBREAK
- * @brief Causes a breakpoint in your code, where the user will be prompted to
- *   run the debugger.
- */
-#if defined(_MSC_VER)
-#   define TEST_DEBUGBREAK      __debugbreak()
-#elif (defined(__clang__) || defined(__GNUC__)) && (defined(__x86_64__) || defined(__i386__))
-#   define TEST_DEBUGBREAK      __asm__ volatile("int $0x03")
-#elif (defined(__clang__) || defined(__GNUC__)) && defined(__thumb__)
-#   define TEST_DEBUGBREAK      __asm__ volatile(".inst 0xde01")
-#elif (defined(__clang__) || defined(__GNUC__)) && defined(__arm__) && !defined(__thumb__)
-#   define TEST_DEBUGBREAK      __asm__ volatile(".inst 0xe7f001f0")
-#elif (defined(__clang__) || defined(__GNUC__)) && defined(__aarch64__) && defined(__APPLE__)
-#   define TEST_DEBUGBREAK      __builtin_debugtrap()
-#elif (defined(__clang__) || defined(__GNUC__)) && defined(__aarch64__)
-#   define TEST_DEBUGBREAK      __asm__ volatile(".inst 0xd4200000")
-#elif (defined(__clang__) || defined(__GNUC__)) && defined(__powerpc__)
-#   define TEST_DEBUGBREAK      __asm__ volatile(".4byte 0x7d821008")
-#elif (defined(__clang__) || defined(__GNUC__)) && defined(__riscv)
-#   define TEST_DEBUGBREAK      __asm__ volatile(".4byte 0x00100073")
-#else
-#   define TEST_DEBUGBREAK      *(volatile int*)NULL = 1
-#endif
+/** @cond */
 
 /**
  * @brief Compare function for specific type.
@@ -1069,9 +1068,51 @@ typedef struct cutest_type_info
 
 /**
  * @brief Register custom type.
- * @note It is for internal usage. Use #TEST_REGISTER_TYPE() instead.
+ * @warning Use #TEST_REGISTER_TYPE_ONCE().
+ * @param[in] info          Type information.
  */
-void cutest_register_type(cutest_type_info_t* info);
+void cutest_internal_register_type(cutest_type_info_t* info);
+
+/**
+ * @def TEST_MSVC_WARNNING_GUARD(exp, code)
+ * @brief Disable warning for `code'.
+ * @note This macro only works for MSVC.
+ */
+#if defined(_MSC_VER) && _MSC_VER < 1900
+#   define TEST_MSVC_WARNNING_GUARD(exp, code)  \
+        __pragma(warning(push)) \
+        __pragma(warning(disable : code)) \
+        exp \
+        __pragma(warning(pop))
+#else
+#   define TEST_MSVC_WARNNING_GUARD(exp, code) \
+        exp
+#endif
+
+/**
+ * @def TEST_DEBUGBREAK
+ * @brief Causes a breakpoint in your code, where the user will be prompted to
+ *   run the debugger.
+ */
+#if defined(_MSC_VER)
+#   define TEST_DEBUGBREAK      __debugbreak()
+#elif (defined(__clang__) || defined(__GNUC__)) && (defined(__x86_64__) || defined(__i386__))
+#   define TEST_DEBUGBREAK      __asm__ volatile("int $0x03")
+#elif (defined(__clang__) || defined(__GNUC__)) && defined(__thumb__)
+#   define TEST_DEBUGBREAK      __asm__ volatile(".inst 0xde01")
+#elif (defined(__clang__) || defined(__GNUC__)) && defined(__arm__) && !defined(__thumb__)
+#   define TEST_DEBUGBREAK      __asm__ volatile(".inst 0xe7f001f0")
+#elif (defined(__clang__) || defined(__GNUC__)) && defined(__aarch64__) && defined(__APPLE__)
+#   define TEST_DEBUGBREAK      __builtin_debugtrap()
+#elif (defined(__clang__) || defined(__GNUC__)) && defined(__aarch64__)
+#   define TEST_DEBUGBREAK      __asm__ volatile(".inst 0xd4200000")
+#elif (defined(__clang__) || defined(__GNUC__)) && defined(__powerpc__)
+#   define TEST_DEBUGBREAK      __asm__ volatile(".4byte 0x7d821008")
+#elif (defined(__clang__) || defined(__GNUC__)) && defined(__riscv)
+#   define TEST_DEBUGBREAK      __asm__ volatile(".4byte 0x00100073")
+#else
+#   define TEST_DEBUGBREAK      *(volatile int*)NULL = 1
+#endif
 
 /**
  * @brief Compare value1 and value2 of specific type.
@@ -1294,9 +1335,11 @@ void cutest_porting_clock_gettime(cutest_porting_timespec_t* tp);
 
 /**
  * @see https://man7.org/linux/man-pages/man3/abort.3.html
- * @return This function does not return.
+ * @param[in] fmt   Last words.
+ * @param[in] ...   Arguments to last words.
+ * @return          This function does not return.
  */
-int cutest_porting_abort(void);
+int cutest_porting_abort(const char* fmt, ...);
 
 /**
  * @brief Get current thread ID.

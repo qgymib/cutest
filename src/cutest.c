@@ -43,23 +43,9 @@
 
 static unsigned long s_test_rand_seed = 1;
 
-static int cutest_porting_cprintf(FILE* stream, int color, const char* fmt, ...)
-{
-    int ret;
-    va_list ap;
-
-    va_start(ap, fmt);
-    ret = cutest_porting_cvprintf(stream, color, fmt, ap);
-    va_end(ap);
-
-    return ret;
-}
-
 static void cutest_porting_assert_fail(const char *expr, const char *file, int line, const char *func)
 {
-    cutest_porting_cprintf(stderr, CUTEST_COLOR_DEFAULT,
-        "Assertion failed: %s (%s: %s: %d)\n", expr, file, func, line);
-    cutest_porting_abort();
+    cutest_porting_abort("Assertion failed: %s (%s: %s: %d)\n", expr, file, func, line);
 }
 
 static void cutest_porting_srand(unsigned long s)
@@ -367,8 +353,14 @@ void cutest_porting_clock_gettime(cutest_porting_timespec_t* tp)
 
 #include <stdlib.h>
 
-int cutest_porting_abort(void)
+int cutest_porting_abort(const char* fmt, ...)
 {
+    va_list ap;
+    va_start(ap, fmt);
+    vfprintf(stderr, fmt, ap);
+    va_end(ap);
+    fflush(stderr);
+
     abort();
 }
 
@@ -2540,7 +2532,7 @@ static void _cutest_run_case_normal(cutest_case_node_t* node)
     unsigned long ret = _cutest_get_test_fmt_name_normal(info.fmt_name, sizeof(info.fmt_name), test_case);
     if (ret >= sizeof(info.fmt_name))
     {
-        cutest_porting_abort();
+        cutest_porting_abort("");
         return;
     }
     info.fmt_name_sz = ret;
@@ -2648,7 +2640,7 @@ static void _cutest_run_case_parameterized(cutest_case_node_t* node)
     unsigned long ret = _cutest_get_test_fmt_name_parameter(info.fmt_name, sizeof(info.fmt_name), node);
     if (ret >= sizeof(info.fmt_name))
     {
-        cutest_porting_abort();
+        cutest_porting_abort("name too long.\n");
         return;
     }
     info.fmt_name_sz = ret;
@@ -2802,7 +2794,7 @@ static unsigned long _cutest_parameterized_parser_peek_string(const char* str)
         }
     }
 
-    return cutest_porting_abort();
+    return cutest_porting_abort("");
 }
 
 static unsigned long _cutest_parameterized_parser_peek_struct(const char* str)
@@ -2837,7 +2829,7 @@ static unsigned long _cutest_parameterized_parser_peek_struct(const char* str)
         }
     }
 
-    return cutest_porting_abort();
+    return cutest_porting_abort("");
 }
 
 /**
@@ -3134,63 +3126,63 @@ static cutest_type_info_t s_type_info_double = {
 static void _cutest_setup_type(void)
 {
     /* C89 */
-    cutest_register_type(&s_type_info_char);
-    cutest_register_type(&s_type_info_signed_char);
-    cutest_register_type(&s_type_info_unsigned_char);
-    cutest_register_type(&s_type_info_short);
-    cutest_register_type(&s_type_info_unsigned_short);
-    cutest_register_type(&s_type_info_int);
-    cutest_register_type(&s_type_info_unsigned_int);
-    cutest_register_type(&s_type_info_long);
-    cutest_register_type(&s_type_info_unsigned_long);
-    cutest_register_type(&s_type_info_ptr);
-    cutest_register_type(&s_type_info_str);
-    cutest_register_type(&s_type_info_float);
-    cutest_register_type(&s_type_info_double);
+    cutest_internal_register_type(&s_type_info_char);
+    cutest_internal_register_type(&s_type_info_signed_char);
+    cutest_internal_register_type(&s_type_info_unsigned_char);
+    cutest_internal_register_type(&s_type_info_short);
+    cutest_internal_register_type(&s_type_info_unsigned_short);
+    cutest_internal_register_type(&s_type_info_int);
+    cutest_internal_register_type(&s_type_info_unsigned_int);
+    cutest_internal_register_type(&s_type_info_long);
+    cutest_internal_register_type(&s_type_info_unsigned_long);
+    cutest_internal_register_type(&s_type_info_ptr);
+    cutest_internal_register_type(&s_type_info_str);
+    cutest_internal_register_type(&s_type_info_float);
+    cutest_internal_register_type(&s_type_info_double);
 
     /* C99 */
 #if !defined(CUTEST_NO_C99_SUPPORT)
 #if !defined(CUTEST_NO_LONGLONG_SUPPORT)
-    cutest_register_type(&s_type_info_long_long);
+    cutest_internal_register_type(&s_type_info_long_long);
 #endif
 #if !defined(CUTEST_NO_ULONGLONG_SUPPORT)
-    cutest_register_type(&s_type_info_unsigned_long_long);
+    cutest_internal_register_type(&s_type_info_unsigned_long_long);
 #endif
 #if !defined(CUTEST_NO_INT8_SUPPORT)
-    cutest_register_type(&s_type_info_int8_t);
+    cutest_internal_register_type(&s_type_info_int8_t);
 #endif
 #if !defined(CUTEST_NO_UINT8_SUPPORT)
-    cutest_register_type(&s_type_info_uint8_t);
+    cutest_internal_register_type(&s_type_info_uint8_t);
 #endif
 #if !defined(CUTEST_NO_INT16_SUPPORT)
-    cutest_register_type(&s_type_info_int16_t);
+    cutest_internal_register_type(&s_type_info_int16_t);
 #endif
 #if !defined(CUTEST_NO_UINT16_SUPPORT)
-    cutest_register_type(&s_type_info_uint16_t);
+    cutest_internal_register_type(&s_type_info_uint16_t);
 #endif
 #if !defined(CUTEST_NO_INT32_SUPPORT)
-    cutest_register_type(&s_type_info_int32_t);
+    cutest_internal_register_type(&s_type_info_int32_t);
 #endif
 #if !defined(CUTEST_NO_UINT32_SUPPORT)
-    cutest_register_type(&s_type_info_uint32_t);
+    cutest_internal_register_type(&s_type_info_uint32_t);
 #endif
 #if !defined(CUTEST_NO_INT64_SUPPORT)
-    cutest_register_type(&s_type_info_int64_t);
+    cutest_internal_register_type(&s_type_info_int64_t);
 #endif
 #if !defined(CUTEST_NO_UINT64_SUPPORT)
-    cutest_register_type(&s_type_info_uint64_t);
+    cutest_internal_register_type(&s_type_info_uint64_t);
 #endif
 #if !defined(CUTEST_NO_SIZE_SUPPORT)
-    cutest_register_type(&s_type_info_size_t);
+    cutest_internal_register_type(&s_type_info_size_t);
 #endif
 #if !defined(CUTEST_NO_PTRDIFF_SUPPORT)
-    cutest_register_type(&s_type_info_ptrdiff_t);
+    cutest_internal_register_type(&s_type_info_ptrdiff_t);
 #endif
 #if !defined(CUTEST_NO_INTPTR_SUPPORT)
-    cutest_register_type(&s_type_info_intptr_t);
+    cutest_internal_register_type(&s_type_info_intptr_t);
 #endif
 #if !defined(CUTEST_NO_UINTPTR_SUPPORT)
-    cutest_register_type(&s_type_info_uintptr_t);
+    cutest_internal_register_type(&s_type_info_uintptr_t);
 #endif
 #endif
 }
@@ -3405,10 +3397,7 @@ void cutest_register_case(cutest_case_t* data, cutest_case_node_t* node, unsigne
         node->randkey = 0;
         node->parameterized_idx = 0;
 
-        if (cutest_map_insert(&g_test_nature.case_table, &node->node) != 0)
-        {
-            cutest_porting_abort();
-        }
+        CUTEST_PORTING_ASSERT(cutest_map_insert(&g_test_nature.case_table, &node->node) == 0);
         return;
     }
 
@@ -3423,10 +3412,7 @@ void cutest_register_case(cutest_case_t* data, cutest_case_node_t* node, unsigne
         node[i].parameterized_idx = i;
         node[i].mask = 0;
 
-        if (cutest_map_insert(&g_test_nature.case_table, &node[i].node) != 0)
-        {
-            cutest_porting_abort();
-        }
+        CUTEST_PORTING_ASSERT(cutest_map_insert(&g_test_nature.case_table, &node[i].node) == 0);
     }
 }
 
@@ -3478,7 +3464,7 @@ void cutest_internal_assert_failure(void)
          * If current thread is NOT the main thread, it is dangerous to jump back
          * to caller stack, so we just abort the program.
          */
-        cutest_porting_abort();
+        cutest_porting_abort("");
     }
     else
     {
@@ -3496,11 +3482,15 @@ int cutest_internal_break_on_failure(void)
     return g_test_ctx.mask.break_on_failure;
 }
 
-void cutest_register_type(cutest_type_info_t* info)
+void cutest_internal_register_type(cutest_type_info_t* info)
 {
+    info->node.__rb_parent_color = NULL;
+    info->node.rb_left = NULL;
+    info->node.rb_right = NULL;
+
     if (cutest_map_insert(&g_test_nature.type_table, &info->node) < 0)
     {
-        cutest_porting_abort();
+        cutest_porting_abort("Duplicate type `%s'.\n", info->type_name);
     }
 }
 
@@ -3523,8 +3513,7 @@ int cutest_internal_compare(const char* type_name, const void* addr1, const void
     cutest_type_info_t* type_info = _cutest_get_type_info(type_name);
     if (type_info == NULL)
     {
-        _cutest_color_printf(CUTEST_COLOR_DEFAULT, "%s not registered\n", type_name);
-        return cutest_porting_abort();
+        return cutest_porting_abort("%s not registered.\n", type_name);
     }
 
     return type_info->cmp(addr1, addr2);
@@ -3540,8 +3529,7 @@ void cutest_internal_dump(const char* file, int line, const char* type_name,
     cutest_type_info_t* type_info = _cutest_get_type_info(type_name);
     if (type_info == NULL)
     {
-        _cutest_color_printf(CUTEST_COLOR_DEFAULT, "%s not registered\n", type_name);
-        cutest_porting_abort();
+        cutest_porting_abort("%s not registered\n", type_name);
         return;
     }
 

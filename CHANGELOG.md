@@ -5,7 +5,7 @@
 ### Features
 1. Avoid global name conflict
 2. Avoid namespace affect
-3. Able to compare any type using custom type system
+3. Custom type system support
 4. Use `--test_list_types` to list support types
 5. Add porting layer
 
