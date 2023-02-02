@@ -41,7 +41,7 @@
 #define CUTEST_PORTING_ASSERT(x) \
     ((x) ? (void)0 : cutest_porting_assert_fail(#x, __FILE__, __LINE__, __FUNCTION__))
 
-static uint32_t s_test_rand_seed = 1;
+static unsigned long s_test_rand_seed = 1;
 
 static int cutest_porting_cprintf(FILE* stream, int color, const char* fmt, ...)
 {
@@ -62,23 +62,25 @@ static void cutest_porting_assert_fail(const char *expr, const char *file, int l
     cutest_porting_abort();
 }
 
-static void cutest_porting_srand(uint32_t s)
+static void cutest_porting_srand(unsigned long s)
 {
     s_test_rand_seed = s;
 }
 
-static uint32_t cutest_porting_rand(void)
+static unsigned long cutest_porting_rand(void)
 {
-    s_test_rand_seed = (uint32_t)1103515245 * s_test_rand_seed + 12345;
+    s_test_rand_seed = 1103515245UL * s_test_rand_seed + 12345;
     return s_test_rand_seed;
 }
 
-static void* cutest_porting_memcpy(void* dst, const void* src, size_t n)
+static void* cutest_porting_memcpy(void* dst, const void* src, unsigned long n)
 {
-    uint8_t* p_dst = dst;
-    const uint8_t* p_src = src;
+    CUTEST_PORTING_ASSERT(sizeof(unsigned char) == 1);
 
-    size_t i;
+    unsigned char* p_dst = dst;
+    const unsigned char* p_src = src;
+
+    unsigned long i;
     for (i = 0; i < n; i++)
     {
         p_dst[i] = p_src[i];
@@ -87,7 +89,7 @@ static void* cutest_porting_memcpy(void* dst, const void* src, size_t n)
     return dst;
 }
 
-static void* cutest_porting_memmove(void* dest, const void* src, size_t n)
+static void* cutest_porting_memmove(void* dest, const void* src, unsigned long n)
 {
     char* d = dest;
     const char* s = src;
@@ -96,7 +98,7 @@ static void* cutest_porting_memmove(void* dest, const void* src, size_t n)
     {
         return d;
     }
-    if ((uintptr_t)s - (uintptr_t)d - n <= -2 * n)
+    if (s - d - n <= -2 * n)
     {
         return cutest_porting_memcpy(d, s, n);
     }
@@ -123,65 +125,65 @@ static int cutest_porting_isdigit(int c)
     return (unsigned)c - '0' < 10;
 }
 
-static int cutest_porting_atou32(const char* s, uint32_t* r)
+static int cutest_porting_atoul(const char* src, unsigned long* dst)
 {
-    uint32_t ret = 0;
+    unsigned long ret = 0;
 
-    while (cutest_porting_isspace(*s))
+    while (cutest_porting_isspace(*src))
     {
-        s++;
+        src++;
     }
 
-    switch (*s)
+    switch (*src)
     {
     case '-':
         return -1;
     case '+':
-        s++;
+        src++;
     }
 
-    while (cutest_porting_isdigit(*s))
+    while (cutest_porting_isdigit(*src))
     {
-        ret = 10 * ret + (*s++ - '0');
+        ret = 10 * ret + (*src++ - '0');
     }
 
-    *r = ret;
-    return *s == '\0' ? 0 : -1;
+    *dst = ret;
+    return *src == '\0' ? 0 : -1;
 }
 
 /**
- * @param[out] p    Buffer to store, must at least 12 bytes.
+ * @param[out] p    Buffer to store, must at least 20 bytes.
  * @param[in] x     Value to convert.
  */
-static char* cutest_porting_u32toa(char* p, uint32_t x)
+static char* cutest_porting_ultoa(char* p, unsigned long src)
 {
-    char* tmp_p = p + 11;
+    char* tmp_p = p + 19;
     *--tmp_p = '\0';
 
-    size_t num = 1;
+    unsigned long num = 1;
     do {
-        *--tmp_p = '0' + x % 10;
-        x /= 10;
+        *--tmp_p = '0' + src % 10;
+        src /= 10;
         num++;
-    } while (x);
+    } while (src);
 
     cutest_porting_memmove(p, tmp_p, num);
 
     return p;
 }
 
-static int cutest_porting_memcmp(const void* vl, const void* vr, size_t n)
+static int cutest_porting_memcmp(const void* vl, const void* vr, unsigned long n)
 {
     const unsigned char* l = vl, * r = vr;
     for (; n && *l == *r; n--, l++, r++);
     return n ? *l - *r : 0;
 }
 
-static void* cutest_porting_memset(void* dest, int c, size_t n)
+static void* cutest_porting_memset(void* dest, int c, unsigned long n)
 {
     unsigned char* s = dest;
 
-    size_t i;
+    unsigned long i;
     for (i = 0; i < n; i++)
     {
         s[i] = (unsigned char)c;
@@ -190,11 +192,11 @@ static void* cutest_porting_memset(void* dest, int c, size_t n)
     return dest;
 }
 
-static size_t cutest_porting_strlen(const char* s)
+static unsigned long cutest_porting_strlen(const char* s)
 {
     const char* a = s;
     for (; *s; s++);
-    return s - a;
+    return (unsigned long)(s - a);
 }
 
 static int cutest_porting_strcmp(const char* l, const char* r)
@@ -203,7 +205,7 @@ static int cutest_porting_strcmp(const char* l, const char* r)
     return *(unsigned char*)l - *(unsigned char*)r;
 }
 
-static int cutest_porting_strncmp(const char* _l, const char* _r, size_t n)
+static int cutest_porting_strncmp(const char* _l, const char* _r, unsigned long n)
 {
     const unsigned char* l = (void*)_l, * r = (void*)_r;
     if (!n--) return 0;
@@ -411,10 +413,10 @@ void* cutest_porting_gettid(void)
  * @}
  */
 
- /**
-  * @{
-  * BEG: cutest_porting_setjmp()
-  */
+/**
+ * @{
+ * BEG: cutest_porting_setjmp()
+ */
 
 #if defined(CUTEST_USE_PORTING)
 
@@ -460,54 +462,69 @@ void cutest_porting_longjmp(cutest_porting_jmpbuf_t* buf, int val)
 
 #include <float.h>
 
+#if defined(_MSC_VER)
+
+typedef unsigned __int32 cutest_uint32_t;
+typedef unsigned __int64 cutest_uint64_t;
+
+#else
+
+#include <stdint.h>
+#include <inttypes.h>
+
+typedef uint32_t cutest_uint32_t;
+typedef uint64_t cutest_uint64_t;
+
+#endif
+
 #define KBITCOUNT_32            (8 * sizeof(((float_point_t*)NULL)->value_))
-#define KSIGNBITMASK_32         ((uint32_t)1 << (KBITCOUNT_32 - 1))
+#define KSIGNBITMASK_32         ((cutest_uint32_t)1 << (KBITCOUNT_32 - 1))
 #define KFRACTIONBITCOUNT_32    (FLT_MANT_DIG - 1)
 #define KEXPONENTBITCOUNT_32    (KBITCOUNT_32 - 1 - KFRACTIONBITCOUNT_32)
-#define KFRACTIONBITMASK_32     ((~(uint32_t)0) >> (KEXPONENTBITCOUNT_32 + 1))
+#define KFRACTIONBITMASK_32     ((~(cutest_uint32_t)0) >> (KEXPONENTBITCOUNT_32 + 1))
 #define KEXPONENTBITMASK_32     (~(KSIGNBITMASK_32 | KFRACTIONBITMASK_32))
 
 #define KBITCOUNT_64            (8 * sizeof(((double_point_t*)NULL)->value_))
-#define KSIGNBITMASK_64         ((uint64_t)1 << (KBITCOUNT_64 - 1))
+#define KSIGNBITMASK_64         ((cutest_uint64_t)1 << (KBITCOUNT_64 - 1))
 #define KFRACTIONBITCOUNT_64    (DBL_MANT_DIG - 1)
 #define KEXPONENTBITCOUNT_64    (KBITCOUNT_64 - 1 - KFRACTIONBITCOUNT_64)
-#define KFRACTIONBITMASK_64     ((~(uint64_t)0) >> (KEXPONENTBITCOUNT_64 + 1))
+#define KFRACTIONBITMASK_64     ((~(cutest_uint64_t)0) >> (KEXPONENTBITCOUNT_64 + 1))
 #define KEXPONENTBITMASK_64     (~(KSIGNBITMASK_64 | KFRACTIONBITMASK_64))
 
 typedef union float_point
 {
     float                   value_;
-    uint32_t                bits_;
+    cutest_uint32_t         bits_;
 } float_point_t;
 
 typedef union double_point
 {
     double                  value_;
-    uint64_t                bits_;
+    cutest_uint64_t         bits_;
 } double_point_t;
 
 typedef struct cutest_float_precision
 {
-    size_t                  kMaxUlps;
+    unsigned long           kMaxUlps;
 
     struct
     {
-        size_t              kBitCount_32;
-        size_t              kFractionBitCount_32;
-        size_t              kExponentBitCount_32;
-        uint32_t            kSignBitMask_32;
-        uint32_t            kFractionBitMask_32;
-        uint32_t            kExponentBitMask_32;
+        unsigned long       kBitCount_32;
+        unsigned long       kFractionBitCount_32;
+        unsigned long       kExponentBitCount_32;
+        cutest_uint32_t     kSignBitMask_32;
+        cutest_uint32_t     kFractionBitMask_32;
+        cutest_uint32_t     kExponentBitMask_32;
     }_float;
 
     struct
     {
-        size_t              kBitCount_64;
-        size_t              kFractionBitCount_64;
-        size_t              kExponentBitCount_64;
-        uint64_t            kSignBitMask_64;
-        uint64_t            kFractionBitMask_64;
-        uint64_t            kExponentBitMask_64;
+        unsigned long       kBitCount_64;
+        unsigned long       kFractionBitCount_64;
+        unsigned long       kExponentBitCount_64;
+        cutest_uint64_t     kSignBitMask_64;
+        cutest_uint64_t     kFractionBitMask_64;
+        cutest_uint64_t     kExponentBitMask_64;
     }_double;
 } cutest_float_precision_t;
 
@@ -531,12 +548,12 @@ static cutest_float_precision_t s_float_precision = {
     },
 };
 
-static uint32_t _cutest_float_point_exponent_bits(const float_point_t* p)
+static cutest_uint32_t _cutest_float_point_exponent_bits(const float_point_t* p)
 {
     return s_float_precision._float.kExponentBitMask_32 & p->bits_;
 }
 
-static uint32_t _cutest_float_point_fraction_bits(const float_point_t* p)
+static cutest_uint32_t _cutest_float_point_fraction_bits(const float_point_t* p)
 {
     return s_float_precision._float.kFractionBitMask_32 & p->bits_;
 }
@@ -547,7 +564,7 @@ static int _cutest_is_float_point_nan(const float_point_t* p)
         && (_cutest_float_point_fraction_bits(p) != 0);
 }
 
-static uint32_t _cutest_float_point_sign_and_magnitude_to_biased(const uint32_t sam)
+static cutest_uint32_t _cutest_float_point_sign_and_magnitude_to_biased(cutest_uint32_t sam)
 {
     if (s_float_precision._float.kSignBitMask_32 & sam)
     {
@@ -559,10 +576,10 @@ static uint32_t _cutest_float_point_sign_and_magnitude_to_biased(const uint32_t 
     return s_float_precision._float.kSignBitMask_32 | sam;
 }
 
-static uint32_t _cutest_float_point_distance_between_sign_and_magnitude_numbers(uint32_t sam1, uint32_t sam2)
+static cutest_uint32_t _cutest_float_point_distance_between_sign_and_magnitude_numbers(cutest_uint32_t sam1, cutest_uint32_t sam2)
 {
-    const uint32_t biased1 = _cutest_float_point_sign_and_magnitude_to_biased(sam1);
-    const uint32_t biased2 = _cutest_float_point_sign_and_magnitude_to_biased(sam2);
+    const cutest_uint32_t biased1 = _cutest_float_point_sign_and_magnitude_to_biased(sam1);
+    const cutest_uint32_t biased2 = _cutest_float_point_sign_and_magnitude_to_biased(sam2);
 
     return (biased1 >= biased2) ? (biased1 - biased2) : (biased2 - biased1);
 }
@@ -581,12 +598,12 @@ static int _cutest_porting_floating_number_f32(float v1, float v2)
         <= s_float_precision.kMaxUlps;
 }
 
-static uint64_t _cutest_double_point_exponent_bits(const double_point_t* p)
+static cutest_uint64_t _cutest_double_point_exponent_bits(const double_point_t* p)
 {
     return s_float_precision._double.kExponentBitMask_64 & p->bits_;
 }
 
-static uint64_t _cutest_double_point_fraction_bits(const double_point_t* p)
+static cutest_uint64_t _cutest_double_point_fraction_bits(const double_point_t* p)
 {
     return s_float_precision._double.kFractionBitMask_64 & p->bits_;
 }
@@ -597,7 +614,7 @@ static int _cutest_double_point_is_nan(const double_point_t* p)
         && (_cutest_double_point_fraction_bits(p) != 0);
 }
 
-static uint64_t _cutest_double_point_sign_and_magnitude_to_biased(const uint64_t sam)
+static cutest_uint64_t _cutest_double_point_sign_and_magnitude_to_biased(cutest_uint64_t sam)
 {
     if (s_float_precision._double.kSignBitMask_64 & sam)
     {
@@ -609,10 +626,11 @@ static uint64_t _cutest_double_point_sign_and_magnitude_to_biased(const uint64_t
     return s_float_precision._double.kSignBitMask_64 | sam;
 }
 
-static uint64_t _cutest_double_point_distance_between_sign_and_magnitude_numbers(uint64_t sam1, uint64_t sam2)
+static cutest_uint64_t _cutest_double_point_distance_between_sign_and_magnitude_numbers(
+    cutest_uint64_t sam1, cutest_uint64_t sam2)
 {
-    const uint64_t biased1 = _cutest_double_point_sign_and_magnitude_to_biased(sam1);
-    const uint64_t biased2 = _cutest_double_point_sign_and_magnitude_to_biased(sam2);
+    const cutest_uint64_t biased1 = _cutest_double_point_sign_and_magnitude_to_biased(sam1);
+    const cutest_uint64_t biased2 = _cutest_double_point_sign_and_magnitude_to_biased(sam2);
 
     return (biased1 >= biased2) ? (biased1 - biased2) : (biased2 - biased1);
 }
@@ -790,7 +808,7 @@ static void _cutest_initlize_color_unix(void)
         return;
     }
 
-    size_t i;
+    unsigned long i;
     for (i = 0; i < ARRAY_SIZE(support_color_term_list); i++)
     {
         if (cutest_porting_strcmp(term, support_color_term_list[i]) == 0)
@@ -912,9 +930,9 @@ typedef struct cunittest_map
     {
         cutest_map_cmp_fn   cmp;        /**< Compare function */
         void*               arg;        /**< User defined data for compare function */
-    }cmp;
+    } cmp;
 
-    size_t                  size;       /**< Data size */
+    unsigned long           size;       /**< Data size */
 } cutest_map_t;
 
 static void _etest_map_link_node(cutest_map_node_t* node, cutest_map_node_t* parent, cutest_map_node_t** rb_link)
@@ -1495,7 +1513,7 @@ static cutest_map_node_t* cutest_map_find(const cutest_map_t* handler, const cut
 typedef struct test_str
 {
     char*                       ptr;            /**< String address. */
-    size_t                      len;            /**< String length, not including NULL terminator. */
+    unsigned long               len;            /**< String length, not including NULL terminator. */
 } test_str_t;
 
 /**
@@ -1517,10 +1535,10 @@ static test_str_t _cutest_str(const char* str)
  * @return 0 if success, otherwise failure.
  */
 static int _cutest_str_split(const test_str_t* str, test_str_t* k,
-    test_str_t* v, const char* s, size_t offset)
+    test_str_t* v, const char* s, unsigned long offset)
 {
-    size_t i;
-    size_t s_len = cutest_porting_strlen(s);
+    unsigned long i;
+    unsigned long s_len = cutest_porting_strlen(s);
     if (str->len < s_len)
     {
         goto error;
@@ -1576,7 +1594,7 @@ typedef struct cutest_optparse
     int                         optopt;
     char* optarg;
     char                        errmsg[64];
-    size_t                      subopt;
+    unsigned long               subopt;
 } cutest_optparse_t;
 
 #define OPTPARSE_MSG_INVALID "invalid option"
@@ -1910,7 +1928,7 @@ static int cutest_timestamp_dif(const cutest_porting_timespec_t* t1,
 #define USEC_IN_SEC                         (1 * 1000 * 1000)
 
 #define CONTAINER_OF(ptr, TYPE, member) \
-    ((TYPE*)((char*)(ptr) - (size_t)&((TYPE*)0)->member))
+    ((TYPE*)((char*)(ptr) - (char*)&((TYPE*)0)->member))
 
 /**
  * @brief Static initializer for #test_nature_t::case_table.
@@ -1922,8 +1940,8 @@ static int cutest_timestamp_dif(const cutest_porting_timespec_t* t1,
  * @param[in] TYPE  Data type.
  * @param[in] fmt   Dump formatter.
  */
-#define TEST_GENERATE_NATIVE_COMPARE(TYPE, fmt)  \
-    static int _test_cmp_##TYPE(const TYPE* addr1, const TYPE* addr2) {\
+#define TEST_GENERATE_NATIVE_COMPARE(NAME, TYPE, fmt)  \
+    static int _test_cmp_##NAME(const TYPE* addr1, const TYPE* addr2) {\
         TYPE v1 = *addr1;\
         TYPE v2 = *addr2;\
         if (v1 == v2) {\
@@ -1931,19 +1949,19 @@ static int cutest_timestamp_dif(const cutest_porting_timespec_t* t1,
         }\
         return v1 < v2 ? -1 : 1;\
     }\
-    static int _test_print_##TYPE(FILE* file, const TYPE* addr) {\
+    static int _test_print_##NAME(FILE* file, const TYPE* addr) {\
         return fprintf(file, fmt, *addr);\
     }\
-    static cutest_type_info_t s_type_info_##TYPE = {\
+    static cutest_type_info_t NAME = {\
         { NULL, NULL, NULL }, #TYPE,\
-        (cutest_custom_type_cmp_fn)_test_cmp_##TYPE,\
-        (cutest_custom_type_dump_fn)_test_print_##TYPE,\
+        (cutest_custom_type_cmp_fn)_test_cmp_##NAME,\
+        (cutest_custom_type_dump_fn)_test_print_##NAME,\
     }
 
 typedef struct test_case_info
 {
     char                        fmt_name[256];  /**< Formatted name. */
-    size_t                      fmt_name_sz;    /**< The length of formatted name, not include NULL termainator. */
+    unsigned long               fmt_name_sz;    /**< The length of formatted name, not include NULL termainator. */
 
     cutest_case_t*              test_case;      /**< Test case. */
     cutest_case_node_t*         test_case_node; /**< Test case node. */
@@ -1968,7 +1986,7 @@ typedef struct test_run_parameterized_helper
 {
     test_case_info_t*           info;
     cutest_parameterized_info_t* parameterized_info;
-    size_t                      idx;
+    unsigned long               idx;
 } test_run_parameterized_helper_t;
 
 typedef struct test_nature_s
@@ -1998,8 +2016,8 @@ typedef struct test_ctx
 
         struct
         {
-            uint32_t            repeat;                         /**< How many times need to repeat */
-            uint32_t            repeated;                       /**< How many times alread repeated */
+            unsigned long       repeat;                         /**< How many times need to repeat */
+            unsigned long       repeated;                       /**< How many times alread repeated */
         } repeat;
     } counter;
 
@@ -2113,7 +2131,8 @@ static const char* s_test_help_encoded =
  * @brief Check if `str` match `pat`
  * @return bool
  */
-static int _cutest_pattern_match(const char* pat, size_t pat_sz, const char* str, size_t str_sz)
+static int _cutest_pattern_match(const char* pat, unsigned long pat_sz,
+    const char* str, unsigned long str_sz)
 {
     if (pat_sz == 0)
     {
@@ -2134,7 +2153,7 @@ static int _cutest_pattern_match(const char* pat, size_t pat_sz, const char* str
 /**
  * @return true if this test will run, false if not.
  */
-static int _cutest_check_pattern(const char* str, size_t str_sz)
+static int _cutest_check_pattern(const char* str, unsigned long str_sz)
 {
     test_str_t k, v = g_test_ctx.filter.pattern;
 
@@ -2144,7 +2163,7 @@ static int _cutest_check_pattern(const char* str, size_t str_sz)
         return 1;
     }
 
-    size_t cnt_positive_patterns = 0;
+    unsigned long cnt_positive_patterns = 0;
     int flag_match_positive_pattern = 0;
 
     /* Split patterns by `:` */
@@ -2314,7 +2333,7 @@ static void _cutest_hook_before_test(test_case_info_t* info)
         return;
     }
 
-    size_t fixture_sz = cutest_porting_strlen(test_case->info.fixture);
+    unsigned long fixture_sz = cutest_porting_strlen(test_case->info.fixture);
     g_test_ctx.hook->before_test(test_case->info.fixture, info->fmt_name + fixture_sz);
 }
 
@@ -2326,7 +2345,7 @@ static void _cutest_hook_after_test(test_case_info_t* info, int ret)
         return;
     }
 
-    size_t fixture_sz = cutest_porting_strlen(test_case->info.fixture);
+    unsigned long fixture_sz = cutest_porting_strlen(test_case->info.fixture);
     g_test_ctx.hook->after_test(test_case->info.fixture, info->fmt_name + fixture_sz, ret);
 }
 
@@ -2482,10 +2501,10 @@ static int _cutest_run_prepare(test_case_info_t* info)
     return 0;
 }
 
-static size_t _cutest_get_test_fmt_name_normal(char* buf, size_t len, cutest_case_t* test_case)
+static unsigned long _cutest_get_test_fmt_name_normal(char* buf, unsigned long len, cutest_case_t* test_case)
 {
-    size_t fixture_len = cutest_porting_strlen(test_case->info.fixture);
-    size_t case_name_len = cutest_porting_strlen(test_case->info.case_name);
+    unsigned long fixture_len = cutest_porting_strlen(test_case->info.fixture);
+    unsigned long case_name_len = cutest_porting_strlen(test_case->info.case_name);
 
     /* Write fixture */
     if (len <= fixture_len + 1)
@@ -2503,8 +2522,8 @@ static size_t _cutest_get_test_fmt_name_normal(char* buf, size_t len, cutest_cas
     }
 
     /* Write case_name */
-    size_t left_size = len - fixture_len - 1;
-    size_t copy_size = left_size < case_name_len ? left_size : case_name_len;
+    unsigned long left_size = len - fixture_len - 1;
+    unsigned long copy_size = left_size < case_name_len ? left_size : case_name_len;
     cutest_porting_memcpy(buf + fixture_len + 1, test_case->info.case_name, copy_size);
     buf[fixture_len + 1 + case_name_len] = '\0';
 
@@ -2518,7 +2537,7 @@ static void _cutest_run_case_normal(cutest_case_node_t* node)
     cutest_case_t* test_case = node->test_case;
 
     test_case_info_t info;
-    size_t ret = _cutest_get_test_fmt_name_normal(info.fmt_name, sizeof(info.fmt_name), test_case);
+    unsigned long ret = _cutest_get_test_fmt_name_normal(info.fmt_name, sizeof(info.fmt_name), test_case);
     if (ret >= sizeof(info.fmt_name))
     {
         cutest_porting_abort();
@@ -2567,7 +2586,7 @@ after_body:
 }
 
 static void _cutest_run_case_parameterized_body(test_case_info_t* info,
-    cutest_parameterized_info_t* parameterized_info, size_t idx)
+    cutest_parameterized_info_t* parameterized_info, unsigned long idx)
 {
     _cutest_hook_before_test(info);
 
@@ -2576,7 +2595,7 @@ static void _cutest_run_case_parameterized_body(test_case_info_t* info,
 }
 
 static void _cutest_run_case_parameterized_idx(test_case_info_t* info,
-    cutest_parameterized_info_t* parameterized_info, size_t idx)
+    cutest_parameterized_info_t* parameterized_info, unsigned long idx)
 {
     if (_cutest_run_prepare(info) != 0)
     {
@@ -2596,15 +2615,15 @@ cleanup:
     _cutest_finishlize(info);
 }
 
-static size_t _cutest_get_test_fmt_name_parameter(char* buf, size_t len, cutest_case_node_t* node)
+static unsigned long _cutest_get_test_fmt_name_parameter(char* buf, unsigned long len, cutest_case_node_t* node)
 {
-    char num_buf[12];
+    char num_buf[32];
     cutest_case_t* test_case = node->test_case;
 
-    cutest_porting_u32toa(num_buf, (uint32_t)node->parameterized_idx);
-    size_t num_len = cutest_porting_strlen(num_buf);
+    cutest_porting_ultoa(num_buf, node->parameterized_idx);
+    unsigned long num_len = cutest_porting_strlen(num_buf);
 
-    size_t ret = _cutest_get_test_fmt_name_normal(buf, len, test_case);
+    unsigned long ret = _cutest_get_test_fmt_name_normal(buf, len, test_case);
     if (ret >= len - num_len - 1)
     {
         goto finish;
@@ -2626,7 +2645,7 @@ static void _cutest_run_case_parameterized(cutest_case_node_t* node)
     info.test_case_node = node;
     info.test_case = test_case;
 
-    size_t ret = _cutest_get_test_fmt_name_parameter(info.fmt_name, sizeof(info.fmt_name), node);
+    unsigned long ret = _cutest_get_test_fmt_name_parameter(info.fmt_name, sizeof(info.fmt_name), node);
     if (ret >= sizeof(info.fmt_name))
     {
         cutest_porting_abort();
@@ -2755,11 +2774,11 @@ static void _cutest_setup_arg_pattern(char* user_pattern)
 /**
  * @return The length of whole string, including double quotation marks.
  */
-static size_t _cutest_parameterized_parser_peek_string(const char* str)
+static unsigned long _cutest_parameterized_parser_peek_string(const char* str)
 {
     CUTEST_PORTING_ASSERT(str[0] == '"');
 
-    size_t pos = 1;
+    unsigned long pos = 1;
     int flag_escape = 0;
 
     /* Find valid double quotation marks. */
@@ -2786,12 +2805,12 @@ static size_t _cutest_parameterized_parser_peek_string(const char* str)
     return cutest_porting_abort();
 }
 
-static size_t _cutest_parameterized_parser_peek_struct(const char* str)
+static unsigned long _cutest_parameterized_parser_peek_struct(const char* str)
 {
     CUTEST_PORTING_ASSERT(str[0] == '{');
 
-    size_t pos = 1;
-    size_t left_bracket = 1;
+    unsigned long pos = 1;
+    unsigned long left_bracket = 1;
 
     for (; str[pos] != '\0'; pos++)
     {
@@ -2828,10 +2847,10 @@ static size_t _cutest_parameterized_parser_peek_struct(const char* str)
  * @param[out] len  The length of element code in bytes.
  * @return          The position of element code.
  */
-static const char* _cutest_parameterized_parser(const char* code, size_t idx, int* len)
+static const char* _cutest_parameterized_parser(const char* code, unsigned long idx, int* len)
 {
     const char* str = code;
-    size_t pos = 0;
+    unsigned long pos = 0;
 
     for (; code[pos] != '\0'; pos++)
     {
@@ -2888,7 +2907,7 @@ static void _cutest_list_tests_print_name(const cutest_case_node_t* node)
 
     cutest_parameterized_info_t* parameterized_info = test_case->get_parameterized_info();
     const char* type_name = parameterized_info->type_name;
-    size_t parameterized_idx = node->parameterized_idx;
+    unsigned long parameterized_idx = node->parameterized_idx;
 
     int len = 0;;
     const char* str = _cutest_parameterized_parser(parameterized_info->test_data_info, parameterized_idx, &len);
@@ -2930,8 +2949,8 @@ static void _cutest_list_types(void)
 
 static int _cutest_setup_arg_repeat(const char* str)
 {
-    uint32_t repeat;
-    if (cutest_porting_atou32(str, &repeat) != 0)
+    unsigned long repeat;
+    if (cutest_porting_atoul(str, &repeat) != 0)
     {
         return -1;
     }
@@ -2942,8 +2961,8 @@ static int _cutest_setup_arg_repeat(const char* str)
 
 static int _cutest_setup_arg_print_time(const char* str)
 {
-    uint32_t val = 1;
-    if (cutest_porting_atou32(str, &val) != 0)
+    unsigned long val = 1;
+    if (cutest_porting_atoul(str, &val) != 0)
     {
         return -1;
     }
@@ -2954,8 +2973,8 @@ static int _cutest_setup_arg_print_time(const char* str)
 
 static int _cutest_setup_arg_random_seed(const char* str)
 {
-    uint32_t val = 0;
-    if (cutest_porting_atou32(str, &val) != 0)
+    unsigned long val = 0;
+    if (cutest_porting_atoul(str, &val) != 0)
     {
         return -1;
     }
@@ -2981,11 +3000,63 @@ static void _cutest_shuffle_cases(void)
     g_test_nature.case_table = copy_case_table;
 }
 
-TEST_GENERATE_NATIVE_COMPARE(int32_t, "%" PRId32);
-TEST_GENERATE_NATIVE_COMPARE(uint32_t, "%" PRIu32);
-TEST_GENERATE_NATIVE_COMPARE(int64_t, "%" PRId64);
-TEST_GENERATE_NATIVE_COMPARE(uint64_t, "%" PRIu64);
-TEST_GENERATE_NATIVE_COMPARE(size_t, "%" TEST_PRIsize);
+TEST_GENERATE_NATIVE_COMPARE(s_type_info_char, char, "%c");
+TEST_GENERATE_NATIVE_COMPARE(s_type_info_signed_char, signed char, "%c");
+TEST_GENERATE_NATIVE_COMPARE(s_type_info_unsigned_char, unsigned char, "%c");
+TEST_GENERATE_NATIVE_COMPARE(s_type_info_short, short, "%hd");
+TEST_GENERATE_NATIVE_COMPARE(s_type_info_unsigned_short, unsigned short, "%hd");
+TEST_GENERATE_NATIVE_COMPARE(s_type_info_int, int, "%d");
+TEST_GENERATE_NATIVE_COMPARE(s_type_info_unsigned_int, unsigned int, "%u");
+TEST_GENERATE_NATIVE_COMPARE(s_type_info_long, long, "%ld");
+TEST_GENERATE_NATIVE_COMPARE(s_type_info_unsigned_long, unsigned long, "%lu");
+
+#if !defined(CUTEST_NO_C99_SUPPORT)
+#include <stdint.h>
+#include <inttypes.h>
+#include <stddef.h>
+#if !defined(CUTEST_NO_LONGLONG_SUPPORT)
+TEST_GENERATE_NATIVE_COMPARE(s_type_info_long_long, long long, "%lld");
+#endif
+#if !defined(CUTEST_NO_ULONGLONG_SUPPORT)
+TEST_GENERATE_NATIVE_COMPARE(s_type_info_unsigned_long_long, unsigned long long, "%llu");
+#endif
+#if !defined(CUTEST_NO_INT8_SUPPORT)
+TEST_GENERATE_NATIVE_COMPARE(s_type_info_int8_t, int8_t, "%" PRId8);
+#endif
+#if !defined(CUTEST_NO_UINT8_SUPPORT)
+TEST_GENERATE_NATIVE_COMPARE(s_type_info_uint8_t, uint8_t, "%" PRIu8);
+#endif
+#if !defined(CUTEST_NO_INT16_SUPPORT)
+TEST_GENERATE_NATIVE_COMPARE(s_type_info_int16_t, int16_t, "%" PRId16);
+#endif
+#if !defined(CUTEST_NO_UINT16_SUPPORT)
+TEST_GENERATE_NATIVE_COMPARE(s_type_info_uint16_t, uint16_t, "%" PRIu16);
+#endif
+#if !defined(CUTEST_NO_INT32_SUPPORT)
+TEST_GENERATE_NATIVE_COMPARE(s_type_info_int32_t, int32_t, "%" PRId32);
+#endif
+#if !defined(CUTEST_NO_UINT32_SUPPORT)
+TEST_GENERATE_NATIVE_COMPARE(s_type_info_uint32_t, uint32_t, "%" PRIu32);
+#endif
+#if !defined(CUTEST_NO_INT64_SUPPORT)
+TEST_GENERATE_NATIVE_COMPARE(s_type_info_int64_t, int64_t, "%" PRId64);
+#endif
+#if !defined(CUTEST_NO_UINT64_SUPPORT)
+TEST_GENERATE_NATIVE_COMPARE(s_type_info_uint64_t, uint64_t, "%" PRIu64);
+#endif
+#if !defined(CUTEST_NO_SIZE_SUPPORT)
+TEST_GENERATE_NATIVE_COMPARE(s_type_info_size_t, size_t, "%" TEST_PRIsize);
+#endif
+#if !defined(CUTEST_NO_PTRDIFF_SUPPORT)
+TEST_GENERATE_NATIVE_COMPARE(s_type_info_ptrdiff_t, ptrdiff_t, "%td");
+#endif
+#if !defined(CUTEST_NO_INTPTR_SUPPORT)
+TEST_GENERATE_NATIVE_COMPARE(s_type_info_intptr_t, intptr_t, "%" PRIdPTR);
+#endif
+#if !defined(CUTEST_NO_UINTPTR_SUPPORT)
+TEST_GENERATE_NATIVE_COMPARE(s_type_info_uintptr_t, uintptr_t, "%" PRIuPTR);
+#endif
+#endif
 
 static int _cutest_cmp_ptr(const void* addr1, const void* addr2)
 {
@@ -3062,15 +3133,66 @@ static cutest_type_info_t s_type_info_double = {
 
 static void _cutest_setup_type(void)
 {
-    cutest_register_type(&s_type_info_int32_t);
-    cutest_register_type(&s_type_info_uint32_t);
-    cutest_register_type(&s_type_info_int64_t);
-    cutest_register_type(&s_type_info_uint64_t);
-    cutest_register_type(&s_type_info_size_t);
-    cutest_register_type(&s_type_info_float);
-    cutest_register_type(&s_type_info_double);
+    /* C89 */
+    cutest_register_type(&s_type_info_char);
+    cutest_register_type(&s_type_info_signed_char);
+    cutest_register_type(&s_type_info_unsigned_char);
+    cutest_register_type(&s_type_info_short);
+    cutest_register_type(&s_type_info_unsigned_short);
+    cutest_register_type(&s_type_info_int);
+    cutest_register_type(&s_type_info_unsigned_int);
+    cutest_register_type(&s_type_info_long);
+    cutest_register_type(&s_type_info_unsigned_long);
     cutest_register_type(&s_type_info_ptr);
     cutest_register_type(&s_type_info_str);
+    cutest_register_type(&s_type_info_float);
+    cutest_register_type(&s_type_info_double);
+
+    /* C99 */
+#if !defined(CUTEST_NO_C99_SUPPORT)
+#if !defined(CUTEST_NO_LONGLONG_SUPPORT)
+    cutest_register_type(&s_type_info_long_long);
+#endif
+#if !defined(CUTEST_NO_ULONGLONG_SUPPORT)
+    cutest_register_type(&s_type_info_unsigned_long_long);
+#endif
+#if !defined(CUTEST_NO_INT8_SUPPORT)
+    cutest_register_type(&s_type_info_int8_t);
+#endif
+#if !defined(CUTEST_NO_UINT8_SUPPORT)
+    cutest_register_type(&s_type_info_uint8_t);
+#endif
+#if !defined(CUTEST_NO_INT16_SUPPORT)
+    cutest_register_type(&s_type_info_int16_t);
+#endif
+#if !defined(CUTEST_NO_UINT16_SUPPORT)
+    cutest_register_type(&s_type_info_uint16_t);
+#endif
+#if !defined(CUTEST_NO_INT32_SUPPORT)
+    cutest_register_type(&s_type_info_int32_t);
+#endif
+#if !defined(CUTEST_NO_UINT32_SUPPORT)
+    cutest_register_type(&s_type_info_uint32_t);
+#endif
+#if !defined(CUTEST_NO_INT64_SUPPORT)
+    cutest_register_type(&s_type_info_int64_t);
+#endif
+#if !defined(CUTEST_NO_UINT64_SUPPORT)
+    cutest_register_type(&s_type_info_uint64_t);
+#endif
+#if !defined(CUTEST_NO_SIZE_SUPPORT)
+    cutest_register_type(&s_type_info_size_t);
+#endif
+#if !defined(CUTEST_NO_PTRDIFF_SUPPORT)
+    cutest_register_type(&s_type_info_ptrdiff_t);
+#endif
+#if !defined(CUTEST_NO_INTPTR_SUPPORT)
+    cutest_register_type(&s_type_info_intptr_t);
+#endif
+#if !defined(CUTEST_NO_UINTPTR_SUPPORT)
+    cutest_register_type(&s_type_info_uintptr_t);
+#endif
+#endif
 }
 
 /**
@@ -3090,7 +3212,7 @@ static void _cutest_prepare(void)
 {
     cutest_porting_timespec_t seed;
     cutest_porting_clock_gettime(&seed);
-    cutest_porting_srand((uint32_t)seed.tv_sec);
+    cutest_porting_srand((unsigned long)seed.tv_sec);
 
     g_test_ctx.runtime.tid = cutest_porting_gettid();
     g_test_ctx.counter.repeat.repeat = 1;
@@ -3270,7 +3392,7 @@ static void _cutest_run_all_tests(void)
     }
 }
 
-void cutest_register_case(cutest_case_t* data, cutest_case_node_t* node, size_t node_sz)
+void cutest_register_case(cutest_case_t* data, cutest_case_node_t* node, unsigned long node_sz)
 {
     (void)node_sz;
 
@@ -3290,7 +3412,7 @@ void cutest_register_case(cutest_case_t* data, cutest_case_node_t* node, size_t 
         return;
     }
 
-    size_t i;
+    unsigned long i;
     cutest_parameterized_info_t* parameterized_info = data->get_parameterized_info();
     for (i = 0; i < parameterized_info->test_data_sz; i++)
     {

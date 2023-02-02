@@ -6,40 +6,33 @@
 
 TEST(all_assertion, 0)
 {
-    ASSERT_EQ_D32(0, 0);
-    ASSERT_NE_D32(0, 1);
-    ASSERT_LT_D32(0, 1);
-    ASSERT_LE_D32(0, 1);
-    ASSERT_GT_D32(1, 0);
-    ASSERT_GE_D32(1, 0);
+    ASSERT_EQ_INT(0, 0);
+    ASSERT_NE_INT(0, 1);
+    ASSERT_LT_INT(0, 1);
+    ASSERT_LE_INT(0, 1);
+    ASSERT_GT_INT(1, 0);
+    ASSERT_GE_INT(1, 0);
 
-    ASSERT_EQ_U32(0, 0);
-    ASSERT_NE_U32(0, 1);
-    ASSERT_LT_U32(0, 1);
-    ASSERT_LE_U32(0, 1);
-    ASSERT_GT_U32(1, 0);
-    ASSERT_GE_U32(1, 0);
+    ASSERT_EQ_UINT(0, 0);
+    ASSERT_NE_UINT(0, 1);
+    ASSERT_LT_UINT(0, 1);
+    ASSERT_LE_UINT(0, 1);
+    ASSERT_GT_UINT(1, 0);
+    ASSERT_GE_UINT(1, 0);
 
-    ASSERT_EQ_D64(0, 0);
-    ASSERT_NE_D64(0, 1);
-    ASSERT_LT_D64(0, 1);
-    ASSERT_LE_D64(0, 1);
-    ASSERT_GT_D64(1, 0);
-    ASSERT_GE_D64(1, 0);
+    ASSERT_EQ_LONG(0, 0);
+    ASSERT_NE_LONG(0, 1);
+    ASSERT_LT_LONG(0, 1);
+    ASSERT_LE_LONG(0, 1);
+    ASSERT_GT_LONG(1, 0);
+    ASSERT_GE_LONG(1, 0);
 
-    ASSERT_EQ_U64(0, 0);
-    ASSERT_NE_U64(0, 1);
-    ASSERT_LT_U64(0, 1);
-    ASSERT_LE_U64(0, 1);
-    ASSERT_GT_U64(1, 0);
-    ASSERT_GE_U64(1, 0);
-
-    ASSERT_EQ_SIZE(0, 0);
-    ASSERT_NE_SIZE(0, 1);
-    ASSERT_LT_SIZE(0, 1);
-    ASSERT_LE_SIZE(0, 1);
-    ASSERT_GT_SIZE(1, 0);
-    ASSERT_GE_SIZE(1, 0);
+    ASSERT_EQ_ULONG(0, 0);
+    ASSERT_NE_ULONG(0, 1);
+    ASSERT_LT_ULONG(0, 1);
+    ASSERT_LE_ULONG(0, 1);
+    ASSERT_GT_ULONG(1, 0);
+    ASSERT_GE_ULONG(1, 0);
 
     ASSERT_EQ_PTR((void*)0, (void*)0);
     ASSERT_NE_PTR((void*)0, (void*)1);

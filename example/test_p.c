@@ -41,7 +41,7 @@ TEST_P(example, test_p_simple)
     int data = TEST_GET_PARAM();
 
     /* You will always get the same result from `TEST_GET_PARAM()` */
-    ASSERT_EQ_D32(data, TEST_GET_PARAM());
+    ASSERT_EQ_INT(data, TEST_GET_PARAM());
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -75,7 +75,7 @@ TEST_P(example, test_p_structure)
     test_p_2_data_t data = TEST_GET_PARAM();
 
     /* Let's do summation for test data. */
-    ASSERT_EQ_D32(data.a + data.b, data.c);
+    ASSERT_EQ_INT(data.a + data.b, data.c);
 }
 //! [GET_PARAMETERIZED_DATA]
 

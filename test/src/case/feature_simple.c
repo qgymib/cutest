@@ -1,4 +1,5 @@
 #include "test.h"
+#include <stdint.h>
 
 ///////////////////////////////////////////////////////////////////////////////
 // Watchpoint
@@ -20,7 +21,7 @@ TEST_F(simple, fixture)
 }
 TEST_P(simple, parameterized)
 {
-    ASSERT_NE_D32(0, 1);
+    ASSERT_NE_INT32(0, 1);
     s_sum += TEST_GET_PARAM();
 }
 TEST(simple, simple)

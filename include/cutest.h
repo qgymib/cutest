@@ -16,9 +16,6 @@
 #ifndef __C_UNIT_TEST_H__
 #define __C_UNIT_TEST_H__
 
-#include <stdint.h>
-#include <stddef.h>
-#include <inttypes.h>
 #include <stdio.h>
 #include <stdarg.h>
 
@@ -184,7 +181,7 @@ extern "C" {
  */
 #define TEST_P(fixture, test) \
     TEST_C_API void u_cutest_body_##fixture##_##test(\
-        u_cutest_parameterized_type_##fixture##_##test*, size_t);\
+        u_cutest_parameterized_type_##fixture##_##test*, unsigned long);\
     TEST_INITIALIZER(TEST_INIT_##fixture##_##test) {\
         static cutest_case_t _case_##fixture##_##test = {\
             {\
@@ -194,7 +191,7 @@ extern "C" {
             {\
                 s_cutest_fixture_setup_##fixture,\
                 s_cutest_fixture_teardown_##fixture,\
-                (void(*)(void*, size_t))u_cutest_body_##fixture##_##test,\
+                (void(*)(void*, unsigned long))u_cutest_body_##fixture##_##test,\
             }, /* stage */\
             s_cutest_parameterized_##fixture##_##test, /* parameterized */\
         };\
@@ -203,7 +200,7 @@ extern "C" {
     }\
     TEST_C_API void u_cutest_body_##fixture##_##test(\
         u_cutest_parameterized_type_##fixture##_##test* _test_parameterized_data,\
-        size_t _test_parameterized_idx)
+        unsigned long _test_parameterized_idx)
 
 /**
  * @brief Test Fixture
@@ -213,7 +210,7 @@ extern "C" {
 #define TEST_F(fixture, test) \
     TEST_C_API void u_cutest_body_##fixture##_##test(void);\
     TEST_C_API static void s_cutest_proxy_##fixture##_##test(void* _test_parameterized_data,\
-        size_t _test_parameterized_idx) {\
+        unsigned long _test_parameterized_idx) {\
         TEST_PARAMETERIZED_SUPPRESS_UNUSED;\
         u_cutest_body_##fixture##_##test();\
     }\
@@ -243,7 +240,7 @@ extern "C" {
 #define TEST(fixture, test)  \
     TEST_C_API void u_cutest_body_##fixture##_##test(void);\
     TEST_C_API static void s_cutest_proxy_##fixture##_##test(void* _test_parameterized_data,\
-        size_t _test_parameterized_idx) {\
+        unsigned long _test_parameterized_idx) {\
         TEST_PARAMETERIZED_SUPPRESS_UNUSED;\
         u_cutest_body_##fixture##_##test();\
     }\
@@ -334,26 +331,26 @@ typedef struct cutest_parameterized_info
     const char*                 type_name;              /**< User type name. */
 
     const char*                 test_data_info;         /**< The C string of user test data. */
-    size_t                      test_data_sz;           /**< parameterized data size */
+    unsigned long               test_data_sz;           /**< parameterized data size */
     void*                       test_data;              /**< parameterized data */
 
     cutest_case_node_t*         nodes;
-    size_t                      node_sz;
+    unsigned long               node_sz;
 } cutest_parameterized_info_t;
 
 typedef struct cutest_case
 {
     struct
     {
-        const char*             fixture;                /**< suit name */
-        const char*             case_name;              /**< case name */
+        const char*             fixture;                        /**< suit name */
+        const char*             case_name;                      /**< case name */
     } info;
 
     struct
     {
-        void                    (*setup)(void);         /**< setup */
-        void                    (*teardown)(void);      /**< teardown */
-        void                    (*body)(void*, size_t); /**< test body */
+        void                    (*setup)(void);                 /**< setup */
+        void                    (*teardown)(void);              /**< teardown */
+        void                    (*body)(void*, unsigned long);  /**< test body */
     } stage;
 
     cutest_parameterized_info_t* (*get_parameterized_info)(void);
@@ -363,16 +360,16 @@ struct cutest_case_node
 {
     cutest_map_node_t           node;
     cutest_case_t*              test_case;
-    uint32_t                    mask;                   /**< internal mask */
-    uint32_t                    randkey;
-    size_t                      parameterized_idx;
+    unsigned long               mask;                   /**< internal mask */
+    unsigned long               randkey;
+    unsigned long               parameterized_idx;
 };
 
 /**
  * @brief Register test case
  * @param[in] test_case     Test case
  */
-void cutest_register_case(cutest_case_t* test_case, cutest_case_node_t* node, size_t node_sz);
+void cutest_register_case(cutest_case_t* test_case, cutest_case_node_t* node, unsigned long node_sz);
 
  /** @endcond */
 
@@ -412,9 +409,12 @@ void cutest_register_case(cutest_case_t* test_case, cutest_case_node_t* node, si
  *
  * > To support more types, checkout #TEST_REGISTER_TYPE().
  *
- * So, an assertion like #ASSERT_EQ_D32() means except `a` and `b` have type of `int32_t` and they are the same value.
+ * So, an assertion like #ASSERT_EQ_D32() means except `a` and `b` have type of
+ * `int32_t` and they are the same value.
  *
- * You may notice all assertions have syntax of `ASSERT_OP_TYPE(a, b, fmt, ...)`, it means custom print is available if assertion fails. For example, the following code
+ * You may notice all assertions have syntax of `ASSERT_OP_TYPE(a, b, fmt, ...)`,
+ * it means custom print is available if assertion fails. For example, the
+ * following code
  * 
  * ```c
  * int errcode = ENOENT;
@@ -427,7 +427,8 @@ void cutest_register_case(cutest_case_t* test_case, cutest_case_node_t* node, si
  * No such file or directory(2)
  * ```
  *
- * You may also want to refer to the actual value of operator, you can use `_L` to refer to left operator and `_R` to refer to right operator:
+ * You may also want to refer to the actual value of operator, you can use `_L`
+ * to refer to left operator and `_R` to refer to right operator:
  * 
  * ```c
  * ASSERT_EQ_D32(0, 1+2, "%d is not %d", _L, _R);
@@ -443,466 +444,169 @@ void cutest_register_case(cutest_case_t* test_case, cutest_case_node_t* node, si
  */
 
 /**
- * @def ASSERT_EQ_D32
- * @brief Assert `a' == `b'. `a' and `b' must has type `int32_t'.
+ * @defgroup TEST_ASSERTION_C89 C89 Assertion
  *
- * If `a' != `b', this test will stop immediately and mark as failure.
+ * Assertion macros for C89 standard, provide native type support:
+ * + char
+ * + unsigned char
+ * + signed char
+ * + short
+ * + unsigned short
+ * + int
+ * + unsigned int
+ * + long
+ * + unsigned long
+ * + float
+ * + double
+ * + const void*
+ * + const char*
  *
- * @param [in] a    Value a
- * @param [in] b    Value b
- * @param [in] ...  User defined error message
+ * @note About `size_t` and `ptrdiff_t`: Although they are included in C89
+ *   standard, the formal print conversion specifier `%%zu` and `%%td` are
+ *   inclueded in C99 standard. Besides they need `<stddef.h>`, and we want
+ *   the dependency to be minimum.
+ *
+ * @note About `long double`:  Although it exists in C89 standard, we do not
+ * offer support for type `long double`, because actual properties unspecified.
+ * The implementation can be either x86 extended-precision floating-point format
+ * (80 bits, but typically 96 bits or 128 bits in memory with padding bytes),
+ * the non-IEEE "double-double" (128 bits), IEEE 754 quadruple-precision
+ * floating-point format (128 bits), or the same as double.
+ *
+ * @see http://port70.net/~nsz/c/c89/c89-draft.html
+ *
+ * @{
  */
-/**
- * @def ASSERT_NE_D32
- * @brief Assert `a' != `b'. `a' and `b' must has type `int32_t'.
- *
- * If `a' == `b', this test will stop immediately and mark as failure.
- *
- * @param [in] a    Value a
- * @param [in] b    Value b
- * @param [in] ...  User defined error message
- */
-/**
- * @def ASSERT_LT_D32
- * @brief Assert `a' < `b'. `a' and `b' must has type `int32_t'.
- *
- * If `a' >= `b', this test will stop immediately and mark as failure.
- *
- * @param [in] a    Value a
- * @param [in] b    Value b
- * @param [in] ...  User defined error message
- */
-/**
- * @def ASSERT_LE_D32
- * @brief Assert `a' <= `b'. `a' and `b' must has type `int32_t'.
- *
- * If `a' > `b', this test will stop immediately and mark as failure.
- *
- * @param [in] a    Value a
- * @param [in] b    Value b
- * @param [in] ...  User defined error message
- */
-/**
- * @def ASSERT_GT_D32
- * @brief Assert `a' > `b'. `a' and `b' must has type `int32_t'.
- *
- * If `a' <= `b', this test will stop immediately and mark as failure.
- *
- * @param [in] a    Value a
- * @param [in] b    Value b
- * @param [in] ...  User defined error message
- */
-/**
- * @def ASSERT_GE_D32
- * @brief Assert `a' >= `b'. `a' and `b' must has type `int32_t'.
- *
- * If `a' < `b', this test will stop immediately and mark as failure.
- *
- * @param [in] a    Value a
- * @param [in] b    Value b
- * @param [in] ...  User defined error message
- */
-#define ASSERT_EQ_D32(a, b, ...)        ASSERT_TEMPLATE_EXT(int32_t, ==, a, b, __VA_ARGS__)
-#define ASSERT_NE_D32(a, b, ...)        ASSERT_TEMPLATE_EXT(int32_t, !=, a, b, __VA_ARGS__)
-#define ASSERT_LT_D32(a, b, ...)        ASSERT_TEMPLATE_EXT(int32_t, <,  a, b, __VA_ARGS__)
-#define ASSERT_LE_D32(a, b, ...)        ASSERT_TEMPLATE_EXT(int32_t, <=, a, b, __VA_ARGS__)
-#define ASSERT_GT_D32(a, b, ...)        ASSERT_TEMPLATE_EXT(int32_t, >,  a, b, __VA_ARGS__)
-#define ASSERT_GE_D32(a, b, ...)        ASSERT_TEMPLATE_EXT(int32_t, >=, a, b, __VA_ARGS__)
 
 /**
- * @def ASSERT_EQ_U32
- * @brief Assert `a' == `b'. `a' and `b' must has type `uint32_t'.
- *
- * If `a' != `b', this test will stop immediately and mark as failure.
- *
- * @param [in] a    Value a
- * @param [in] b    Value b
- * @param [in] ...  User defined error message
+ * @defgroup TEST_ASSERTION_C89_CHAR char
+ * @{
  */
+#define ASSERT_EQ_CHAR(a, b, ...)       ASSERT_TEMPLATE_EXT(char, ==, a, b, __VA_ARGS__)
+#define ASSERT_NE_CHAR(a, b, ...)       ASSERT_TEMPLATE_EXT(char, !=, a, b, __VA_ARGS__)
+#define ASSERT_LT_CHAR(a, b, ...)       ASSERT_TEMPLATE_EXT(char, <,  a, b, __VA_ARGS__)
+#define ASSERT_LE_CHAR(a, b, ...)       ASSERT_TEMPLATE_EXT(char, <=, a, b, __VA_ARGS__)
+#define ASSERT_GT_CHAR(a, b, ...)       ASSERT_TEMPLATE_EXT(char, >,  a, b, __VA_ARGS__)
+#define ASSERT_GE_CHAR(a, b, ...)       ASSERT_TEMPLATE_EXT(char, >=, a, b, __VA_ARGS__)
 /**
- * @def ASSERT_NE_U32
- * @brief Assert `a' != `b'. `a' and `b' must has type `uint32_t'.
- *
- * If `a' == `b', this test will stop immediately and mark as failure.
- *
- * @param [in] a    Value a
- * @param [in] b    Value b
- * @param [in] ...  User defined error message
+ * @}
  */
-/**
- * @def ASSERT_LT_U32
- * @brief Assert `a' < `b'. `a' and `b' must has type `uint32_t'.
- *
- * If `a' >= `b', this test will stop immediately and mark as failure.
- *
- * @param [in] a    Value a
- * @param [in] b    Value b
- * @param [in] ...  User defined error message
- */
-/**
- * @def ASSERT_LE_U32
- * @brief Assert `a' <= `b'. `a' and `b' must has type `uint32_t'.
- *
- * If `a' > `b', this test will stop immediately and mark as failure.
- *
- * @param [in] a    Value a
- * @param [in] b    Value b
- * @param [in] ...  User defined error message
- */
-/**
- * @def ASSERT_GT_U32
- * @brief Assert `a' > `b'. `a' and `b' must has type `uint32_t'.
- *
- * If `a' <= `b', this test will stop immediately and mark as failure.
- *
- * @param [in] a    Value a
- * @param [in] b    Value b
- * @param [in] ...  User defined error message
- */
-/**
- * @def ASSERT_GE_U32
- * @brief Assert `a' >= `b'. `a' and `b' must has type `uint32_t'.
- *
- * If `a' < `b', this test will stop immediately and mark as failure.
- *
- * @param [in] a    Value a
- * @param [in] b    Value b
- * @param [in] ...  User defined error message
- */
-#define ASSERT_EQ_U32(a, b, ...)        ASSERT_TEMPLATE_EXT(uint32_t, ==, a, b, __VA_ARGS__)
-#define ASSERT_NE_U32(a, b, ...)        ASSERT_TEMPLATE_EXT(uint32_t, !=, a, b, __VA_ARGS__)
-#define ASSERT_LT_U32(a, b, ...)        ASSERT_TEMPLATE_EXT(uint32_t, <,  a, b, __VA_ARGS__)
-#define ASSERT_LE_U32(a, b, ...)        ASSERT_TEMPLATE_EXT(uint32_t, <=, a, b, __VA_ARGS__)
-#define ASSERT_GT_U32(a, b, ...)        ASSERT_TEMPLATE_EXT(uint32_t, >,  a, b, __VA_ARGS__)
-#define ASSERT_GE_U32(a, b, ...)        ASSERT_TEMPLATE_EXT(uint32_t, >=, a, b, __VA_ARGS__)
 
 /**
- * @def ASSERT_EQ_D64
- * @brief Assert `a' == `b'. `a' and `b' must has type `int64_t'.
- *
- * If `a' != `b', this test will stop immediately and mark as failure.
- *
- * @param [in] a    Value a
- * @param [in] b    Value b
- * @param [in] ...  User defined error message
+ * @defgroup TEST_ASSERTION_C89_DCHAR signed char
+ * @{
  */
+#define ASSERT_EQ_DCHAR(a, b, ...)      ASSERT_TEMPLATE_EXT(signed char, ==, a, b, __VA_ARGS__)
+#define ASSERT_NE_DCHAR(a, b, ...)      ASSERT_TEMPLATE_EXT(signed char, !=, a, b, __VA_ARGS__)
+#define ASSERT_LT_DCHAR(a, b, ...)      ASSERT_TEMPLATE_EXT(signed char, <,  a, b, __VA_ARGS__)
+#define ASSERT_LE_DCHAR(a, b, ...)      ASSERT_TEMPLATE_EXT(signed char, <=, a, b, __VA_ARGS__)
+#define ASSERT_GT_DCHAR(a, b, ...)      ASSERT_TEMPLATE_EXT(signed char, >,  a, b, __VA_ARGS__)
+#define ASSERT_GE_DCHAR(a, b, ...)      ASSERT_TEMPLATE_EXT(signed char, >=, a, b, __VA_ARGS__)
 /**
- * @def ASSERT_NE_D64
- * @brief Assert `a' != `b'. `a' and `b' must has type `int64_t'.
- *
- * If `a' == `b', this test will stop immediately and mark as failure.
- *
- * @param [in] a    Value a
- * @param [in] b    Value b
- * @param [in] ...  User defined error message
+ * @}
  */
-/**
- * @def ASSERT_LT_D64
- * @brief Assert `a' < `b'. `a' and `b' must has type `int64_t'.
- *
- * If `a' >= `b', this test will stop immediately and mark as failure.
- *
- * @param [in] a    Value a
- * @param [in] b    Value b
- * @param [in] ...  User defined error message
- */
-/**
- * @def ASSERT_LE_D64
- * @brief Assert `a' <= `b'. `a' and `b' must has type `int64_t'.
- *
- * If `a' > `b', this test will stop immediately and mark as failure.
- *
- * @param [in] a    Value a
- * @param [in] b    Value b
- * @param [in] ...  User defined error message
- */
-/**
- * @def ASSERT_GT_D64
- * @brief Assert `a' > `b'. `a' and `b' must has type `int64_t'.
- *
- * If `a' <= `b', this test will stop immediately and mark as failure.
- *
- * @param [in] a    Value a
- * @param [in] b    Value b
- * @param [in] ...  User defined error message
- */
-/**
- * @def ASSERT_GE_D64
- * @brief Assert `a' >= `b'. `a' and `b' must has type `int64_t'.
- *
- * If `a' < `b', this test will stop immediately and mark as failure.
- *
- * @param [in] a    Value a
- * @param [in] b    Value b
- * @param [in] ...  User defined error message
- */
-#define ASSERT_EQ_D64(a, b, ...)        ASSERT_TEMPLATE_EXT(int64_t, ==, a, b, __VA_ARGS__)
-#define ASSERT_NE_D64(a, b, ...)        ASSERT_TEMPLATE_EXT(int64_t, !=, a, b, __VA_ARGS__)
-#define ASSERT_LT_D64(a, b, ...)        ASSERT_TEMPLATE_EXT(int64_t, <,  a, b, __VA_ARGS__)
-#define ASSERT_LE_D64(a, b, ...)        ASSERT_TEMPLATE_EXT(int64_t, <=, a, b, __VA_ARGS__)
-#define ASSERT_GT_D64(a, b, ...)        ASSERT_TEMPLATE_EXT(int64_t, >,  a, b, __VA_ARGS__)
-#define ASSERT_GE_D64(a, b, ...)        ASSERT_TEMPLATE_EXT(int64_t, >=, a, b, __VA_ARGS__)
 
 /**
- * @def ASSERT_EQ_U64
- * @brief Assert `a' == `b'. `a' and `b' must has type `uint64_t'.
- *
- * If `a' != `b', this test will stop immediately and mark as failure.
- *
- * @param [in] a    Value a
- * @param [in] b    Value b
- * @param [in] ...  User defined error message
+ * @defgroup TEST_ASSERTION_C89_UCHAR unsigned char
+ * @{
  */
+#define ASSERT_EQ_UCHAR(a, b, ...)      ASSERT_TEMPLATE_EXT(unsigned char, ==, a, b, __VA_ARGS__)
+#define ASSERT_NE_UCHAR(a, b, ...)      ASSERT_TEMPLATE_EXT(unsigned char, !=, a, b, __VA_ARGS__)
+#define ASSERT_LT_UCHAR(a, b, ...)      ASSERT_TEMPLATE_EXT(unsigned char, <,  a, b, __VA_ARGS__)
+#define ASSERT_LE_UCHAR(a, b, ...)      ASSERT_TEMPLATE_EXT(unsigned char, <=, a, b, __VA_ARGS__)
+#define ASSERT_GT_UCHAR(a, b, ...)      ASSERT_TEMPLATE_EXT(unsigned char, >,  a, b, __VA_ARGS__)
+#define ASSERT_GE_UCHAR(a, b, ...)      ASSERT_TEMPLATE_EXT(unsigned char, >=, a, b, __VA_ARGS__)
 /**
- * @def ASSERT_NE_U64
- * @brief Assert `a' != `b'. `a' and `b' must has type `uint64_t'.
- *
- * If `a' == `b', this test will stop immediately and mark as failure.
- *
- * @param [in] a    Value a
- * @param [in] b    Value b
- * @param [in] ...  User defined error message
+ * @}
  */
-/**
- * @def ASSERT_LT_U64
- * @brief Assert `a' < `b'. `a' and `b' must has type `uint64_t'.
- *
- * If `a' >= `b', this test will stop immediately and mark as failure.
- *
- * @param [in] a    Value a
- * @param [in] b    Value b
- * @param [in] ...  User defined error message
- */
-/**
- * @def ASSERT_LE_U64
- * @brief Assert `a' <= `b'. `a' and `b' must has type `uint64_t'.
- *
- * If `a' > `b', this test will stop immediately and mark as failure.
- *
- * @param [in] a    Value a
- * @param [in] b    Value b
- * @param [in] ...  User defined error message
- */
-/**
- * @def ASSERT_GT_U64
- * @brief Assert `a' > `b'. `a' and `b' must has type `uint64_t'.
- *
- * If `a' <= `b', this test will stop immediately and mark as failure.
- *
- * @param [in] a    Value a
- * @param [in] b    Value b
- * @param [in] ...  User defined error message
- */
-/**
- * @def ASSERT_GE_U64
- * @brief Assert `a' >= `b'. `a' and `b' must has type `uint64_t'.
- *
- * If `a' < `b', this test will stop immediately and mark as failure.
- *
- * @param [in] a    Value a
- * @param [in] b    Value b
- * @param [in] ...  User defined error message
- */
-#define ASSERT_EQ_U64(a, b, ...)        ASSERT_TEMPLATE_EXT(uint64_t, ==, a, b, __VA_ARGS__)
-#define ASSERT_NE_U64(a, b, ...)        ASSERT_TEMPLATE_EXT(uint64_t, !=, a, b, __VA_ARGS__)
-#define ASSERT_LT_U64(a, b, ...)        ASSERT_TEMPLATE_EXT(uint64_t, <,  a, b, __VA_ARGS__)
-#define ASSERT_LE_U64(a, b, ...)        ASSERT_TEMPLATE_EXT(uint64_t, <=, a, b, __VA_ARGS__)
-#define ASSERT_GT_U64(a, b, ...)        ASSERT_TEMPLATE_EXT(uint64_t, >,  a, b, __VA_ARGS__)
-#define ASSERT_GE_U64(a, b, ...)        ASSERT_TEMPLATE_EXT(uint64_t, >=, a, b, __VA_ARGS__)
 
 /**
- * @def ASSERT_EQ_SIZE
- * @brief Assert `a' == `b'. `a' and `b' must has type `size_t'.
- *
- * If `a' != `b', this test will stop immediately and mark as failure.
- *
- * @param [in] a    Value a
- * @param [in] b    Value b
- * @param [in] ...  User defined error message
+ * @defgroup TEST_ASSERTION_C89_SHORT short
+ * @{
  */
+#define ASSERT_EQ_SHORT(a, b, ...)      ASSERT_TEMPLATE_EXT(short, ==, a, b, __VA_ARGS__)
+#define ASSERT_NE_SHORT(a, b, ...)      ASSERT_TEMPLATE_EXT(short, !=, a, b, __VA_ARGS__)
+#define ASSERT_LT_SHORT(a, b, ...)      ASSERT_TEMPLATE_EXT(short, <,  a, b, __VA_ARGS__)
+#define ASSERT_LE_SHORT(a, b, ...)      ASSERT_TEMPLATE_EXT(short, <=, a, b, __VA_ARGS__)
+#define ASSERT_GT_SHORT(a, b, ...)      ASSERT_TEMPLATE_EXT(short, >,  a, b, __VA_ARGS__)
+#define ASSERT_GE_SHORT(a, b, ...)      ASSERT_TEMPLATE_EXT(short, >=, a, b, __VA_ARGS__)
 /**
- * @def ASSERT_NE_SIZE
- * @brief Assert `a' != `b'. `a' and `b' must has type `size_t'.
- *
- * If `a' == `b', this test will stop immediately and mark as failure.
- *
- * @param [in] a    Value a
- * @param [in] b    Value b
- * @param [in] ...  User defined error message
+ * @}
  */
-/**
- * @def ASSERT_LT_SIZE
- * @brief Assert `a' < `b'. `a' and `b' must has type `size_t'.
- *
- * If `a' >= `b', this test will stop immediately and mark as failure.
- *
- * @param [in] a    Value a
- * @param [in] b    Value b
- * @param [in] ...  User defined error message
- */
-/**
- * @def ASSERT_LE_SIZE
- * @brief Assert `a' <= `b'. `a' and `b' must has type `size_t'.
- *
- * If `a' > `b', this test will stop immediately and mark as failure.
- *
- * @param [in] a    Value a
- * @param [in] b    Value b
- * @param [in] ...  User defined error message
- */
-/**
- * @def ASSERT_GT_SIZE
- * @brief Assert `a' > `b'. `a' and `b' must has type `size_t'.
- *
- * If `a' <= `b', this test will stop immediately and mark as failure.
- *
- * @param [in] a    Value a
- * @param [in] b    Value b
- * @param [in] ...  User defined error message
- */
-/**
- * @def ASSERT_GE_SIZE
- * @brief Assert `a' >= `b'. `a' and `b' must has type `size_t'.
- *
- * If `a' < `b', this test will stop immediately and mark as failure.
- *
- * @param [in] a    Value a
- * @param [in] b    Value b
- * @param [in] ...  User defined error message
- */
-#define ASSERT_EQ_SIZE(a, b, ...)       ASSERT_TEMPLATE_EXT(size_t, ==, a, b, __VA_ARGS__)
-#define ASSERT_NE_SIZE(a, b, ...)       ASSERT_TEMPLATE_EXT(size_t, !=, a, b, __VA_ARGS__)
-#define ASSERT_LT_SIZE(a, b, ...)       ASSERT_TEMPLATE_EXT(size_t, <,  a, b, __VA_ARGS__)
-#define ASSERT_LE_SIZE(a, b, ...)       ASSERT_TEMPLATE_EXT(size_t, <=, a, b, __VA_ARGS__)
-#define ASSERT_GT_SIZE(a, b, ...)       ASSERT_TEMPLATE_EXT(size_t, >,  a, b, __VA_ARGS__)
-#define ASSERT_GE_SIZE(a, b, ...)       ASSERT_TEMPLATE_EXT(size_t, >=, a, b, __VA_ARGS__)
 
 /**
- * @def ASSERT_EQ_PTR
- * @brief Assert `a' == `b'. `a' and `b' must be pointer type.
- *
- * If `a' != `b' does not match, this test will stop immediately and mark as failure.
- *
- * @param [in] a    Value a
- * @param [in] b    Value b
- * @param [in] ...  User defined error message
+ * @defgroup TEST_ASSERTION_C89_USHORT unsigned short
+ * @{
  */
+#define ASSERT_EQ_USHORT(a, b, ...)     ASSERT_TEMPLATE_EXT(unsigned short, ==, a, b, __VA_ARGS__)
+#define ASSERT_NE_USHORT(a, b, ...)     ASSERT_TEMPLATE_EXT(unsigned short, !=, a, b, __VA_ARGS__)
+#define ASSERT_LT_USHORT(a, b, ...)     ASSERT_TEMPLATE_EXT(unsigned short, <,  a, b, __VA_ARGS__)
+#define ASSERT_LE_USHORT(a, b, ...)     ASSERT_TEMPLATE_EXT(unsigned short, <=, a, b, __VA_ARGS__)
+#define ASSERT_GT_USHORT(a, b, ...)     ASSERT_TEMPLATE_EXT(unsigned short, >,  a, b, __VA_ARGS__)
+#define ASSERT_GE_USHORT(a, b, ...)     ASSERT_TEMPLATE_EXT(unsigned short, >=, a, b, __VA_ARGS__)
 /**
- * @def ASSERT_NE_PTR
- * @brief Assert `a' != `b'. `a' and `b' must be pointer type.
- *
- * If `a' == `b', this test will stop immediately and mark as failure.
- *
- * @param [in] a    Value a
- * @param [in] b    Value b
- * @param [in] ...  User defined error message
+ * @}
  */
-/**
- * @def ASSERT_LT_PTR
- * @brief Assert `a' < `b'. `a' and `b' must be pointer type.
- *
- * If `a' >= `b', this test will stop immediately and mark as failure.
- *
- * @param [in] a    Value a
- * @param [in] b    Value b
- * @param [in] ...  User defined error message
- */
-/**
- * @def ASSERT_LE_PTR
- * @brief Assert `a' <= `b'. `a' and `b' must be pointer type.
- *
- * If `a' > `b', this test will stop immediately and mark as failure.
- *
- * @param [in] a    Value a
- * @param [in] b    Value b
- * @param [in] ...  User defined error message
- */
-/**
- * @def ASSERT_GT_PTR
- * @brief Assert `a' > `b'. `a' and `b' must be pointer type.
- *
- * If `a' <= `b', this test will stop immediately and mark as failure.
- *
- * @param [in] a    Value a
- * @param [in] b    Value b
- * @param [in] ...  User defined error message
- */
-/**
- * @def ASSERT_GE_PTR
- * @brief Assert `a' >= `b'. `a' and `b' must be pointer type.
- *
- * If `a' < `b', this test will stop immediately and mark as failure.
- *
- * @param [in] a    Value a
- * @param [in] b    Value b
- * @param [in] ...  User defined error message
- */
-#define ASSERT_EQ_PTR(a, b, ...)        ASSERT_TEMPLATE_EXT(const void*, ==, a, b, __VA_ARGS__)
-#define ASSERT_NE_PTR(a, b, ...)        ASSERT_TEMPLATE_EXT(const void*, !=, a, b, __VA_ARGS__)
-#define ASSERT_LT_PTR(a, b, ...)        ASSERT_TEMPLATE_EXT(const void*, <,  a, b, __VA_ARGS__)
-#define ASSERT_LE_PTR(a, b, ...)        ASSERT_TEMPLATE_EXT(const void*, <=, a, b, __VA_ARGS__)
-#define ASSERT_GT_PTR(a, b, ...)        ASSERT_TEMPLATE_EXT(const void*, >,  a, b, __VA_ARGS__)
-#define ASSERT_GE_PTR(a, b, ...)        ASSERT_TEMPLATE_EXT(const void*, >=, a, b, __VA_ARGS__)
 
 /**
- * @def ASSERT_EQ_FLOAT
- * @brief Assert `a' == `b'. `a' and `b' must has type `float'.
- *
- * If `a' != `b', this test will stop immediately and mark as failure.
- *
- * @param [in] a    Value a
- * @param [in] b    Value b
- * @param [in] ...  User defined error message
+ * @defgroup TEST_ASSERTION_C89_INT int
+ * @{
  */
+#define ASSERT_EQ_INT(a, b, ...)        ASSERT_TEMPLATE_EXT(int, ==, a, b, __VA_ARGS__)
+#define ASSERT_NE_INT(a, b, ...)        ASSERT_TEMPLATE_EXT(int, !=, a, b, __VA_ARGS__)
+#define ASSERT_LT_INT(a, b, ...)        ASSERT_TEMPLATE_EXT(int, <,  a, b, __VA_ARGS__)
+#define ASSERT_LE_INT(a, b, ...)        ASSERT_TEMPLATE_EXT(int, <=, a, b, __VA_ARGS__)
+#define ASSERT_GT_INT(a, b, ...)        ASSERT_TEMPLATE_EXT(int, >,  a, b, __VA_ARGS__)
+#define ASSERT_GE_INT(a, b, ...)        ASSERT_TEMPLATE_EXT(int, >=, a, b, __VA_ARGS__)
 /**
- * @def ASSERT_NE_FLOAT
- * @brief Assert `a' != `b'. `a' and `b' must has type `float'.
- *
- * If `a' == `b', this test will stop immediately and mark as failure.
- *
- * @param [in] a    Value a
- * @param [in] b    Value b
- * @param [in] ...  User defined error message
+ * @}
  */
+
 /**
- * @def ASSERT_LT_FLOAT
- * @brief Assert `a' < `b'. `a' and `b' must has type `float'.
- *
- * If `a' >= `b', this test will stop immediately and mark as failure.
- *
- * @param [in] a    Value a
- * @param [in] b    Value b
- * @param [in] ...  User defined error message
+ * @defgroup TEST_ASSERTION_C89_UINT unsigned int
+ * @{
  */
+#define ASSERT_EQ_UINT(a, b, ...)       ASSERT_TEMPLATE_EXT(unsigned int, ==, a, b, __VA_ARGS__)
+#define ASSERT_NE_UINT(a, b, ...)       ASSERT_TEMPLATE_EXT(unsigned int, !=, a, b, __VA_ARGS__)
+#define ASSERT_LT_UINT(a, b, ...)       ASSERT_TEMPLATE_EXT(unsigned int, <,  a, b, __VA_ARGS__)
+#define ASSERT_LE_UINT(a, b, ...)       ASSERT_TEMPLATE_EXT(unsigned int, <=, a, b, __VA_ARGS__)
+#define ASSERT_GT_UINT(a, b, ...)       ASSERT_TEMPLATE_EXT(unsigned int, >,  a, b, __VA_ARGS__)
+#define ASSERT_GE_UINT(a, b, ...)       ASSERT_TEMPLATE_EXT(unsigned int, >=, a, b, __VA_ARGS__)
 /**
- * @def ASSERT_LE_FLOAT
- * @brief Assert `a' <= `b'. `a' and `b' must has type `float'.
- *
- * If `a' > `b', this test will stop immediately and mark as failure.
- *
- * @param [in] a    Value a
- * @param [in] b    Value b
- * @param [in] ...  User defined error message
+ * @}
  */
+
 /**
- * @def ASSERT_GT_FLOAT
- * @brief Assert `a' > `b'. `a' and `b' must has type `float'.
- *
- * If `a' <= `b', this test will stop immediately and mark as failure.
- *
- * @param [in] a    Value a
- * @param [in] b    Value b
- * @param [in] ...  User defined error message
+ * @defgroup TEST_ASSERTION_C89_LONG long
+ * @{
  */
+#define ASSERT_EQ_LONG(a, b, ...)       ASSERT_TEMPLATE_EXT(long, ==, a, b, __VA_ARGS__)
+#define ASSERT_NE_LONG(a, b, ...)       ASSERT_TEMPLATE_EXT(long, !=, a, b, __VA_ARGS__)
+#define ASSERT_LT_LONG(a, b, ...)       ASSERT_TEMPLATE_EXT(long, <,  a, b, __VA_ARGS__)
+#define ASSERT_LE_LONG(a, b, ...)       ASSERT_TEMPLATE_EXT(long, <=, a, b, __VA_ARGS__)
+#define ASSERT_GT_LONG(a, b, ...)       ASSERT_TEMPLATE_EXT(long, >,  a, b, __VA_ARGS__)
+#define ASSERT_GE_LONG(a, b, ...)       ASSERT_TEMPLATE_EXT(long, >=, a, b, __VA_ARGS__)
 /**
- * @def ASSERT_GE_FLOAT
- * @brief Assert `a' >= `b'. `a' and `b' must has type `float'.
- *
- * If `a' < `b', this test will stop immediately and mark as failure.
- *
- * @param [in] a    Value a
- * @param [in] b    Value b
- * @param [in] ...  User defined error message
+ * @}
+ */
+
+/**
+ * @defgroup TEST_ASSERTION_C89_ULONG unsigned long
+ * @{
+ */
+#define ASSERT_EQ_ULONG(a, b, ...)      ASSERT_TEMPLATE_EXT(unsigned long, ==, a, b, __VA_ARGS__)
+#define ASSERT_NE_ULONG(a, b, ...)      ASSERT_TEMPLATE_EXT(unsigned long, !=, a, b, __VA_ARGS__)
+#define ASSERT_LT_ULONG(a, b, ...)      ASSERT_TEMPLATE_EXT(unsigned long, <,  a, b, __VA_ARGS__)
+#define ASSERT_LE_ULONG(a, b, ...)      ASSERT_TEMPLATE_EXT(unsigned long, <=, a, b, __VA_ARGS__)
+#define ASSERT_GT_ULONG(a, b, ...)      ASSERT_TEMPLATE_EXT(unsigned long, >,  a, b, __VA_ARGS__)
+#define ASSERT_GE_ULONG(a, b, ...)      ASSERT_TEMPLATE_EXT(unsigned long, >=, a, b, __VA_ARGS__)
+/**
+ * @}
+ */
+
+/**
+ * @defgroup TEST_ASSERTION_C89_FLOAT float
+ * @{
  */
 #define ASSERT_EQ_FLOAT(a, b, ...)      ASSERT_TEMPLATE_EXT(float, ==, a, b, __VA_ARGS__)
 #define ASSERT_NE_FLOAT(a, b, ...)      ASSERT_TEMPLATE_EXT(float, !=, a, b, __VA_ARGS__)
@@ -910,66 +614,13 @@ void cutest_register_case(cutest_case_t* test_case, cutest_case_node_t* node, si
 #define ASSERT_LE_FLOAT(a, b, ...)      ASSERT_TEMPLATE_EXT(float, <=, a, b, __VA_ARGS__)
 #define ASSERT_GT_FLOAT(a, b, ...)      ASSERT_TEMPLATE_EXT(float, >,  a, b, __VA_ARGS__)
 #define ASSERT_GE_FLOAT(a, b, ...)      ASSERT_TEMPLATE_EXT(float, >=, a, b, __VA_ARGS__)
+/**
+ * @}
+ */
 
 /**
- * @def ASSERT_EQ_DOUBLE
- * @brief Assert `a' == `b'. `a' and `b' must has type `double'.
- *
- * If `a' != `b', this test will stop immediately and mark as failure.
- *
- * @param [in] a    Value a
- * @param [in] b    Value b
- * @param [in] ...  User defined error message
- */
-/**
- * @def ASSERT_NE_DOUBLE
- * @brief Assert `a' != `b'. `a' and `b' must has type `double'.
- *
- * If `a' == `b', this test will stop immediately and mark as failure.
- *
- * @param [in] a        Value a
- * @param [in] b        Value b
- * @param [in] ...      User defined error message
- */
-/**
- * @def ASSERT_LT_DOUBLE
- * @brief Assert `a' < `b'. `a' and `b' must has type `double'.
- *
- * If `a' >= `b', this test will stop immediately and mark as failure.
- *
- * @param [in] a    Value a
- * @param [in] b    Value b
- * @param [in] ...  User defined error message
- */
-/**
- * @def ASSERT_LE_DOUBLE
- * @brief Assert `a' <= `b'. `a' and `b' must has type `double'.
- *
- * If `a' > `b', this test will stop immediately and mark as failure.
- *
- * @param [in] a    Value a
- * @param [in] b    Value b
- * @param [in] ...  User defined error message
- */
-/**
- * @def ASSERT_GT_DOUBLE
- * @brief Assert `a' > `b'. `a' and `b' must has type `double'.
- *
- * If `a' <= `b', this test will stop immediately and mark as failure.
- *
- * @param [in] a    Value a
- * @param [in] b    Value b
- * @param [in] ...  User defined error message
- */
-/**
- * @def ASSERT_GE_DOUBLE
- * @brief Assert `a' >= `b'. `a' and `b' must has type `double'.
- *
- * If `a' < `b', this test will stop immediately and mark as failure.
- *
- * @param [in] a    Value a
- * @param [in] b    Value b
- * @param [in] ...  User defined error message
+ * @defgroup TEST_ASSERTION_C89_DOUBLE double
+ * @{
  */
 #define ASSERT_EQ_DOUBLE(a, b, ...)     ASSERT_TEMPLATE_EXT(double, ==, a, b, __VA_ARGS__)
 #define ASSERT_NE_DOUBLE(a, b, ...)     ASSERT_TEMPLATE_EXT(double, !=, a, b, __VA_ARGS__)
@@ -977,29 +628,284 @@ void cutest_register_case(cutest_case_t* test_case, cutest_case_node_t* node, si
 #define ASSERT_LE_DOUBLE(a, b, ...)     ASSERT_TEMPLATE_EXT(double, <=, a, b, __VA_ARGS__)
 #define ASSERT_GT_DOUBLE(a, b, ...)     ASSERT_TEMPLATE_EXT(double, >,  a, b, __VA_ARGS__)
 #define ASSERT_GE_DOUBLE(a, b, ...)     ASSERT_TEMPLATE_EXT(double, >=, a, b, __VA_ARGS__)
+/**
+ * @}
+ */
 
 /**
- * @def ASSERT_EQ_STR
- * @brief Assert `a' == `b'. `a' and `b' must has type `const char*'.
- *
- * If `a' != `b', this test will stop immediately and mark as failure.
- *
- * @param [in] a        Value a
- * @param [in] b        Value b
- * @param [in] ...      User defined error message
+ * @defgroup TEST_ASSERTION_C89_PTR const void*
+ * @{
  */
+#define ASSERT_EQ_PTR(a, b, ...)        ASSERT_TEMPLATE_EXT(const void*, ==, a, b, __VA_ARGS__)
+#define ASSERT_NE_PTR(a, b, ...)        ASSERT_TEMPLATE_EXT(const void*, !=, a, b, __VA_ARGS__)
+#define ASSERT_LT_PTR(a, b, ...)        ASSERT_TEMPLATE_EXT(const void*, <,  a, b, __VA_ARGS__)
+#define ASSERT_LE_PTR(a, b, ...)        ASSERT_TEMPLATE_EXT(const void*, <=, a, b, __VA_ARGS__)
+#define ASSERT_GT_PTR(a, b, ...)        ASSERT_TEMPLATE_EXT(const void*, >,  a, b, __VA_ARGS__)
+#define ASSERT_GE_PTR(a, b, ...)        ASSERT_TEMPLATE_EXT(const void*, >=, a, b, __VA_ARGS__)
 /**
- * @def ASSERT_NE_STR
- * @brief Assert `a' != `b'. `a' and `b' must has type `const char*'.
- *
- * If `a' == `b', this test will stop immediately and mark as failure.
- *
- * @param [in] a        Value a
- * @param [in] b        Value b
- * @param [in] ...      User defined error message
+ * @}
+ */
+
+/**
+ * @defgroup TEST_ASSERTION_C89_STR const char*
+ * @{
  */
 #define ASSERT_EQ_STR(a, b, ...)        ASSERT_TEMPLATE_EXT(const char*, ==, a, b, __VA_ARGS__)
 #define ASSERT_NE_STR(a, b, ...)        ASSERT_TEMPLATE_EXT(const char*, !=, a, b, __VA_ARGS__)
+/**
+ * @}
+ */
+
+/**
+ * @}
+ */
+
+/**
+ * @defgroup TEST_ASSERTION_C99 C99 Assertion
+ *
+ * Assertion macros for C99 standard, provide support:
+ * + long long
+ * + unsigned long long
+ * + int8_t
+ * + uint8_t
+ * + int16_t
+ * + uint16_t
+ * + int32_t
+ * + uint32_t
+ * + int64_t
+ * + uint64_t
+ * + size_t
+ * + ptrdiff_t
+ * + intptr_t
+ * + uintptr_t
+ *
+ * @note To use these assertions, you need `<stdint.h>` and `<inttypes.h>` header
+ *   files which are not included.
+ * 
+ * @note These assertions are enabled by default. To disable all of them, add
+ * `CUTEST_NO_C99_SUPPORT` (eg. `-DCUTEST_NO_C99_SUPPORT`) during compile cutest.
+ *
+ * @note These assertions can be disabled separatily:
+ * | type               | flag                        |
+ * | ------------------ | --------------------------- |
+ * | long long          | CUTEST_NO_LONGLONG_SUPPORT  |
+ * | unsigned long long | CUTEST_NO_ULONGLONG_SUPPORT |
+ * | int8_t             | CUTEST_NO_INT8_SUPPORT      |
+ * | uint8_t            | CUTEST_NO_UINT8_SUPPORT     |
+ * | int16_t            | CUTEST_NO_INT16_SUPPORT     |
+ * | uint16_t           | CUTEST_NO_UINT16_SUPPORT    |
+ * | int32_t            | CUTEST_NO_INT32_SUPPORT     |
+ * | uint32_t           | CUTEST_NO_UINT32_SUPPORT    |
+ * | int64_t            | CUTEST_NO_INT64_SUPPORT     |
+ * | uint64_t           | CUTEST_NO_UINT64_SUPPORT    |
+ * | size_t             | CUTEST_NO_SIZE_SUPPORT      |
+ * | ptrdiff_t          | CUTEST_NO_PTRDIFF_SUPPORT   |
+ * | intptr_t           | CUTEST_NO_INTPTR_SUPPORT    |
+ * | uintptr_t          | CUTEST_NO_UINTPTR_SUPPORT   |
+ * 
+ * @{
+ */
+
+/**
+ * @defgroup TEST_ASSERTION_C99_LONGLONG long long
+ * @{
+ */
+#define ASSERT_EQ_LONGLONG(a, b, ...)   ASSERT_TEMPLATE_EXT(long long, ==, a, b, __VA_ARGS__)
+#define ASSERT_NE_LONGLONG(a, b, ...)   ASSERT_TEMPLATE_EXT(long long, !=, a, b, __VA_ARGS__)
+#define ASSERT_LT_LONGLONG(a, b, ...)   ASSERT_TEMPLATE_EXT(long long, <,  a, b, __VA_ARGS__)
+#define ASSERT_LE_LONGLONG(a, b, ...)   ASSERT_TEMPLATE_EXT(long long, <=, a, b, __VA_ARGS__)
+#define ASSERT_GT_LONGLONG(a, b, ...)   ASSERT_TEMPLATE_EXT(long long, >,  a, b, __VA_ARGS__)
+#define ASSERT_GE_LONGLONG(a, b, ...)   ASSERT_TEMPLATE_EXT(long long, >=, a, b, __VA_ARGS__)
+/**
+ * @}
+ */
+
+/**
+ * @defgroup TEST_ASSERTION_C99_ULONGLONG unsigned long long
+ * @{
+ */
+#define ASSERT_EQ_ULONGLONG(a, b, ...)  ASSERT_TEMPLATE_EXT(unsigned long long, ==, a, b, __VA_ARGS__)
+#define ASSERT_NE_ULONGLONG(a, b, ...)  ASSERT_TEMPLATE_EXT(unsigned long long, !=, a, b, __VA_ARGS__)
+#define ASSERT_LT_ULONGLONG(a, b, ...)  ASSERT_TEMPLATE_EXT(unsigned long long, <,  a, b, __VA_ARGS__)
+#define ASSERT_LE_ULONGLONG(a, b, ...)  ASSERT_TEMPLATE_EXT(unsigned long long, <=, a, b, __VA_ARGS__)
+#define ASSERT_GT_ULONGLONG(a, b, ...)  ASSERT_TEMPLATE_EXT(unsigned long long, >,  a, b, __VA_ARGS__)
+#define ASSERT_GE_ULONGLONG(a, b, ...)  ASSERT_TEMPLATE_EXT(unsigned long long, >=, a, b, __VA_ARGS__)
+/**
+ * @}
+ */
+
+/**
+ * @defgroup TEST_ASSERTION_C99_INT8 int8_t
+ * @{
+ */
+#define ASSERT_EQ_INT8(a, b, ...)       ASSERT_TEMPLATE_EXT(int8_t, ==, a, b, __VA_ARGS__)
+#define ASSERT_NE_INT8(a, b, ...)       ASSERT_TEMPLATE_EXT(int8_t, !=, a, b, __VA_ARGS__)
+#define ASSERT_LT_INT8(a, b, ...)       ASSERT_TEMPLATE_EXT(int8_t, <,  a, b, __VA_ARGS__)
+#define ASSERT_LE_INT8(a, b, ...)       ASSERT_TEMPLATE_EXT(int8_t, <=, a, b, __VA_ARGS__)
+#define ASSERT_GT_INT8(a, b, ...)       ASSERT_TEMPLATE_EXT(int8_t, >,  a, b, __VA_ARGS__)
+#define ASSERT_GE_INT8(a, b, ...)       ASSERT_TEMPLATE_EXT(int8_t, >=, a, b, __VA_ARGS__)
+/**
+ * @}
+ */
+
+/**
+ * @defgroup TEST_ASSERTION_C99_UINT8 uint8_t
+ * @{
+ */
+#define ASSERT_EQ_UINT8(a, b, ...)      ASSERT_TEMPLATE_EXT(uint8_t, ==, a, b, __VA_ARGS__)
+#define ASSERT_NE_UINT8(a, b, ...)      ASSERT_TEMPLATE_EXT(uint8_t, !=, a, b, __VA_ARGS__)
+#define ASSERT_LT_UINT8(a, b, ...)      ASSERT_TEMPLATE_EXT(uint8_t, <,  a, b, __VA_ARGS__)
+#define ASSERT_LE_UINT8(a, b, ...)      ASSERT_TEMPLATE_EXT(uint8_t, <=, a, b, __VA_ARGS__)
+#define ASSERT_GT_UINT8(a, b, ...)      ASSERT_TEMPLATE_EXT(uint8_t, >,  a, b, __VA_ARGS__)
+#define ASSERT_GE_UINT8(a, b, ...)      ASSERT_TEMPLATE_EXT(uint8_t, >=, a, b, __VA_ARGS__)
+/**
+ * @}
+ */
+
+/**
+ * @defgroup TEST_ASSERTION_C99_INT16 int16_t
+ * @{
+ */
+#define ASSERT_EQ_INT16(a, b, ...)      ASSERT_TEMPLATE_EXT(int16_t, ==, a, b, __VA_ARGS__)
+#define ASSERT_NE_INT16(a, b, ...)      ASSERT_TEMPLATE_EXT(int16_t, !=, a, b, __VA_ARGS__)
+#define ASSERT_LT_INT16(a, b, ...)      ASSERT_TEMPLATE_EXT(int16_t, <,  a, b, __VA_ARGS__)
+#define ASSERT_LE_INT16(a, b, ...)      ASSERT_TEMPLATE_EXT(int16_t, <=, a, b, __VA_ARGS__)
+#define ASSERT_GT_INT16(a, b, ...)      ASSERT_TEMPLATE_EXT(int16_t, >,  a, b, __VA_ARGS__)
+#define ASSERT_GE_INT16(a, b, ...)      ASSERT_TEMPLATE_EXT(int16_t, >=, a, b, __VA_ARGS__)
+/**
+ * @}
+ */
+
+
+/**
+ * @defgroup TEST_ASSERTION_C99_UINT16 uint16_t
+ * @{
+ */
+#define ASSERT_EQ_UINT16(a, b, ...)     ASSERT_TEMPLATE_EXT(uint16_t, ==, a, b, __VA_ARGS__)
+#define ASSERT_NE_UINT16(a, b, ...)     ASSERT_TEMPLATE_EXT(uint16_t, !=, a, b, __VA_ARGS__)
+#define ASSERT_LT_UINT16(a, b, ...)     ASSERT_TEMPLATE_EXT(uint16_t, <,  a, b, __VA_ARGS__)
+#define ASSERT_LE_UINT16(a, b, ...)     ASSERT_TEMPLATE_EXT(uint16_t, <=, a, b, __VA_ARGS__)
+#define ASSERT_GT_UINT16(a, b, ...)     ASSERT_TEMPLATE_EXT(uint16_t, >,  a, b, __VA_ARGS__)
+#define ASSERT_GE_UINT16(a, b, ...)     ASSERT_TEMPLATE_EXT(uint16_t, >=, a, b, __VA_ARGS__)
+/**
+ * @}
+ */
+
+/**
+ * @defgroup TEST_ASSERTION_C99_INT32 int32_t
+ * @{
+ */
+#define ASSERT_EQ_INT32(a, b, ...)      ASSERT_TEMPLATE_EXT(int32_t, ==, a, b, __VA_ARGS__)
+#define ASSERT_NE_INT32(a, b, ...)      ASSERT_TEMPLATE_EXT(int32_t, !=, a, b, __VA_ARGS__)
+#define ASSERT_LT_INT32(a, b, ...)      ASSERT_TEMPLATE_EXT(int32_t, <,  a, b, __VA_ARGS__)
+#define ASSERT_LE_INT32(a, b, ...)      ASSERT_TEMPLATE_EXT(int32_t, <=, a, b, __VA_ARGS__)
+#define ASSERT_GT_INT32(a, b, ...)      ASSERT_TEMPLATE_EXT(int32_t, >,  a, b, __VA_ARGS__)
+#define ASSERT_GE_INT32(a, b, ...)      ASSERT_TEMPLATE_EXT(int32_t, >=, a, b, __VA_ARGS__)
+/**
+ * @}
+ */
+
+/**
+ * @defgroup TEST_ASSERTION_C99_UINT32 uint32_t
+ * @{
+ */
+#define ASSERT_EQ_UINT32(a, b, ...)     ASSERT_TEMPLATE_EXT(uint32_t, ==, a, b, __VA_ARGS__)
+#define ASSERT_NE_UINT32(a, b, ...)     ASSERT_TEMPLATE_EXT(uint32_t, !=, a, b, __VA_ARGS__)
+#define ASSERT_LT_UINT32(a, b, ...)     ASSERT_TEMPLATE_EXT(uint32_t, <,  a, b, __VA_ARGS__)
+#define ASSERT_LE_UINT32(a, b, ...)     ASSERT_TEMPLATE_EXT(uint32_t, <=, a, b, __VA_ARGS__)
+#define ASSERT_GT_UINT32(a, b, ...)     ASSERT_TEMPLATE_EXT(uint32_t, >,  a, b, __VA_ARGS__)
+#define ASSERT_GE_UINT32(a, b, ...)     ASSERT_TEMPLATE_EXT(uint32_t, >=, a, b, __VA_ARGS__)
+/**
+ * @}
+ */
+
+/**
+ * @defgroup TEST_ASSERTION_C99_INT64 int64_t
+ * @{
+ */
+#define ASSERT_EQ_INT64(a, b, ...)      ASSERT_TEMPLATE_EXT(int64_t, ==, a, b, __VA_ARGS__)
+#define ASSERT_NE_INT64(a, b, ...)      ASSERT_TEMPLATE_EXT(int64_t, !=, a, b, __VA_ARGS__)
+#define ASSERT_LT_INT64(a, b, ...)      ASSERT_TEMPLATE_EXT(int64_t, <,  a, b, __VA_ARGS__)
+#define ASSERT_LE_INT64(a, b, ...)      ASSERT_TEMPLATE_EXT(int64_t, <=, a, b, __VA_ARGS__)
+#define ASSERT_GT_INT64(a, b, ...)      ASSERT_TEMPLATE_EXT(int64_t, >,  a, b, __VA_ARGS__)
+#define ASSERT_GE_INT64(a, b, ...)      ASSERT_TEMPLATE_EXT(int64_t, >=, a, b, __VA_ARGS__)
+/**
+ * @}
+ */
+
+/**
+ * @defgroup TEST_ASSERTION_C99_UINT64 uint64_t
+ * @{
+ */
+#define ASSERT_EQ_UINT64(a, b, ...)     ASSERT_TEMPLATE_EXT(uint64_t, ==, a, b, __VA_ARGS__)
+#define ASSERT_NE_UINT64(a, b, ...)     ASSERT_TEMPLATE_EXT(uint64_t, !=, a, b, __VA_ARGS__)
+#define ASSERT_LT_UINT64(a, b, ...)     ASSERT_TEMPLATE_EXT(uint64_t, <,  a, b, __VA_ARGS__)
+#define ASSERT_LE_UINT64(a, b, ...)     ASSERT_TEMPLATE_EXT(uint64_t, <=, a, b, __VA_ARGS__)
+#define ASSERT_GT_UINT64(a, b, ...)     ASSERT_TEMPLATE_EXT(uint64_t, >,  a, b, __VA_ARGS__)
+#define ASSERT_GE_UINT64(a, b, ...)     ASSERT_TEMPLATE_EXT(uint64_t, >=, a, b, __VA_ARGS__)
+/**
+ * @}
+ */
+
+/**
+ * @defgroup TEST_ASSERTION_C99_SIZE size_t
+ * @{
+ */
+#define ASSERT_EQ_SIZE(a, b, ...)       ASSERT_TEMPLATE_EXT(size_t, ==, a, b, __VA_ARGS__)
+#define ASSERT_NE_SIZE(a, b, ...)       ASSERT_TEMPLATE_EXT(size_t, !=, a, b, __VA_ARGS__)
+#define ASSERT_LT_SIZE(a, b, ...)       ASSERT_TEMPLATE_EXT(size_t, <,  a, b, __VA_ARGS__)
+#define ASSERT_LE_SIZE(a, b, ...)       ASSERT_TEMPLATE_EXT(size_t, <=, a, b, __VA_ARGS__)
+#define ASSERT_GT_SIZE(a, b, ...)       ASSERT_TEMPLATE_EXT(size_t, >,  a, b, __VA_ARGS__)
+#define ASSERT_GE_SIZE(a, b, ...)       ASSERT_TEMPLATE_EXT(size_t, >=, a, b, __VA_ARGS__)
+/**
+ * @}
+ */
+
+/**
+ * @defgroup TEST_ASSERTION_C99_PTRDIFF ptrdiff_t
+ * @{
+ */
+#define ASSERT_EQ_PTRDIFF(a, b, ...)    ASSERT_TEMPLATE_EXT(ptrdiff_t, ==, a, b, __VA_ARGS__)
+#define ASSERT_NE_PTRDIFF(a, b, ...)    ASSERT_TEMPLATE_EXT(ptrdiff_t, !=, a, b, __VA_ARGS__)
+#define ASSERT_LT_PTRDIFF(a, b, ...)    ASSERT_TEMPLATE_EXT(ptrdiff_t, <,  a, b, __VA_ARGS__)
+#define ASSERT_LE_PTRDIFF(a, b, ...)    ASSERT_TEMPLATE_EXT(ptrdiff_t, <=, a, b, __VA_ARGS__)
+#define ASSERT_GT_PTRDIFF(a, b, ...)    ASSERT_TEMPLATE_EXT(ptrdiff_t, >,  a, b, __VA_ARGS__)
+#define ASSERT_GE_PTRDIFF(a, b, ...)    ASSERT_TEMPLATE_EXT(ptrdiff_t, >=, a, b, __VA_ARGS__)
+/**
+ * @}
+ */
+
+/**
+ * @defgroup TEST_ASSERTION_C99_INTPTR inttpr_t
+ * @{
+ */
+#define ASSERT_EQ_INTPTR(a, b, ...)     ASSERT_TEMPLATE_EXT(intptr_t, ==, a, b, __VA_ARGS__)
+#define ASSERT_NE_INTPTR(a, b, ...)     ASSERT_TEMPLATE_EXT(intptr_t, !=, a, b, __VA_ARGS__)
+#define ASSERT_LT_INTPTR(a, b, ...)     ASSERT_TEMPLATE_EXT(intptr_t, <,  a, b, __VA_ARGS__)
+#define ASSERT_LE_INTPTR(a, b, ...)     ASSERT_TEMPLATE_EXT(intptr_t, <=, a, b, __VA_ARGS__)
+#define ASSERT_GT_INTPTR(a, b, ...)     ASSERT_TEMPLATE_EXT(intptr_t, >,  a, b, __VA_ARGS__)
+#define ASSERT_GE_INTPTR(a, b, ...)     ASSERT_TEMPLATE_EXT(intptr_t, >=, a, b, __VA_ARGS__)
+/**
+ * @}
+ */
+
+/**
+ * @defgroup TEST_ASSERTION_C99_UINTPTR uinttpr_t
+ * @{
+ */
+#define ASSERT_EQ_UINTPTR(a, b, ...)    ASSERT_TEMPLATE_EXT(uintptr_t, ==, a, b, __VA_ARGS__)
+#define ASSERT_NE_UINTPTR(a, b, ...)    ASSERT_TEMPLATE_EXT(uintptr_t, !=, a, b, __VA_ARGS__)
+#define ASSERT_LT_UINTPTR(a, b, ...)    ASSERT_TEMPLATE_EXT(uintptr_t, <,  a, b, __VA_ARGS__)
+#define ASSERT_LE_UINTPTR(a, b, ...)    ASSERT_TEMPLATE_EXT(uintptr_t, <=, a, b, __VA_ARGS__)
+#define ASSERT_GT_UINTPTR(a, b, ...)    ASSERT_TEMPLATE_EXT(uintptr_t, >,  a, b, __VA_ARGS__)
+#define ASSERT_GE_UINTPTR(a, b, ...)    ASSERT_TEMPLATE_EXT(uintptr_t, >=, a, b, __VA_ARGS__)
+/**
+ * @}
+ */
+
+/**
+ * @}
+ */
 
 /**
  * Group: TEST_ASSERTION
