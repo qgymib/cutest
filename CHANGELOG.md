@@ -8,6 +8,7 @@
 3. Custom type system support
 4. Use `--test_list_types` to list support types
 5. Add porting layer
+6. Allow manual registeration
 
 ### BREAKING CHANGES
 1. Hide unused function

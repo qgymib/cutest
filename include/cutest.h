@@ -41,7 +41,7 @@ extern "C" {
 /**
  * @brief Development version.
  */
-#define CUTEST_VERSION_PREREL       8
+#define CUTEST_VERSION_PREREL       9
 
 /**
  * @brief Ensure the api is exposed as C function.
@@ -138,16 +138,26 @@ extern "C" {
  * @param[in] ...       Data values
  */
 #define TEST_PARAMETERIZED_DEFINE(fixture, test, TYPE, ...)  \
-    TEST_C_API static cutest_parameterized_info_t* s_cutest_parameterized_##fixture##_##test(void){\
+    TEST_C_API static void cutest_usertest_parameterized_register_##fixture##_##test(void (*cb)(TYPE*, unsigned long)) {\
         static TYPE s_parameterized_userdata[] = { __VA_ARGS__ };\
-        static cutest_case_node_t s_nodes[TEST_ARG_COUNT(__VA_ARGS__)];\
-        static cutest_parameterized_info_t s_parameterized_info = {\
-            #TYPE, TEST_STRINGIFY(__VA_ARGS__),\
-            sizeof(s_parameterized_userdata) / sizeof(s_parameterized_userdata[0]),\
-            (void*)s_parameterized_userdata,\
-            s_nodes, sizeof(s_nodes) / sizeof(s_nodes[0]),\
-        };\
-        return &s_parameterized_info;\
+        static cutest_case_t s_tests[TEST_ARG_COUNT(__VA_ARGS__)];\
+        unsigned long number_of_parameterized_data = sizeof(s_parameterized_userdata) / sizeof(s_parameterized_userdata[0]);\
+        unsigned long i = 0;\
+        for (i = 0; i < number_of_parameterized_data; i++) {\
+            s_tests[i].node = (cutest_map_node_t){ NULL, NULL, NULL };\
+            s_tests[i].info.fixture_name = #fixture;\
+            s_tests[i].info.case_name = #test;\
+            s_tests[i].stage.setup = s_cutest_fixture_setup_##fixture;\
+            s_tests[i].stage.teardown = s_cutest_fixture_teardown_##fixture;\
+            s_tests[i].stage.body = (void(*)(void*, unsigned long))cb;\
+            s_tests[i].data.mask = 0;\
+            s_tests[i].data.randkey = 0;\
+            s_tests[i].parameterized.type_name = #TYPE;\
+            s_tests[i].parameterized.test_data_cstr = TEST_STRINGIFY(__VA_ARGS__);\
+            s_tests[i].parameterized.param_data = s_parameterized_userdata;\
+            s_tests[i].parameterized.param_idx = i;\
+            cutest_register_case(&s_tests[i]);\
+        }\
     }\
     typedef TYPE u_cutest_parameterized_type_##fixture##_##test\
 
@@ -182,21 +192,12 @@ extern "C" {
 #define TEST_P(fixture, test) \
     TEST_C_API void u_cutest_body_##fixture##_##test(\
         u_cutest_parameterized_type_##fixture##_##test*, unsigned long);\
-    TEST_INITIALIZER(TEST_INIT_##fixture##_##test) {\
-        static cutest_case_t _case_##fixture##_##test = {\
-            {\
-                #fixture,\
-                #test,\
-            }, /* .info */\
-            {\
-                s_cutest_fixture_setup_##fixture,\
-                s_cutest_fixture_teardown_##fixture,\
-                (void(*)(void*, unsigned long))u_cutest_body_##fixture##_##test,\
-            }, /* stage */\
-            s_cutest_parameterized_##fixture##_##test, /* parameterized */\
-        };\
-        cutest_parameterized_info_t* info = s_cutest_parameterized_##fixture##_##test();\
-        cutest_register_case(&_case_##fixture##_##test, info->nodes, info->node_sz);\
+    TEST_INITIALIZER(cutest_usertest_interface_##fixture##_##test) {\
+        static unsigned char s_token = 0;\
+        if (s_token == 0) {\
+            s_token = 1;\
+            cutest_usertest_parameterized_register_##fixture##_##test(u_cutest_body_##fixture##_##test);\
+        }\
     }\
     TEST_C_API void u_cutest_body_##fixture##_##test(\
         u_cutest_parameterized_type_##fixture##_##test* _test_parameterized_data,\
@@ -208,14 +209,17 @@ extern "C" {
  * @param [in] test     The name of test case
  */
 #define TEST_F(fixture, test) \
-    TEST_C_API void u_cutest_body_##fixture##_##test(void);\
+    TEST_C_API void cutest_usertest_body_##fixture##_##test(void);\
     TEST_C_API static void s_cutest_proxy_##fixture##_##test(void* _test_parameterized_data,\
         unsigned long _test_parameterized_idx) {\
         TEST_PARAMETERIZED_SUPPRESS_UNUSED;\
-        u_cutest_body_##fixture##_##test();\
+        cutest_usertest_body_##fixture##_##test();\
     }\
-    TEST_INITIALIZER(TEST_INIT_##fixture##_##test) {\
+    TEST_INITIALIZER(cutest_usertest_interface_##fixture##_##test) {\
         static cutest_case_t _case_##fixture##_##test = {\
+            {\
+                NULL, NULL, NULL,\
+            }, /* .node */\
             {\
                 #fixture,\
                 #test,\
@@ -224,13 +228,21 @@ extern "C" {
                 s_cutest_fixture_setup_##fixture,\
                 s_cutest_fixture_teardown_##fixture,\
                 s_cutest_proxy_##fixture##_##test,\
-            }, /* stage */\
-            NULL, /* parameterized */\
+            }, /* .stage */\
+            {\
+                0, 0,\
+            }, /* .data */\
+            {\
+                NULL, NULL, NULL, 0,\
+            }, /* .parameterized */\
         };\
-        static cutest_case_node_t s_node;\
-        cutest_register_case(&_case_##fixture##_##test, &s_node, 1);\
+        static unsigned char s_token = 0;\
+        if (s_token == 0) {\
+            s_token = 1;\
+            cutest_register_case(&_case_##fixture##_##test);\
+        }\
     }\
-    TEST_C_API void u_cutest_body_##fixture##_##test(void)
+    TEST_C_API void cutest_usertest_body_##fixture##_##test(void)
 
 /**
  * @brief Simple Test
@@ -238,14 +250,17 @@ extern "C" {
  * @param [in] test     case name
  */
 #define TEST(fixture, test)  \
-    TEST_C_API void u_cutest_body_##fixture##_##test(void);\
+    TEST_C_API void cutest_usertest_body_##fixture##_##test(void);\
     TEST_C_API static void s_cutest_proxy_##fixture##_##test(void* _test_parameterized_data,\
         unsigned long _test_parameterized_idx) {\
         TEST_PARAMETERIZED_SUPPRESS_UNUSED;\
-        u_cutest_body_##fixture##_##test();\
+        cutest_usertest_body_##fixture##_##test();\
     }\
-    TEST_INITIALIZER(TEST_INIT_##fixture##_##test) {\
+    TEST_INITIALIZER(cutest_usertest_interface_##fixture##_##test) {\
         static cutest_case_t _case_##fixture##_##test = {\
+            {\
+                NULL, NULL, NULL,\
+            }, /* .node */\
             {\
                 #fixture,\
                 #test,\
@@ -253,13 +268,21 @@ extern "C" {
             {\
                 NULL, NULL,\
                 s_cutest_proxy_##fixture##_##test,\
-            }, /* stage */\
-            NULL, /* parameterized */\
+            }, /* .stage */\
+            {\
+                0, 0,\
+            }, /* .data */\
+            {\
+                NULL, NULL, NULL, 0,\
+            }, /* parameterized */\
         };\
-        static cutest_case_node_t s_node;\
-        cutest_register_case(&_case_##fixture##_##test, &s_node, 1);\
+        static unsigned char s_token = 0;\
+        if (s_token == 0) {\
+            s_token = 1;\
+            cutest_register_case(&_case_##fixture##_##test);\
+        }\
     }\
-    TEST_C_API void u_cutest_body_##fixture##_##test(void)
+    TEST_C_API void cutest_usertest_body_##fixture##_##test(void)
 
 /** @cond */
 
@@ -289,7 +312,9 @@ extern "C" {
         TEST_C_API void f(void) __attribute__((constructor)); \
         TEST_C_API void f(void)
 #else
-#   error "INITIALIZER not support on your compiler"
+#   define TEST_INITIALIZER(f) \
+        TEST_C_API void f(void)
+#   define TEST_NEED_MANUAL_REGISTRATION    1
 #endif
 
 /**
@@ -317,8 +342,6 @@ extern "C" {
 #define TEST_JOIN(a, b)         TEST_JOIN2(a, b)
 #define TEST_JOIN2(a, b)        a##b
 
-typedef struct cutest_case_node cutest_case_node_t;
-
 typedef struct cutest_map_node
 {
     struct cutest_map_node*     __rb_parent_color;      /**< father node | color */
@@ -326,23 +349,13 @@ typedef struct cutest_map_node
     struct cutest_map_node*     rb_left;                /**< left child node */
 } cutest_map_node_t;
 
-typedef struct cutest_parameterized_info
-{
-    const char*                 type_name;              /**< User type name. */
-
-    const char*                 test_data_info;         /**< The C string of user test data. */
-    unsigned long               test_data_sz;           /**< parameterized data size */
-    void*                       test_data;              /**< parameterized data */
-
-    cutest_case_node_t*         nodes;
-    unsigned long               node_sz;
-} cutest_parameterized_info_t;
-
 typedef struct cutest_case
 {
+    cutest_map_node_t           node;
+
     struct
     {
-        const char*             fixture;                        /**< suit name */
+        const char*             fixture_name;                   /**< suit name */
         const char*             case_name;                      /**< case name */
     } info;
 
@@ -353,28 +366,108 @@ typedef struct cutest_case
         void                    (*body)(void*, unsigned long);  /**< test body */
     } stage;
 
-    cutest_parameterized_info_t* (*get_parameterized_info)(void);
-} cutest_case_t;
+    struct
+    {
+        unsigned long           mask;                           /**< Internal mask */
+        unsigned long           randkey;                        /**< Random key */
+    } data;
 
-struct cutest_case_node
-{
-    cutest_map_node_t           node;
-    cutest_case_t*              test_case;
-    unsigned long               mask;                   /**< internal mask */
-    unsigned long               randkey;
-    unsigned long               parameterized_idx;
-};
+    struct
+    {
+        const char*             type_name;                      /**< User type name. */
+        const char*             test_data_cstr;                 /**< The C string of user test data. */
+        void*                   param_data;                     /**< Data passed to #cutest_case_t::stage::body */
+        unsigned long           param_idx;                      /**< Index passed to #cutest_case_t::stage::body */
+    } parameterized;
+} cutest_case_t;
 
 /**
  * @brief Register test case
  * @param[in] test_case     Test case
  */
-void cutest_register_case(cutest_case_t* test_case, cutest_case_node_t* node, unsigned long node_sz);
+void cutest_register_case(cutest_case_t* test_case);
 
- /** @endcond */
+/** @endcond */
 
 /**
  * Group: TEST_DEFINE
+ * @}
+ */
+
+/**
+ * @defgroup TEST_MANUAL_REGISTRATION Manually registr test
+ *
+ * By default all test cases are registered automatically. If not, please check
+ * whether the value of #TEST_NEED_MANUAL_REGISTRATION is 1. If so, it means
+ * that your compiler does not support run codes before `main()`.
+ *
+ * To make things works, you need to manually register your tests.
+ *
+ * Assume you have following tests defined:
+ *
+ * ```c
+ * TEST_FIXTURE_SETUP(manual_registeration){}
+ * TEST_FIXTURE_TEAREDOWN(manual_registeration){}
+ * TEST_PARAMETERIZED_DEFINE(manual_registeration, third, int, 0);
+ *
+ * TEST(manual_registeration, first){}
+ * TEST_F(manual_registeration, second){}
+ * TEST_P(manual_registeration, third){ TEST_PARAMETERIZED_SUPPRESS_UNUSED; }
+ * ```
+ *
+ * To manually register your tests:
+ *
+ * 1. Defines all your tests in macro.
+ *   ```c
+ *   #define MY_TEST_TABLE(xx) \
+ *       xx(manual_registeration, first) \
+ *       xx(manual_registeration, second) \
+ *       xx(manual_registeration, third)
+ *   ```
+ *
+ * 2. Declare all tests interface on top of your file.
+ *   ```c
+ *   MY_TEST_TABLE(TEST_MANUAL_DECLARE_TEST_INTERFACE)
+ *   ```
+ *
+ * 3. Register all tests.
+ *   ```c
+ *   MY_TEST_TABLE(TEST_MANUAL_REGISTER_TEST_INTERFACE)
+ *   ```
+ *
+ * @note Manual registeration can work well with automatical registeration.
+ *
+ * @{
+ */
+
+/**
+ * @brief Whether manual registration is needed.
+ *
+ * If the value is 0, tests will be automatically registered. If not, you need
+ * to register your tests manually.
+ */
+#if !defined(TEST_NEED_MANUAL_REGISTRATION)
+#   define TEST_NEED_MANUAL_REGISTRATION    0
+#endif
+
+/**
+ * @brief Declare test interface.
+ * @param[in] fixture   Fixture name.
+ * @param[in] test      Test name.
+ */
+#define TEST_MANUAL_DECLARE_TEST_INTERFACE(fixture, test) \
+    TEST_C_API void cutest_usertest_entry_##fixture##_##test();
+
+/**
+ * @brief Call test interface.
+ * @param[in] fixture   Fixture name.
+ * @param[in] test      Test name.
+ */
+#define TEST_MANUAL_REGISTER_TEST_INTERFACE(fixture, test) \
+    cutest_usertest_entry_##fixture##_##test();
+
+/**
+ * Group: TEST_MANUAL_REGISTRATION
  * @}
  */
 
