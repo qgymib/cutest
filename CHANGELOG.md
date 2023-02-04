@@ -1,6 +1,6 @@
 # Changelog
 
-## v1.0.4
+## v1.0.4 (2023/02/04)
 
 ### Features
 1. Avoid global name conflict
