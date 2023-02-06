@@ -7,10 +7,10 @@
 #include "cutest.h"
 #include "string_matrix.h"
 
-#define DEFINE_SETUP(fixture)  \
+#define DEFINE_TEST_SETUP(fixture)  \
     void test_setup_##fixture(void)
 
-#define DEFINE_TEARDOWN(fixture)   \
+#define DEFINE_TEST_TEARDOWN(fixture)   \
     void test_teardown_##fixture(void)
 
 #define DEFINE_TEST_F(fixture, name, ...) \
@@ -76,7 +76,7 @@ extern "C" {
 typedef struct test_case_s
 {
     struct test_case_s* next;
-    const char* name;
+    const char*         name;
 
     void (*setup)(void);
     void (*teardown)(void);
@@ -91,8 +91,10 @@ typedef struct test_runtime_s
     int                 argc;
     char**              argv;
 
+    test_case_t*        cur;        /**< Current running test. */
     cutest_hook_t       hook;
     FILE*               out;
+
     int                 rret;       /**< Run result. */
 } test_runtime_t;
 

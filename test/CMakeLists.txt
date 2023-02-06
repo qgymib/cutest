@@ -12,6 +12,7 @@ set(test_case_list
     feature_assertion_failure
     feature_custom_type
     feature_empty
+    feature_hook_balance
     feature_simple)
 
 add_library(test_runtime

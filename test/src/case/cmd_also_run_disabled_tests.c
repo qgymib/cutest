@@ -27,12 +27,12 @@ TEST(disabled, disabled_point_1)
 // Verify
 ///////////////////////////////////////////////////////////////////////////////
 
-DEFINE_SETUP(disabled)
+DEFINE_TEST_SETUP(disabled)
 {
 	memset(&g_disabled_ctx, 0, sizeof(g_disabled_ctx));
 }
 
-DEFINE_TEARDOWN(disabled)
+DEFINE_TEST_TEARDOWN(disabled)
 {
 }
 

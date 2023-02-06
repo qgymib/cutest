@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.0.5
+
+### Fixed
+1. Fix: hook is triggered when use `--help` option
+
+
 ## v1.0.4 (2023/02/04)
 
 ### Features

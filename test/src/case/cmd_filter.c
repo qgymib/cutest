@@ -37,12 +37,12 @@ TEST_P(filter, p3)
 // Verify
 ///////////////////////////////////////////////////////////////////////////////
 
-DEFINE_SETUP(filter)
+DEFINE_TEST_SETUP(filter)
 {
     memset(&s_test_filter, 0, sizeof(s_test_filter));
 }
 
-DEFINE_TEARDOWN(filter)
+DEFINE_TEST_TEARDOWN(filter)
 {
 }
 

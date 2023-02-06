@@ -71,6 +71,7 @@ static void _at_exit(void)
 static void _reset_runtime(void)
 {
     _reset_tmpfile();
+    memset(&_TEST.hook, 0, sizeof(_TEST.hook));
 }
 
 int main(int argc, char* argv[])
@@ -80,13 +81,14 @@ int main(int argc, char* argv[])
 
     atexit(_at_exit);
 
-    test_case_t* it = _TEST.head;
-    for (; it != NULL; it = it->next)
+    _TEST.cur = _TEST.head;
+    for (; _TEST.cur != NULL; _TEST.cur = _TEST.cur->next)
     {
         _reset_runtime();
-        fprintf(stdout, "[ RUN      ] %s\n", it->name);
-        _run_test(it);
-        fprintf(stdout, "[       OK ] %s\n", it->name);
+
+        fprintf(stdout, "[ RUN      ] %s\n", _TEST.cur->name);
+        _run_test(_TEST.cur);
+        fprintf(stdout, "[       OK ] %s\n", _TEST.cur->name);
     }
 
     return 0;

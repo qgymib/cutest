@@ -3382,12 +3382,11 @@ int cutest_run_tests(int argc, char* argv[], FILE* out, const cutest_hook_t* hoo
 
     _cutest_hook_before_all_test(argc, argv);
     _cutest_run_all_tests();
-
     ret = (int)g_test_ctx.counter.result.failed;
-fin:
     _cutest_hook_after_all_test();
-    _cutest_cleanup();
 
+fin:
+    _cutest_cleanup();
     return ret != 0 ? EXIT_FAILURE : EXIT_SUCCESS;
 }
 
