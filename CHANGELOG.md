@@ -1,6 +1,6 @@
 # Changelog
 
-## v1.0.5
+## v1.0.5 (2023/02/06)
 
 ### Fixed
 1. Fix: hook is triggered when use `--help` option
