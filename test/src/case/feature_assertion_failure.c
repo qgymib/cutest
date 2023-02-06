@@ -15,5 +15,5 @@ TEST(failure, 0)
 
 DEFINE_TEST(failure, 0)
 {
-	CUTEST_PORTING_ASSERT(_TEST.rret != 0);
+	TEST_PORTING_ASSERT(_TEST.rret != 0);
 }

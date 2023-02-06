@@ -119,26 +119,26 @@ DEFINE_TEST_TEARDOWN(hook)
 
 DEFINE_TEST_F(hook, callback_balance)
 {
-	CUTEST_PORTING_ASSERT(s_test_ctx.hook_before_all_test_cnt != 0);
-	CUTEST_PORTING_ASSERT(s_test_ctx.hook_before_setup_cnt != 0);
-	CUTEST_PORTING_ASSERT(s_test_ctx.hook_before_teardown_cnt != 0);
-	CUTEST_PORTING_ASSERT(s_test_ctx.hook_before_test_cnt != 0);
+	TEST_PORTING_ASSERT(s_test_ctx.hook_before_all_test_cnt != 0);
+	TEST_PORTING_ASSERT(s_test_ctx.hook_before_setup_cnt != 0);
+	TEST_PORTING_ASSERT(s_test_ctx.hook_before_teardown_cnt != 0);
+	TEST_PORTING_ASSERT(s_test_ctx.hook_before_test_cnt != 0);
 
-	CUTEST_PORTING_ASSERT(s_test_ctx.hook_before_all_test_cnt == s_test_ctx.hook_after_all_test_cnt);
-	CUTEST_PORTING_ASSERT(s_test_ctx.hook_before_setup_cnt == s_test_ctx.hook_after_setup_cnt);
-	CUTEST_PORTING_ASSERT(s_test_ctx.hook_before_teardown_cnt == s_test_ctx.hook_after_teardown_cnt);
-	CUTEST_PORTING_ASSERT(s_test_ctx.hook_before_test_cnt == s_test_ctx.hook_after_test_cnt);
+	TEST_PORTING_ASSERT(s_test_ctx.hook_before_all_test_cnt == s_test_ctx.hook_after_all_test_cnt);
+	TEST_PORTING_ASSERT(s_test_ctx.hook_before_setup_cnt == s_test_ctx.hook_after_setup_cnt);
+	TEST_PORTING_ASSERT(s_test_ctx.hook_before_teardown_cnt == s_test_ctx.hook_after_teardown_cnt);
+	TEST_PORTING_ASSERT(s_test_ctx.hook_before_test_cnt == s_test_ctx.hook_after_test_cnt);
 }
 
 DEFINE_TEST_F(hook, callback_balance_help, "--help")
 {
-	CUTEST_PORTING_ASSERT(s_test_ctx.hook_before_all_test_cnt == 0);
-	CUTEST_PORTING_ASSERT(s_test_ctx.hook_before_setup_cnt == 0);
-	CUTEST_PORTING_ASSERT(s_test_ctx.hook_before_teardown_cnt == 0);
-	CUTEST_PORTING_ASSERT(s_test_ctx.hook_before_test_cnt == 0);
+	TEST_PORTING_ASSERT(s_test_ctx.hook_before_all_test_cnt == 0);
+	TEST_PORTING_ASSERT(s_test_ctx.hook_before_setup_cnt == 0);
+	TEST_PORTING_ASSERT(s_test_ctx.hook_before_teardown_cnt == 0);
+	TEST_PORTING_ASSERT(s_test_ctx.hook_before_test_cnt == 0);
 
-	CUTEST_PORTING_ASSERT(s_test_ctx.hook_before_all_test_cnt == s_test_ctx.hook_after_all_test_cnt);
-	CUTEST_PORTING_ASSERT(s_test_ctx.hook_before_setup_cnt == s_test_ctx.hook_after_setup_cnt);
-	CUTEST_PORTING_ASSERT(s_test_ctx.hook_before_teardown_cnt == s_test_ctx.hook_after_teardown_cnt);
-	CUTEST_PORTING_ASSERT(s_test_ctx.hook_before_test_cnt == s_test_ctx.hook_after_test_cnt);
+	TEST_PORTING_ASSERT(s_test_ctx.hook_before_all_test_cnt == s_test_ctx.hook_after_all_test_cnt);
+	TEST_PORTING_ASSERT(s_test_ctx.hook_before_setup_cnt == s_test_ctx.hook_after_setup_cnt);
+	TEST_PORTING_ASSERT(s_test_ctx.hook_before_teardown_cnt == s_test_ctx.hook_after_teardown_cnt);
+	TEST_PORTING_ASSERT(s_test_ctx.hook_before_test_cnt == s_test_ctx.hook_after_test_cnt);
 }

@@ -17,5 +17,5 @@ TEST(repeat, 0)
 
 DEFINE_TEST(repeat, 0, "--test_repeat=2")
 {
-	CUTEST_PORTING_ASSERT(counter == 2);
+	TEST_PORTING_ASSERT(counter == 2);
 }

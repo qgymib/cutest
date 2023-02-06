@@ -38,12 +38,12 @@ DEFINE_TEST_TEARDOWN(disabled)
 
 DEFINE_TEST_F(disabled, normal, "")
 {
-	CUTEST_PORTING_ASSERT(g_disabled_ctx.point_0 == 0);
-	CUTEST_PORTING_ASSERT(g_disabled_ctx.point_1 == 1);
+	TEST_PORTING_ASSERT(g_disabled_ctx.point_0 == 0);
+	TEST_PORTING_ASSERT(g_disabled_ctx.point_1 == 1);
 }
 
 DEFINE_TEST_F(disabled, run_all, "--test_also_run_disabled_tests")
 {
-	CUTEST_PORTING_ASSERT(g_disabled_ctx.point_0 == 1);
-	CUTEST_PORTING_ASSERT(g_disabled_ctx.point_1 == 1);
+	TEST_PORTING_ASSERT(g_disabled_ctx.point_0 == 1);
+	TEST_PORTING_ASSERT(g_disabled_ctx.point_1 == 1);
 }

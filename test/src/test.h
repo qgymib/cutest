@@ -66,7 +66,7 @@
         }\
     } while (0);
 
-#define CUTEST_PORTING_ASSERT(x) \
+#define TEST_PORTING_ASSERT(x) \
     ((x) ? (void)0 : cutest_porting_assert_fail_2(#x, __FILE__, __LINE__, __FUNCTION__))
 
 #ifdef __cplusplus

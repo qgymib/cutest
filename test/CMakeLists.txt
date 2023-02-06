@@ -7,6 +7,7 @@ set(test_case_list
     cmd_list_tests_list_parameterized_as_string
     cmd_list_tests_list_parameterized_as_struct
     cmd_repeat
+    cmd_shuffle
     feature_all_assertion
     feature_arg_count
     feature_assertion_failure

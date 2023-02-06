@@ -35,5 +35,5 @@ TEST(simple, simple)
 
 DEFINE_TEST(simple, test)
 {
-    CUTEST_PORTING_ASSERT(s_sum == 55);
+    TEST_PORTING_ASSERT(s_sum == 55);
 }
