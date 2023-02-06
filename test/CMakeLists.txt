@@ -11,6 +11,7 @@ set(test_case_list
     feature_all_assertion
     feature_arg_count
     feature_assertion_failure
+    feature_current_test
     feature_custom_type
     feature_empty
     feature_hook_balance

@@ -4,16 +4,17 @@
 // Watchpoint
 ///////////////////////////////////////////////////////////////////////////////
 
-TEST(failure, 0)
+TEST(feature, get_current_name)
 {
-	ASSERT_EQ_INT(0, 1, "%d", _L);
+	ASSERT_EQ_STR(cutest_get_current_fixture(), "feature");
+	ASSERT_EQ_STR(cutest_get_current_test(), "get_current_name");
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 // Verify
 ///////////////////////////////////////////////////////////////////////////////
 
-DEFINE_TEST(failure, 0)
+DEFINE_TEST(feature, get_current_name)
 {
-	TEST_PORTING_ASSERT(_TEST.rret != 0);
+	TEST_PORTING_ASSERT(_TEST.rret == 0);
 }

@@ -3,7 +3,7 @@
 ## v1.0.6
 
 ### Features
-1. Add test for `--test_shuffle`
+1. Add more test cases.
 
 ### Fixed
 1. Remove custom type const qualifier
