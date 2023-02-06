@@ -36,12 +36,12 @@ extern "C" {
 /**
  * @brief Patch version.
  */
-#define CUTEST_VERSION_PATCH        5
+#define CUTEST_VERSION_PATCH        6
 
 /**
  * @brief Development version.
  */
-#define CUTEST_VERSION_PREREL       0
+#define CUTEST_VERSION_PREREL       1
 
 /**
  * @brief Ensure the api is exposed as C function.
@@ -1086,17 +1086,17 @@ void cutest_register_case(cutest_case_t* test_case);
  * @param[in] cmp   Compare function. It must have proto of `int (*)(const TYPE*, const TYPE*)`.
  * @param[in] dump  Dump function. It must have proto of `int (*)(FILE*, const TYPE*)`.
  */
-#define TEST_REGISTER_TYPE_ONCE(TYPE, cmp, dump)    \
+#define TEST_REGISTER_TYPE_ONCE(TYPE, fn_cmp, fn_dump)    \
     do {\
         /* Try our best to check function protocol. */\
-        int (*ckeck_type_cmp)(const TYPE*,const TYPE*) = cmp; (void)ckeck_type_cmp;\
-        int (*check_type_dump)(FILE*, const TYPE*) = dump; (void)check_type_dump;\
+        int (*ckeck_type_cmp)(TYPE*,TYPE*) = fn_cmp; (void)ckeck_type_cmp;\
+        int (*check_type_dump)(FILE*, TYPE*) = fn_dump; (void)check_type_dump;\
         /* Register type information. */\
         static cutest_type_info_t s_info = {\
             { NULL, NULL, NULL },\
             #TYPE,\
-            (cutest_custom_type_cmp_fn)cmp,\
-            (cutest_custom_type_dump_fn)dump,\
+            (cutest_custom_type_cmp_fn)fn_cmp,\
+            (cutest_custom_type_dump_fn)fn_dump,\
         };\
         static int s_token = 0;\
         if (s_token == 0) {\
@@ -1118,10 +1118,10 @@ void cutest_register_case(cutest_case_t* test_case);
 #define ASSERT_TEMPLATE_EXT(TYPE, OP, a, b, fmt, ...) \
     do {\
         TYPE _L = (a); TYPE _R = (b);\
-        if (cutest_internal_compare(#TYPE, (void*)&_L, (void*)&_R) OP 0) {\
+        if (cutest_internal_compare(#TYPE, (const void*)&_L, (const void*)&_R) OP 0) {\
             break;\
         }\
-        cutest_internal_dump(__FILE__, __LINE__, #TYPE, #OP, #a, #b, (void*)&_L, (void*)&_R,\
+        cutest_internal_dump(__FILE__, __LINE__, #TYPE, #OP, #a, #b, (const void*)&_L, (const void*)&_R,\
             "" fmt, ##__VA_ARGS__);\
         if (cutest_internal_break_on_failure()) {\
             TEST_DEBUGBREAK;\
