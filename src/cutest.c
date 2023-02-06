@@ -550,7 +550,7 @@ static cutest_uint32_t _cutest_float_point_fraction_bits(const float_point_t* p)
     return s_float_precision._float.kFractionBitMask_32 & p->bits_;
 }
 
-static int _cutest_is_float_point_nan(const float_point_t* p)
+static int _cutest_porting_is_float_point_nan(const float_point_t* p)
 {
     return (_cutest_float_point_exponent_bits(p) == s_float_precision._float.kExponentBitMask_32)
         && (_cutest_float_point_fraction_bits(p) != 0);
@@ -576,18 +576,27 @@ static cutest_uint32_t _cutest_float_point_distance_between_sign_and_magnitude_n
     return (biased1 >= biased2) ? (biased1 - biased2) : (biased2 - biased1);
 }
 
-static int _cutest_porting_floating_number_f32(float v1, float v2)
+static int _cutest_porting_floating_number_f32_eq(float v1, float v2)
 {
     float_point_t f32_v1; f32_v1.value_ = v1;
     float_point_t f32_v2; f32_v2.value_ = v2;
 
-    if (_cutest_is_float_point_nan(&f32_v1) || _cutest_is_float_point_nan(&f32_v2))
+    if (_cutest_porting_is_float_point_nan(&f32_v1) || _cutest_porting_is_float_point_nan(&f32_v2))
     {
         return 0;
     }
 
     return _cutest_float_point_distance_between_sign_and_magnitude_numbers(f32_v1.bits_, f32_v2.bits_)
         <= s_float_precision.kMaxUlps;
+}
+
+static int _cutest_porting_floating_number_f32(float v1, float v2)
+{
+    if (_cutest_porting_floating_number_f32_eq(v1, v2))
+    {
+        return 0;
+    }
+    return v1 < v2 ? -1 : 1;
 }
 
 static cutest_uint64_t _cutest_double_point_exponent_bits(const double_point_t* p)
@@ -600,7 +609,7 @@ static cutest_uint64_t _cutest_double_point_fraction_bits(const double_point_t* 
     return s_float_precision._double.kFractionBitMask_64 & p->bits_;
 }
 
-static int _cutest_double_point_is_nan(const double_point_t* p)
+static int _cutest_porting_double_point_is_nan(const double_point_t* p)
 {
     return (_cutest_double_point_exponent_bits(p) == s_float_precision._double.kExponentBitMask_64)
         && (_cutest_double_point_fraction_bits(p) != 0);
@@ -627,18 +636,27 @@ static cutest_uint64_t _cutest_double_point_distance_between_sign_and_magnitude_
     return (biased1 >= biased2) ? (biased1 - biased2) : (biased2 - biased1);
 }
 
-static int _cutest_porting_floating_number_f64(double v1, double v2)
+static int _cutest_porting_floating_number_f64_eq(double v1, double v2)
 {
     double_point_t f64_v1; f64_v1.value_ = v1;
     double_point_t f64_v2; f64_v2.value_ = v2;
 
-    if (_cutest_double_point_is_nan(&f64_v1) || _cutest_double_point_is_nan(&f64_v2))
+    if (_cutest_porting_double_point_is_nan(&f64_v1) || _cutest_porting_double_point_is_nan(&f64_v2))
     {
         return 0;
     }
 
     return _cutest_double_point_distance_between_sign_and_magnitude_numbers(f64_v1.bits_, f64_v2.bits_)
         <= s_float_precision.kMaxUlps;
+}
+
+static int _cutest_porting_floating_number_f64(double v1, double v2)
+{
+    if (_cutest_porting_floating_number_f64_eq(v1, v2))
+    {
+        return 0;
+    }
+    return v1 < v2 ? -1 : 1;
 }
 
 int cutest_porting_compare_floating_number(int type, const void* v1, const void* v2)

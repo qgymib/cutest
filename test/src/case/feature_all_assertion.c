@@ -65,4 +65,5 @@ TEST(all_assertion, 0)
 
 DEFINE_TEST(all_assertion, 0)
 {
+    TEST_PORTING_ASSERT(_TEST.rret == 0);
 }
