@@ -10,15 +10,6 @@
  */
 #define ARRAY_SIZE(arr)                     (sizeof(arr) / sizeof(arr[0]))
 
-/**
- * @brief A correct format for print `size_t'
- */
-#if defined(_MSC_VER) && (_MSC_VER < 1900)
-#   define TEST_PRIsize "Iu"
-#else
-#   define TEST_PRIsize "zu"
-#endif
-
 /*
  * Before Visual Studio 2015, there is a bug that a `do { } while (0)` will triger C4127 warning
  * https://docs.microsoft.com/en-us/cpp/error-messages/compiler-warnings/compiler-warning-level-4-c4127
@@ -484,7 +475,6 @@ typedef unsigned __int64 cutest_uint64_t;
 #else
 
 #include <stdint.h>
-#include <inttypes.h>
 
 typedef uint32_t cutest_uint32_t;
 typedef uint64_t cutest_uint64_t;
@@ -1675,10 +1665,9 @@ static int cutest_timestamp_dif(const cutest_porting_timespec_t* t1,
 /**
  * @brief Create compare context for \p TYPE.
  * @param[in] TYPE  Data type.
- * @param[in] fmt   Dump formatter.
  */
-#define TEST_GENERATE_NATIVE_COMPARE(NAME, TYPE, fmt)  \
-    static int _test_cmp_##NAME(const TYPE* addr1, const TYPE* addr2) {\
+#define TEST_GENERATE_NATIVE_COMPARE(NAME, TYPE)  \
+    static int _test_cmp_##NAME(TYPE* addr1, TYPE* addr2) {\
         TYPE v1 = *addr1;\
         TYPE v2 = *addr2;\
         if (v1 == v2) {\
@@ -1686,8 +1675,9 @@ static int cutest_timestamp_dif(const cutest_porting_timespec_t* t1,
         }\
         return v1 < v2 ? -1 : 1;\
     }\
-    static int _test_print_##NAME(FILE* file, const TYPE* addr) {\
-        return cutest_porting_fprintf(file, fmt, *addr);\
+    static int _test_print_##NAME(FILE* file, TYPE* addr) {\
+        return _cutest_smart_print_int(file, addr, sizeof(TYPE),\
+            ((TYPE)(-1)) < ((TYPE)1));\
     }\
     static cutest_type_info_t NAME = {\
         { NULL, NULL, NULL }, #TYPE,\
@@ -2701,61 +2691,120 @@ static void _cutest_shuffle_cases(void)
     g_test_nature.case_table = copy_case_table;
 }
 
-TEST_GENERATE_NATIVE_COMPARE(s_type_info_char, char, "%c");
-TEST_GENERATE_NATIVE_COMPARE(s_type_info_signed_char, signed char, "%c");
-TEST_GENERATE_NATIVE_COMPARE(s_type_info_unsigned_char, unsigned char, "%c");
-TEST_GENERATE_NATIVE_COMPARE(s_type_info_short, short, "%hd");
-TEST_GENERATE_NATIVE_COMPARE(s_type_info_unsigned_short, unsigned short, "%hd");
-TEST_GENERATE_NATIVE_COMPARE(s_type_info_int, int, "%d");
-TEST_GENERATE_NATIVE_COMPARE(s_type_info_unsigned_int, unsigned int, "%u");
-TEST_GENERATE_NATIVE_COMPARE(s_type_info_long, long, "%ld");
-TEST_GENERATE_NATIVE_COMPARE(s_type_info_unsigned_long, unsigned long, "%lu");
+static int _cutest_smart_print_int(FILE* stream, const void* addr,
+    unsigned width, int is_signed)
+{
+    if (width == sizeof(char))
+    {
+        return cutest_porting_fprintf(stream, "%c", *(char*)addr);
+    }
+
+    if (is_signed)
+    {
+        if (width == sizeof(short))
+        {
+            return cutest_porting_fprintf(stream, "%hd", *(short*)addr);
+        }
+
+        if (width == sizeof(int))
+        {
+            return cutest_porting_fprintf(stream, "%d", *(int*)addr);
+        }
+
+        if (width == sizeof(long))
+        {
+            return cutest_porting_fprintf(stream, "%ld", *(long*)addr);
+        }
+
+#if !defined(CUTEST_NO_C99_SUPPORT)
+        if (width == sizeof(long long))
+        {
+            return cutest_porting_fprintf(stream, "%lld", *(long long*)addr);
+        }
+#endif
+    }
+    else
+    {
+        if (width == sizeof(unsigned short))
+        {
+            return cutest_porting_fprintf(stream, "%hu", *(unsigned short*)addr);
+        }
+
+        if (width == sizeof(unsigned int))
+        {
+            return cutest_porting_fprintf(stream, "%u", *(unsigned*)addr);
+        }
+
+        if (width == sizeof(unsigned long))
+        {
+            return cutest_porting_fprintf(stream, "%lu", *(unsigned long*)addr);
+        }
+
+#if !defined(CUTEST_NO_C99_SUPPORT)
+        if (width == sizeof(unsigned long long))
+        {
+            return cutest_porting_fprintf(stream, "%llu", *(unsigned long long*)addr);
+        }
+#endif
+    }
+
+    return cutest_porting_abort("width of %u does not match any native size.\n", width);
+}
+
+TEST_GENERATE_NATIVE_COMPARE(s_type_info_char, char);
+TEST_GENERATE_NATIVE_COMPARE(s_type_info_signed_char, signed char);
+TEST_GENERATE_NATIVE_COMPARE(s_type_info_unsigned_char, unsigned char);
+TEST_GENERATE_NATIVE_COMPARE(s_type_info_short, short);
+TEST_GENERATE_NATIVE_COMPARE(s_type_info_unsigned_short, unsigned short);
+TEST_GENERATE_NATIVE_COMPARE(s_type_info_int, int);
+TEST_GENERATE_NATIVE_COMPARE(s_type_info_unsigned_int, unsigned int);
+TEST_GENERATE_NATIVE_COMPARE(s_type_info_long, long);
+TEST_GENERATE_NATIVE_COMPARE(s_type_info_unsigned_long, unsigned long);
 
 #if !defined(CUTEST_NO_C99_SUPPORT)
 #include <stdint.h>
-#include <inttypes.h>
 #include <stddef.h>
 #if !defined(CUTEST_NO_LONGLONG_SUPPORT)
-TEST_GENERATE_NATIVE_COMPARE(s_type_info_long_long, long long, "%lld");
+TEST_GENERATE_NATIVE_COMPARE(s_type_info_long_long, long long);
 #endif
 #if !defined(CUTEST_NO_ULONGLONG_SUPPORT)
-TEST_GENERATE_NATIVE_COMPARE(s_type_info_unsigned_long_long, unsigned long long, "%llu");
+TEST_GENERATE_NATIVE_COMPARE(s_type_info_unsigned_long_long, unsigned long long);
 #endif
 #if !defined(CUTEST_NO_INT8_SUPPORT)
-TEST_GENERATE_NATIVE_COMPARE(s_type_info_int8_t, int8_t, "%" PRId8);
+TEST_GENERATE_NATIVE_COMPARE(s_type_info_int8_t, int8_t);
 #endif
 #if !defined(CUTEST_NO_UINT8_SUPPORT)
-TEST_GENERATE_NATIVE_COMPARE(s_type_info_uint8_t, uint8_t, "%" PRIu8);
+TEST_GENERATE_NATIVE_COMPARE(s_type_info_uint8_t, uint8_t);
 #endif
 #if !defined(CUTEST_NO_INT16_SUPPORT)
-TEST_GENERATE_NATIVE_COMPARE(s_type_info_int16_t, int16_t, "%" PRId16);
+TEST_GENERATE_NATIVE_COMPARE(s_type_info_int16_t, int16_t);
 #endif
 #if !defined(CUTEST_NO_UINT16_SUPPORT)
-TEST_GENERATE_NATIVE_COMPARE(s_type_info_uint16_t, uint16_t, "%" PRIu16);
+TEST_GENERATE_NATIVE_COMPARE(s_type_info_uint16_t, uint16_t);
 #endif
 #if !defined(CUTEST_NO_INT32_SUPPORT)
-TEST_GENERATE_NATIVE_COMPARE(s_type_info_int32_t, int32_t, "%" PRId32);
+TEST_GENERATE_NATIVE_COMPARE(s_type_info_int32_t, int32_t);
 #endif
 #if !defined(CUTEST_NO_UINT32_SUPPORT)
-TEST_GENERATE_NATIVE_COMPARE(s_type_info_uint32_t, uint32_t, "%" PRIu32);
+TEST_GENERATE_NATIVE_COMPARE(s_type_info_uint32_t, uint32_t);
 #endif
 #if !defined(CUTEST_NO_INT64_SUPPORT)
-TEST_GENERATE_NATIVE_COMPARE(s_type_info_int64_t, int64_t, "%" PRId64);
+TEST_GENERATE_NATIVE_COMPARE(s_type_info_int64_t, int64_t);
 #endif
 #if !defined(CUTEST_NO_UINT64_SUPPORT)
-TEST_GENERATE_NATIVE_COMPARE(s_type_info_uint64_t, uint64_t, "%" PRIu64);
+TEST_GENERATE_NATIVE_COMPARE(s_type_info_uint64_t, uint64_t);
 #endif
 #if !defined(CUTEST_NO_SIZE_SUPPORT)
-TEST_GENERATE_NATIVE_COMPARE(s_type_info_size_t, size_t, "%" TEST_PRIsize);
+TEST_GENERATE_NATIVE_COMPARE(s_type_info_size_t, size_t);
 #endif
 #if !defined(CUTEST_NO_PTRDIFF_SUPPORT)
-TEST_GENERATE_NATIVE_COMPARE(s_type_info_ptrdiff_t, ptrdiff_t, "%td");
+TEST_GENERATE_NATIVE_COMPARE(s_type_info_ptrdiff_t, ptrdiff_t);
 #endif
 #if !defined(CUTEST_NO_INTPTR_SUPPORT)
-TEST_GENERATE_NATIVE_COMPARE(s_type_info_intptr_t, intptr_t, "%" PRIdPTR);
+TEST_GENERATE_NATIVE_COMPARE(s_type_info_intptr_t, intptr_t);
 #endif
 #if !defined(CUTEST_NO_UINTPTR_SUPPORT)
-TEST_GENERATE_NATIVE_COMPARE(s_type_info_uintptr_t, uintptr_t, "%" PRIuPTR);
+TEST_GENERATE_NATIVE_COMPARE(s_type_info_uintptr_t, uintptr_t);
 #endif
 #endif
 

@@ -2,6 +2,9 @@
 
 ## v1.0.7
 
+### Features
+1. Smart print integer without `<inttypes.h>`
+
 ### BREAKING CHANGES
 1. Rename colorful print porting function
 
