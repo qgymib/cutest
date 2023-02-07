@@ -1,6 +1,6 @@
 # Changelog
 
-## v1.0.6
+## v1.0.6 (2023/02/07)
 
 ### Features
 1. Add more test cases.
