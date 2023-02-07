@@ -41,7 +41,7 @@ extern "C" {
 /**
  * @brief Development version.
  */
-#define CUTEST_VERSION_PREREL       3
+#define CUTEST_VERSION_PREREL       4
 
 /**
  * @brief Ensure the api is exposed as C function.

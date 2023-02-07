@@ -38,15 +38,15 @@
 // Porting
 ///////////////////////////////////////////////////////////////////////////////
 
+/**
+ * @brief Abort the program if assertion \p x is false.
+ * @note This macro does not respect `NDEBUG`.
+ */
 #define CUTEST_PORTING_ASSERT(x) \
-    ((x) ? (void)0 : cutest_porting_assert_fail(#x, __FILE__, __LINE__, __FUNCTION__))
+    ((x) ? (void)0 : (void)cutest_porting_abort(\
+        "%s:%d: %s: Assertion `%s' failed.\n", __FILE__, __LINE__, __FUNCTION__, #x))
 
 static unsigned long s_test_rand_seed = 1;
-
-static void cutest_porting_assert_fail(const char *expr, const char *file, int line, const char *func)
-{
-    cutest_porting_abort("Assertion failed: %s (%s: %s: %d)\n", expr, file, func, line);
-}
 
 static void cutest_porting_srand(unsigned long s)
 {

@@ -5,6 +5,7 @@
 ### Features
 1. Add more test cases.
 2. Simplify opt parser
+3. Reduce assertion stack level
 
 ### Fixed
 1. Remove custom type const qualifier
