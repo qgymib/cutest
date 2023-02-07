@@ -121,7 +121,7 @@ static int cutest_porting_cprintf_2(FILE* stream, int color, const char* fmt, ..
     va_list ap;
 
     va_start(ap, fmt);
-    ret = cutest_porting_cvprintf(stream, color, fmt, ap);
+    ret = cutest_porting_cvfprintf(stream, color, fmt, ap);
     va_end(ap);
 
     return ret;

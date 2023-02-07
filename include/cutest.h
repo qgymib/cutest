@@ -36,12 +36,12 @@ extern "C" {
 /**
  * @brief Patch version.
  */
-#define CUTEST_VERSION_PATCH        6
+#define CUTEST_VERSION_PATCH        7
 
 /**
  * @brief Development version.
  */
-#define CUTEST_VERSION_PREREL       0
+#define CUTEST_VERSION_PREREL       1
 
 /**
  * @brief Ensure the api is exposed as C function.
@@ -1455,7 +1455,7 @@ void* cutest_porting_gettid(void);
  * support:
  *
  * ```c
- * int cutest_porting_cvprintf(FILE* stream, int color, const char* fmt, va_list ap)
+ * int cutest_porting_cvfprintf(FILE* stream, int color, const char* fmt, va_list ap)
  * {
  *     (void)color;
  *     return fprintf(stream, fmt, ap);
@@ -1476,7 +1476,7 @@ void* cutest_porting_gettid(void);
  * @param[in] fmt       Print format.
  * @param[in] ap        Print arguments.
  */
-int cutest_porting_cvprintf(FILE* stream, int color, const char* fmt, va_list ap);
+int cutest_porting_cvfprintf(FILE* stream, int color, const char* fmt, va_list ap);
 
 /**
  * Group: TEST_PORTING_SYSTEM_API

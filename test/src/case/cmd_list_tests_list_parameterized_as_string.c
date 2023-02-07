@@ -41,4 +41,6 @@ DEFINE_TEST(parameterized, as_string, "--test_list_tests")
     ASSERT_STRING_EQ(string_matrix_access(matrix, 4, 0), pattern);
 
     string_matrix_destroy(matrix);
+
+    TEST_PORTING_ASSERT(_TEST.rret == 0);
 }

@@ -11,13 +11,6 @@
 #define ARRAY_SIZE(arr)                     (sizeof(arr) / sizeof(arr[0]))
 
 /**
- * @brief Access \p ptr as type of \p TYPE.
- * @param[in] TYPE  Data type.
- * @param[in] ptr   Data address.
- */
-#define ACCESS_AS(TYPE, ptr)    (*(TYPE*)ptr)
-
-/**
  * @brief A correct format for print `size_t'
  */
 #if defined(_MSC_VER) && (_MSC_VER < 1900)
@@ -57,6 +50,35 @@ static unsigned long cutest_porting_rand(void)
 {
     s_test_rand_seed = 1103515245UL * s_test_rand_seed + 12345;
     return s_test_rand_seed;
+}
+
+static int cutest_porting_cfprintf(FILE* stream, int color, const char* fmt, ...)
+{
+    int ret;
+    va_list ap;
+
+    va_start(ap, fmt);
+    ret = cutest_porting_cvfprintf(stream, color, fmt, ap);
+    va_end(ap);
+
+    return ret;
+}
+
+static int cutest_porting_vfprintf(FILE* stream, const char* fmt, va_list ap)
+{
+    return cutest_porting_cvfprintf(stream, CUTEST_COLOR_DEFAULT, fmt, ap);
+}
+
+static int cutest_porting_fprintf(FILE* stream, const char* fmt, ...)
+{
+    int ret;
+    va_list ap;
+
+    va_start(ap, fmt);
+    ret = cutest_porting_vfprintf(stream, fmt, ap);
+    va_end(ap);
+
+    return ret;
 }
 
 static void* cutest_porting_memcpy(void* dst, const void* src, unsigned long n)
@@ -681,7 +703,7 @@ int cutest_porting_compare_floating_number(int type, const void* v1, const void*
  */
 
 /**
- * BEG: cutest_porting_cvprintf()
+ * BEG: cutest_porting_cvfprintf()
  * @{
  */
 
@@ -870,7 +892,7 @@ static int _cutest_porting_color_vfprintf(FILE* stream, cutest_porting_color_t c
 /**
  * @brief Print data to \p stream.
  */
-int cutest_porting_cvprintf(FILE* stream, int color, const char* fmt, va_list ap)
+int cutest_porting_cvfprintf(FILE* stream, int color, const char* fmt, va_list ap)
 {
     int ret;
     CUTEST_PORTING_ASSERT(stream != NULL);
@@ -884,12 +906,13 @@ int cutest_porting_cvprintf(FILE* stream, int color, const char* fmt, va_list ap
     {
         ret = _cutest_porting_color_vfprintf(stream, color, fmt, ap);
     }
+    fflush(stream);
 
     return ret;
 }
 
 /**
- * END: cutest_porting_cvprintf()
+ * END: cutest_porting_cvfprintf()
  * @}
  */
 
@@ -1664,7 +1687,7 @@ static int cutest_timestamp_dif(const cutest_porting_timespec_t* t1,
         return v1 < v2 ? -1 : 1;\
     }\
     static int _test_print_##NAME(FILE* file, const TYPE* addr) {\
-        return fprintf(file, fmt, *addr);\
+        return cutest_porting_fprintf(file, fmt, *addr);\
     }\
     static cutest_type_info_t NAME = {\
         { NULL, NULL, NULL }, #TYPE,\
@@ -1919,23 +1942,6 @@ static int _cutest_check_disable(const char* name)
         (cutest_porting_strncmp("DISABLED_", name, 9) == 0);
 }
 
-static int _cutest_color_vprintf(int color, const char* fmt, va_list ap)
-{
-    return cutest_porting_cvprintf(g_test_ctx.out, color, fmt, ap);
-}
-
-static int _cutest_color_printf(int color, const char* fmt, ...)
-{
-    int ret;
-    va_list ap;
-
-    va_start(ap, fmt);
-    ret = _cutest_color_vprintf(color, fmt, ap);
-    va_end(ap);
-
-    return ret;
-}
-
 static int _cutest_print_encoded(const char* str)
 {
     int ret = 0;
@@ -1946,11 +1952,11 @@ static int _cutest_print_encoded(const char* str)
         const char* p = cutest_porting_strchr(str, '@');
         if (p == NULL)
         {
-            ret += _cutest_color_printf(color, "%s", str);
+            ret += cutest_porting_cfprintf(g_test_ctx.out, color, "%s", str);
             return ret;
         }
 
-        ret += _cutest_color_printf(color, "%.*s", p - str, str);
+        ret += cutest_porting_cfprintf(g_test_ctx.out, color, "%.*s", p - str, str);
 
         const char ch = p[1];
         str = p + 2;
@@ -1958,7 +1964,7 @@ static int _cutest_print_encoded(const char* str)
         switch (ch)
         {
         case '@':
-            ret += _cutest_color_printf(color, "@");
+            ret += cutest_porting_cfprintf(g_test_ctx.out, color, "@");
             break;
         case 'D':
             color = 0;
@@ -2133,26 +2139,26 @@ static void _cutest_finishlize(test_case_info_t* info)
     if (HAS_MASK(info->test_case->data.mask, MASK_FAILURE))
     {
         g_test_ctx.counter.result.failed++;
-        _cutest_color_printf(CUTEST_COLOR_RED, "[  FAILED  ]");
+        cutest_porting_cfprintf(g_test_ctx.out, CUTEST_COLOR_RED, "[  FAILED  ]");
     }
     else if (HAS_MASK(info->test_case->data.mask, MASK_SKIPPED))
     {
         g_test_ctx.counter.result.skipped++;
-        _cutest_color_printf(CUTEST_COLOR_YELLOW, "[   SKIP   ]");
+        cutest_porting_cfprintf(g_test_ctx.out, CUTEST_COLOR_YELLOW, "[   SKIP   ]");
     }
     else
     {
         g_test_ctx.counter.result.success++;
-        _cutest_color_printf(CUTEST_COLOR_GREEN, "[       OK ]");
+        cutest_porting_cfprintf(g_test_ctx.out, CUTEST_COLOR_GREEN, "[       OK ]");
     }
 
-    _cutest_color_printf(CUTEST_COLOR_DEFAULT, " %s", info->fmt_name);
+    cutest_porting_cfprintf(g_test_ctx.out, CUTEST_COLOR_DEFAULT, " %s", info->fmt_name);
     if (!g_test_ctx.mask.no_print_time)
     {
         unsigned long take_time = (unsigned long)(tv_diff.tv_sec * 1000 + tv_diff.tv_nsec / 1000000);
-        _cutest_color_printf(CUTEST_COLOR_DEFAULT, " (%lu ms)", take_time);
+        cutest_porting_cfprintf(g_test_ctx.out, CUTEST_COLOR_DEFAULT, " (%lu ms)", take_time);
     }
-    _cutest_color_printf(CUTEST_COLOR_DEFAULT, "\n");
+    cutest_porting_cfprintf(g_test_ctx.out, CUTEST_COLOR_DEFAULT, "\n");
 }
 
 static void _cutest_run_case_normal_body_jmp(cutest_porting_jmpbuf_t* buf, int val, void* data)
@@ -2202,8 +2208,8 @@ static int _cutest_run_prepare(test_case_info_t* info)
         return 1;
     }
 
-    _cutest_color_printf(CUTEST_COLOR_GREEN, "[ RUN      ]");
-    _cutest_color_printf(CUTEST_COLOR_DEFAULT, " %s\n", info->fmt_name);
+    cutest_porting_cfprintf(g_test_ctx.out, CUTEST_COLOR_GREEN, "[ RUN      ]");
+    cutest_porting_cfprintf(g_test_ctx.out, CUTEST_COLOR_DEFAULT, " %s\n", info->fmt_name);
 
     /* record start time */
     cutest_porting_clock_gettime(&info->tv_case_beg);
@@ -2406,8 +2412,8 @@ static void _cutest_show_report_failed(void)
             _cutest_get_test_fmt_name_parameter(buffer, sizeof(buffer), test_case);
         }
 
-        _cutest_color_printf(CUTEST_COLOR_RED, "[  FAILED  ]");
-        _cutest_color_printf(CUTEST_COLOR_DEFAULT, " %s\n", buffer);
+        cutest_porting_cfprintf(g_test_ctx.out, CUTEST_COLOR_RED, "[  FAILED  ]");
+        cutest_porting_cfprintf(g_test_ctx.out, CUTEST_COLOR_DEFAULT, " %s\n", buffer);
     }
 }
 
@@ -2417,36 +2423,36 @@ static void _cutest_show_report(const cutest_porting_timespec_t* tv_total_start,
     cutest_porting_timespec_t tv_diff;
     cutest_timestamp_dif(tv_total_start, tv_total_end, &tv_diff);
 
-    _cutest_color_printf(CUTEST_COLOR_DEFAULT, "[==========]");
-    _cutest_color_printf(CUTEST_COLOR_DEFAULT, " %u/%u test case%s ran.",
+    cutest_porting_cfprintf(g_test_ctx.out, CUTEST_COLOR_DEFAULT, "[==========]");
+    cutest_porting_cfprintf(g_test_ctx.out, CUTEST_COLOR_DEFAULT, " %u/%u test case%s ran.",
         g_test_ctx.counter.result.total,
         (unsigned)g_test_nature.case_table.size,
         g_test_ctx.counter.result.total > 1 ? "s" : "");
     if (!g_test_ctx.mask.no_print_time)
     {
         unsigned long take_time = (unsigned long)(tv_diff.tv_sec * 1000 + tv_diff.tv_nsec / 1000000);
-        _cutest_color_printf(CUTEST_COLOR_DEFAULT, " (%lu ms total)", take_time);
+        cutest_porting_cfprintf(g_test_ctx.out, CUTEST_COLOR_DEFAULT, " (%lu ms total)", take_time);
     }
-    _cutest_color_printf(CUTEST_COLOR_DEFAULT, "\n");
+    cutest_porting_cfprintf(g_test_ctx.out, CUTEST_COLOR_DEFAULT, "\n");
 
     if (g_test_ctx.counter.result.disabled != 0)
     {
-        _cutest_color_printf(CUTEST_COLOR_GREEN, "[ DISABLED ]");
-        _cutest_color_printf(CUTEST_COLOR_DEFAULT, " %u test%s.\n",
+        cutest_porting_cfprintf(g_test_ctx.out, CUTEST_COLOR_GREEN, "[ DISABLED ]");
+        cutest_porting_cfprintf(g_test_ctx.out, CUTEST_COLOR_DEFAULT, " %u test%s.\n",
             g_test_ctx.counter.result.disabled,
             g_test_ctx.counter.result.disabled > 1 ? "s" : "");
     }
     if (g_test_ctx.counter.result.skipped != 0)
     {
-        _cutest_color_printf(CUTEST_COLOR_YELLOW,"[ BYPASSED ]");
-        _cutest_color_printf(CUTEST_COLOR_DEFAULT, " %u test%s.\n",
+        cutest_porting_cfprintf(g_test_ctx.out, CUTEST_COLOR_YELLOW,"[ BYPASSED ]");
+        cutest_porting_cfprintf(g_test_ctx.out, CUTEST_COLOR_DEFAULT, " %u test%s.\n",
             g_test_ctx.counter.result.skipped,
             g_test_ctx.counter.result.skipped > 1 ? "s" : "");
     }
     if (g_test_ctx.counter.result.success != 0)
     {
-        _cutest_color_printf(CUTEST_COLOR_GREEN, "[  PASSED  ]");
-        _cutest_color_printf(CUTEST_COLOR_DEFAULT, " %u test%s.\n",
+        cutest_porting_cfprintf(g_test_ctx.out, CUTEST_COLOR_GREEN, "[  PASSED  ]");
+        cutest_porting_cfprintf(g_test_ctx.out, CUTEST_COLOR_DEFAULT, " %u test%s.\n",
             g_test_ctx.counter.result.success,
             g_test_ctx.counter.result.success > 1 ? "s" : "");
     }
@@ -2457,8 +2463,8 @@ static void _cutest_show_report(const cutest_porting_timespec_t* tv_total_start,
         return;
     }
 
-    _cutest_color_printf(CUTEST_COLOR_RED, "[  FAILED  ]");
-    _cutest_color_printf(CUTEST_COLOR_DEFAULT,
+    cutest_porting_cfprintf(g_test_ctx.out, CUTEST_COLOR_RED, "[  FAILED  ]");
+    cutest_porting_cfprintf(g_test_ctx.out, CUTEST_COLOR_DEFAULT,
         " %u test%s, listed below:\n", g_test_ctx.counter.result.failed, g_test_ctx.counter.result.failed > 1 ? "s" : "");
     _cutest_show_report_failed();
 }
@@ -2598,7 +2604,7 @@ static void _cutest_list_tests_print_name(const cutest_case_t* test_case)
 
     if (test_case->parameterized.type_name == NULL)
     {
-        _cutest_color_printf(CUTEST_COLOR_DEFAULT, "  %s\n", case_name);
+        cutest_porting_fprintf(g_test_ctx.out, "  %s\n", case_name);
         return;
     }
 
@@ -2608,7 +2614,7 @@ static void _cutest_list_tests_print_name(const cutest_case_t* test_case)
     int len = 0;;
     const char* str = _cutest_parameterized_parser(test_case->parameterized.test_data_cstr, parameterized_idx, &len);
 
-    _cutest_color_printf(CUTEST_COLOR_DEFAULT, "  %s/%u  # <%s> %.*s\n",
+    cutest_porting_fprintf(g_test_ctx.out, "  %s/%u  # <%s> %.*s\n",
         case_name, (unsigned)parameterized_idx, type_name, len, str);
 }
 
@@ -2626,7 +2632,7 @@ static void _cutest_list_tests(void)
             && cutest_porting_strcmp(last_class_name, test_case->info.fixture_name) != 0)
         {
             last_class_name = test_case->info.fixture_name;
-            _cutest_color_printf(CUTEST_COLOR_DEFAULT, "%s.\n", last_class_name);
+            cutest_porting_fprintf(g_test_ctx.out, "%s.\n", last_class_name);
         }
         _cutest_list_tests_print_name(test_case);
     }
@@ -2638,7 +2644,7 @@ static void _cutest_list_types(void)
     for (; it != NULL; it = cutest_map_next(it))
     {
         cutest_type_info_t* type_info = CONTAINER_OF(it, cutest_type_info_t, node);
-        _cutest_color_printf(CUTEST_COLOR_DEFAULT, "%s\n", type_info->type_name);
+        cutest_porting_fprintf(g_test_ctx.out, "%s\n", type_info->type_name);
     }
 }
 
@@ -2647,7 +2653,7 @@ static int _cutest_setup_arg_repeat(const char* str)
     unsigned long repeat;
     if (cutest_porting_atoul(str, &repeat) != 0)
     {
-        return -1;
+        return 1 << 8 | 1;
     }
 
     g_test_ctx.counter.repeat.repeat = repeat;
@@ -2659,7 +2665,7 @@ static int _cutest_setup_arg_print_time(const char* str)
     unsigned long val = 1;
     if (cutest_porting_atoul(str, &val) != 0)
     {
-        return -1;
+        return 1 << 8 | 1;
     }
 
     g_test_ctx.mask.no_print_time = !val;
@@ -2671,7 +2677,7 @@ static int _cutest_setup_arg_random_seed(const char* str)
     unsigned long val = 0;
     if (cutest_porting_atoul(str, &val) != 0)
     {
-        return -1;
+        return 1 << 8 | 1;
     }
 
     cutest_porting_srand(val);
@@ -2753,10 +2759,13 @@ TEST_GENERATE_NATIVE_COMPARE(s_type_info_uintptr_t, uintptr_t, "%" PRIuPTR);
 #endif
 #endif
 
-static int _cutest_cmp_ptr(const void* addr1, const void* addr2)
+static int _cutest_cmp_ptr(const void** addr1, const void** addr2)
 {
-    char* v1 = ACCESS_AS(char*, addr1);
-    char* v2 = ACCESS_AS(char*, addr2);
+    const void* t_addr1 = *addr1;
+    const void* t_addr2 = *addr2;
+
+    const char* v1 = (const char*)t_addr1;
+    const char* v2 = (const char*)t_addr2;
 
     if (v1 == v2)
     {
@@ -2765,14 +2774,15 @@ static int _cutest_cmp_ptr(const void* addr1, const void* addr2)
     return v1 < v2 ? -1 : 1;
 }
 
-static int _cutest_print_ptr(FILE* file, const void* addr)
+static int _cutest_print_ptr(FILE* file, const void** addr)
 {
-    char* v = ACCESS_AS(char*, addr);
-    return fprintf(file, "%p", v);
+    return cutest_porting_fprintf(file, "%p", *addr);
 }
 
 static cutest_type_info_t s_type_info_ptr = {
-    { NULL, NULL, NULL }, "const void*", _cutest_cmp_ptr, _cutest_print_ptr,
+    { NULL, NULL, NULL }, "const void*",
+    (cutest_custom_type_cmp_fn)_cutest_cmp_ptr,
+    (cutest_custom_type_dump_fn)_cutest_print_ptr,
 };
 
 static int _cutest_cmp_str(const char** addr1, const char** addr2)
@@ -2785,7 +2795,7 @@ static int _cutest_cmp_str(const char** addr1, const char** addr2)
 static int _cutest_print_str(FILE* file, const char** addr)
 {
     const char* v = *addr;
-    return fprintf(file, "%s", v);
+    return cutest_porting_fprintf(file, "%s", v);
 }
 
 static cutest_type_info_t s_type_info_str = {
@@ -2801,7 +2811,7 @@ static int _cutest_cmp_float(const float* addr1, const float* addr2)
 
 static int _cutest_dump_float(FILE* file, const float* addr)
 {
-    return fprintf(file, "%f", *addr);
+    return cutest_porting_fprintf(file, "%f", *addr);
 }
 
 static cutest_type_info_t s_type_info_float = {
@@ -2817,7 +2827,7 @@ static int _cutest_cmp_double(const double* addr1, const double* addr2)
 
 static int _cutest_dump_double(FILE* file, const double* addr)
 {
-    return fprintf(file, "%f", *addr);
+    return cutest_porting_fprintf(file, "%f", *addr);
 }
 
 static cutest_type_info_t s_type_info_double = {
@@ -2913,34 +2923,79 @@ static void _cutest_prepare(void)
     g_test_ctx.counter.repeat.repeat = 1;
 }
 
+static int _cutest_setup_arg_help(void)
+{
+    _cutest_print_encoded(s_test_help_encoded);
+    return 1 << 8 | 0;
+}
+
+static int _cutest_setup_arg_list_tests(void)
+{
+    _cutest_list_tests();
+    return 1 << 8 | 0;
+}
+
+static int _cutest_setup_arg_list_types(void)
+{
+    _cutest_list_types();
+    return 1 << 8 | 0;
+}
+
+static int _cutest_setup_arg_also_run_disabled_tests(void)
+{
+    g_test_ctx.mask.also_run_disabled_tests = 1;
+    return 0;
+}
+
+static int _cutest_setup_arg_shuffle(void)
+{
+    g_test_ctx.mask.shuffle = 1;
+    return 0;
+}
+
+static int _cutest_setup_arg_break_on_failure(void)
+{
+    g_test_ctx.mask.break_on_failure = 1;
+    return 0;
+}
+
 /**
  * @brief Setup test context
  * @param[in] argc      The number of command line argument.
  * @param[in] argv      Command line argument list.
  * @param[in] hook      Global test hook.
  * @param[out] b_exit   Whether need to exit.
- * @return              0 if success, otherwise failure.
+ * @return              0 if success, otherwise failure. The lower 8 bit is the actual exit code.
  */
-static int _cutest_setup(int argc, char* argv[], FILE* out, const cutest_hook_t* hook, int* b_exit)
+static int _cutest_setup(int argc, char* argv[], FILE* out, const cutest_hook_t* hook)
 {
 #define PARSER_LONGOPT_WITH_VALUE(OPT, FUNC)   \
     do {\
-        int ret = -1;\
-        const char* opt = OPT;\
+        int ret = -1; const char* opt = OPT;\
         unsigned optlen = cutest_porting_strlen(opt);\
         if (cutest_porting_strncmp(argv[i], opt, optlen) == 0) {\
             if (argv[i][optlen] == '=') {\
                 ret = FUNC(argv[i] + optlen + 1);\
             } else if (i < argc - 1) {\
-                ret = FUNC(argv[i + 1]);\
-                i++;\
+                ret = FUNC(argv[i + 1]); i++;\
             }\
-            if (ret < 0) {\
-                _cutest_color_printf(CUTEST_COLOR_DEFAULT, "Invalid argument to `%s'\n", opt);\
-                return -1;\
+            if (ret != 0) {\
+                cutest_porting_fprintf(g_test_ctx.out, "Invalid argument to `%s'\n", opt);\
+                return ret;\
             }\
             continue;\
         }\
+    } while (0)
+
+#define PARSER_LONGOPT_NO_VALUE(OPT, FUNC)   \
+    do {\
+        int ret = 0; const char* opt = OPT;\
+        if (cutest_porting_strcmp(argv[i], opt) == 0) {\
+            if ((ret = FUNC()) != 0) {\
+                return ret;\
+            }\
+        }\
+        continue;\
     } while (0)
 
     cutest_porting_memset(&g_test_ctx, 0, sizeof(g_test_ctx));
@@ -2953,50 +3008,18 @@ static int _cutest_setup(int argc, char* argv[], FILE* out, const cutest_hook_t*
     int i;
     for (i = 0; i < argc; i++)
     {
-        if (cutest_porting_strcmp(argv[i], "--help") == 0
-            || cutest_porting_strcmp(argv[i], "-h") == 0)
-        {
-            _cutest_print_encoded(s_test_help_encoded);
-            *b_exit = 1;
-            return 0;
-        }
+        PARSER_LONGOPT_NO_VALUE("-h",                               _cutest_setup_arg_help);
+        PARSER_LONGOPT_NO_VALUE("--help",                           _cutest_setup_arg_help);
+        PARSER_LONGOPT_NO_VALUE("--test_list_tests",                _cutest_setup_arg_list_tests);
+        PARSER_LONGOPT_NO_VALUE("--test_list_types",                _cutest_setup_arg_list_types);
+        PARSER_LONGOPT_NO_VALUE("--test_also_run_disabled_tests",   _cutest_setup_arg_also_run_disabled_tests);
+        PARSER_LONGOPT_NO_VALUE("--test_shuffle",                   _cutest_setup_arg_shuffle);
+        PARSER_LONGOPT_NO_VALUE("--test_break_on_failure",          _cutest_setup_arg_break_on_failure);
 
-        if (cutest_porting_strcmp(argv[i], "--test_list_tests") == 0)
-        {
-            _cutest_list_tests();
-            *b_exit = 1;
-            return 0;
-        }
-
-        if (cutest_porting_strcmp(argv[i], "--test_list_types") == 0)
-        {
-            _cutest_list_types();
-            *b_exit = 1;
-            return 0;
-        }
-
-        if (cutest_porting_strcmp(argv[i], "--test_also_run_disabled_tests") == 0)
-        {
-            g_test_ctx.mask.also_run_disabled_tests = 1;
-            continue;
-        }
-
-        if (cutest_porting_strcmp(argv[i], "--test_shuffle") == 0)
-        {
-            g_test_ctx.mask.shuffle = 1;
-            continue;
-        }
-
-        if (cutest_porting_strcmp(argv[i], "--test_break_on_failure") == 0)
-        {
-            g_test_ctx.mask.break_on_failure = 1;
-            continue;
-        }
-
-        PARSER_LONGOPT_WITH_VALUE("--test_filter", _cutest_setup_arg_pattern);
-        PARSER_LONGOPT_WITH_VALUE("--test_repeat", _cutest_setup_arg_repeat);
-        PARSER_LONGOPT_WITH_VALUE("--test_random_seed", _cutest_setup_arg_random_seed);
-        PARSER_LONGOPT_WITH_VALUE("--test_print_time", _cutest_setup_arg_print_time);
+        PARSER_LONGOPT_WITH_VALUE("--test_filter",                  _cutest_setup_arg_pattern);
+        PARSER_LONGOPT_WITH_VALUE("--test_repeat",                  _cutest_setup_arg_repeat);
+        PARSER_LONGOPT_WITH_VALUE("--test_random_seed",             _cutest_setup_arg_random_seed);
+        PARSER_LONGOPT_WITH_VALUE("--test_print_time",              _cutest_setup_arg_print_time);
     }
 
     /* shuffle if necessary */
@@ -3007,6 +3030,7 @@ static int _cutest_setup(int argc, char* argv[], FILE* out, const cutest_hook_t*
 
     return 0;
 
+#undef PARSER_LONGOPT_NO_VALUE
 #undef PARSER_LONGOPT_WITH_VALUE
 }
 
@@ -3014,8 +3038,8 @@ static void _cutest_run_all_test_once(void)
 {
     _cutest_reset_all_test();
 
-    _cutest_color_printf(CUTEST_COLOR_DEFAULT, "[==========]");
-    _cutest_color_printf(CUTEST_COLOR_DEFAULT, " total %u test%s registered.\n",
+    cutest_porting_fprintf(g_test_ctx.out, "[==========]");
+    cutest_porting_fprintf(g_test_ctx.out, " total %u test%s registered.\n",
         (unsigned)g_test_nature.case_table.size,
         g_test_nature.case_table.size > 1 ? "s" : "");
 
@@ -3052,8 +3076,8 @@ static void _cutest_run_all_tests(void)
     {
         if (g_test_ctx.counter.repeat.repeat > 1)
         {
-            _cutest_color_printf(CUTEST_COLOR_YELLOW, "[==========]");
-            _cutest_color_printf(CUTEST_COLOR_DEFAULT, " start loop: %u/%u\n",
+            cutest_porting_cfprintf(g_test_ctx.out, CUTEST_COLOR_YELLOW, "[==========]");
+            cutest_porting_cfprintf(g_test_ctx.out, CUTEST_COLOR_DEFAULT, " start loop: %u/%u\n",
                 g_test_ctx.counter.repeat.repeated + 1, g_test_ctx.counter.repeat.repeat);
         }
 
@@ -3061,12 +3085,12 @@ static void _cutest_run_all_tests(void)
 
         if (g_test_ctx.counter.repeat.repeat > 1)
         {
-            _cutest_color_printf(CUTEST_COLOR_YELLOW, "[==========]");
-            _cutest_color_printf(CUTEST_COLOR_DEFAULT, " end loop (%u/%u)\n",
+            cutest_porting_cfprintf(g_test_ctx.out, CUTEST_COLOR_YELLOW, "[==========]");
+            cutest_porting_cfprintf(g_test_ctx.out, CUTEST_COLOR_DEFAULT, " end loop (%u/%u)\n",
                 g_test_ctx.counter.repeat.repeated + 1, g_test_ctx.counter.repeat.repeat);
             if (g_test_ctx.counter.repeat.repeated < g_test_ctx.counter.repeat.repeat - 1)
             {
-                _cutest_color_printf(CUTEST_COLOR_DEFAULT, "\n");
+                cutest_porting_cfprintf(g_test_ctx.out, CUTEST_COLOR_DEFAULT, "\n");
             }
         }
     }
@@ -3080,10 +3104,10 @@ void cutest_register_case(cutest_case_t* data)
 int cutest_run_tests(int argc, char* argv[], FILE* out, const cutest_hook_t* hook)
 {
     int ret = 0;
+    CUTEST_PORTING_ASSERT(out != NULL);
 
     /* Parser parameter */
-    int b_exit = 0;
-    if ((ret = _cutest_setup(argc, argv, out, hook, &b_exit)) < 0 || b_exit)
+    if ((ret = _cutest_setup(argc, argv, out, hook)) != 0)
     {
         goto fin;
     }
@@ -3095,7 +3119,7 @@ int cutest_run_tests(int argc, char* argv[], FILE* out, const cutest_hook_t* hoo
 
 fin:
     _cutest_cleanup();
-    return ret != 0 ? EXIT_FAILURE : EXIT_SUCCESS;
+    return ret & 0xFF;
 }
 
 const char* cutest_get_current_fixture(void)
@@ -3189,25 +3213,25 @@ void cutest_internal_dump(const char* file, int line, const char* type_name,
     cutest_type_info_t* type_info = _cutest_get_type_info(type_name);
     if (type_info == NULL)
     {
-        cutest_porting_abort("%s not registered\n", type_name);
+        cutest_porting_abort("%s not registered.\n", type_name);
         return;
     }
 
-    _cutest_color_printf(CUTEST_COLOR_DEFAULT,
+    cutest_porting_fprintf(g_test_ctx.out,
         "%s:%d:failure:\n"
         "            expected: `%s' %s `%s'\n"
         "              actual: ",
         file, line, op_l, op, op_r);
     type_info->dump(g_test_ctx.out, addr1);
-    _cutest_color_printf(CUTEST_COLOR_DEFAULT, " vs ");
+    cutest_porting_fprintf(g_test_ctx.out, " vs ");
     type_info->dump(g_test_ctx.out, addr2);
-    _cutest_color_printf(CUTEST_COLOR_DEFAULT, "\n");
+    cutest_porting_fprintf(g_test_ctx.out, "\n");
 
     if (*fmt != '\0')
     {
         va_start(ap, fmt);
-        _cutest_color_vprintf(CUTEST_COLOR_DEFAULT, fmt, ap);
-        _cutest_color_printf(CUTEST_COLOR_DEFAULT, "\n");
+        cutest_porting_vfprintf(g_test_ctx.out, fmt, ap);
+        cutest_porting_fprintf(g_test_ctx.out, "\n");
         va_end(ap);
     }
 }

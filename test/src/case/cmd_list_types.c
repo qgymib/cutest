@@ -18,4 +18,5 @@ TEST(cmd, list_types)
 DEFINE_TEST(cmd, list_types, "--test_list_types")
 {
 	TEST_PORTING_ASSERT(counter == 0);
+	TEST_PORTING_ASSERT(_TEST.rret == 0);
 }
