@@ -4,10 +4,12 @@
 
 ### Features
 1. Add more test cases.
+2. Simplify opt parser
 
 ### Fixed
 1. Remove custom type const qualifier
 2. Fix: floating number compare result is wrong
+
 
 ## v1.0.5 (2023/02/06)
 

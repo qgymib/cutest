@@ -4,36 +4,18 @@
 // Watchpoint
 ///////////////////////////////////////////////////////////////////////////////
 
-TEST(failure, int)
-{
-	ASSERT_EQ_INT(0, 1, "%d", _L);
-}
+static int counter = 0;
 
-TEST(failure, str)
+TEST(cmd, list_types)
 {
-	ASSERT_EQ_STR("hello", "world");
-}
-
-TEST(failure, ptr)
-{
-	ASSERT_EQ_PTR((void*)0, (void*)1);
-}
-
-TEST(failure, float)
-{
-	ASSERT_EQ_FLOAT(0, 1);
-}
-
-TEST(failure, double)
-{
-	ASSERT_EQ_DOUBLE(1, 2);
+	counter++;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 // Verify
 ///////////////////////////////////////////////////////////////////////////////
 
-DEFINE_TEST(failure, 0)
+DEFINE_TEST(cmd, list_types, "--test_list_types")
 {
-	TEST_PORTING_ASSERT(_TEST.rret != 0);
+	TEST_PORTING_ASSERT(counter == 0);
 }

@@ -30,7 +30,8 @@ TEST_F(filter, p2)
 TEST_PARAMETERIZED_DEFINE(filter, p3, size_t, 1, 2, 3);
 TEST_P(filter, p3)
 {
-    s_test_filter.cnt_p3 += TEST_GET_PARAM();
+    TEST_PARAMETERIZED_SUPPRESS_UNUSED;
+    s_test_filter.cnt_p3 ++;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -58,7 +59,7 @@ DEFINE_TEST_F(filter, any, "--test_filter=*")
 {
     TEST_PORTING_ASSERT(s_test_filter.cnt_p1 == 1);
     TEST_PORTING_ASSERT(s_test_filter.cnt_p2 == 1);
-    TEST_PORTING_ASSERT(s_test_filter.cnt_p3 == 6);
+    TEST_PORTING_ASSERT(s_test_filter.cnt_p3 == 3);
 }
 
 DEFINE_TEST_F(filter, asdf, "--test_filter=asdf")
@@ -80,7 +81,7 @@ DEFINE_TEST_F(filter, filter_dot_any, "--test_filter=filter.*")
 {
     TEST_PORTING_ASSERT(s_test_filter.cnt_p1 == 1);
     TEST_PORTING_ASSERT(s_test_filter.cnt_p2 == 1);
-    TEST_PORTING_ASSERT(s_test_filter.cnt_p3 == 6);
+    TEST_PORTING_ASSERT(s_test_filter.cnt_p3 == 3);
 }
 
 /**
@@ -105,5 +106,26 @@ DEFINE_TEST_F(filter, any_slash_any, "--test_filter=*/*")
 {
     TEST_PORTING_ASSERT(s_test_filter.cnt_p1 == 0);
     TEST_PORTING_ASSERT(s_test_filter.cnt_p2 == 0);
-    TEST_PORTING_ASSERT(s_test_filter.cnt_p3 == 6);
+    TEST_PORTING_ASSERT(s_test_filter.cnt_p3 == 3);
+}
+
+DEFINE_TEST_F(filter, test_p3_0, "--test_filter", "filter.p3/0")
+{
+    TEST_PORTING_ASSERT(s_test_filter.cnt_p1 == 0);
+    TEST_PORTING_ASSERT(s_test_filter.cnt_p2 == 0);
+    TEST_PORTING_ASSERT(s_test_filter.cnt_p3 == 1);
+}
+
+DEFINE_TEST_F(filter, test_p3_12, "--test_filter", "-filter.p3/0")
+{
+    TEST_PORTING_ASSERT(s_test_filter.cnt_p1 == 1);
+    TEST_PORTING_ASSERT(s_test_filter.cnt_p2 == 1);
+    TEST_PORTING_ASSERT(s_test_filter.cnt_p3 == 2);
+}
+
+DEFINE_TEST_F(filter, test_p3_12_neg, "--test_filter", "*/*:-filter.p3/0")
+{
+    TEST_PORTING_ASSERT(s_test_filter.cnt_p1 == 0);
+    TEST_PORTING_ASSERT(s_test_filter.cnt_p2 == 0);
+    TEST_PORTING_ASSERT(s_test_filter.cnt_p3 == 2);
 }
