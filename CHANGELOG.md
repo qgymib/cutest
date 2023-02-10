@@ -1,6 +1,6 @@
 # Changelog
 
-## v1.0.7
+## v1.0.7 (2023/02/27)
 
 ### Features
 1. Smart print integer without `<inttypes.h>`
