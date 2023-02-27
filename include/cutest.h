@@ -36,12 +36,12 @@ extern "C" {
 /**
  * @brief Patch version.
  */
-#define CUTEST_VERSION_PATCH        8
+#define CUTEST_VERSION_PATCH        9
 
 /**
  * @brief Development version.
  */
-#define CUTEST_VERSION_PREREL       0
+#define CUTEST_VERSION_PREREL       1
 
 /**
  * @brief Ensure the api is exposed as C function.
@@ -1375,10 +1375,10 @@ void cutest_skip_test(void);
 /**
  * @defgroup TEST_PORTING_SYSTEM_API System API
  * 
- * To use porting all the interfaces, add `CUTEST_PORTING` (eg. `-DCUTEST_PORTING`)
+ * To porting all the interfaces, add `CUTEST_PORTING` (eg. `-DCUTEST_PORTING`)
  * when compile [cutest](https://github.com/qgymib/cutest).
  *
- * To use specific porting interface, add one or more flags listed below:
+ * To porting specific interface, add one or more flags listed below:
  * | Interface                      | Flag                          |
  * | ------------------------------ | ----------------------------- |
  * | cutest_porting_setjmp          | CUTEST_PORTING_SETJMP         |

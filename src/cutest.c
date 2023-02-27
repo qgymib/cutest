@@ -708,7 +708,7 @@ int cutest_porting_compare_floating_number(int type, const void* v1, const void*
  * @{
  */
 
-#if defined(CUTEST_PORTING)
+#if defined(CUTEST_PORTING_CVFPRINTF)
 
 /* do nothing */
 
