@@ -1,6 +1,6 @@
 # Changelog
 
-## v1.0.8
+## v1.0.8 (2023/02/27)
 
 ### Features
 1. Allow to porting specific interface
