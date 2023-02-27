@@ -8,6 +8,9 @@
 ### BREAKING CHANGES
 1. Rename colorful print porting function
 
+### Fixed
+1. Fix: manual register not working
+
 
 ## v1.0.6 (2023/02/07)
 

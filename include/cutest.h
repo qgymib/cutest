@@ -41,7 +41,7 @@ extern "C" {
 /**
  * @brief Development version.
  */
-#define CUTEST_VERSION_PREREL       2
+#define CUTEST_VERSION_PREREL       3
 
 /**
  * @brief Ensure the api is exposed as C function.
@@ -456,7 +456,7 @@ void cutest_register_case(cutest_case_t* test_case);
  * @param[in] test      Test name.
  */
 #define TEST_MANUAL_DECLARE_TEST_INTERFACE(fixture, test) \
-    TEST_C_API void cutest_usertest_entry_##fixture##_##test();
+    TEST_C_API void cutest_usertest_interface_##fixture##_##test();
 
 /**
  * @brief Call test interface.
@@ -464,7 +464,7 @@ void cutest_register_case(cutest_case_t* test_case);
  * @param[in] test      Test name.
  */
 #define TEST_MANUAL_REGISTER_TEST_INTERFACE(fixture, test) \
-    cutest_usertest_entry_##fixture##_##test();
+    cutest_usertest_interface_##fixture##_##test();
 
 /**
  * Group: TEST_MANUAL_REGISTRATION

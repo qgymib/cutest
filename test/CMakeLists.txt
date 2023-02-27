@@ -16,6 +16,7 @@ set(test_case_list
     feature_custom_type
     feature_empty
     feature_hook_balance
+    feature_manual_register
     feature_simple)
 
 add_library(test_runtime
