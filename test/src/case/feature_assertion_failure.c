@@ -6,27 +6,27 @@
 
 TEST(failure, int)
 {
-	ASSERT_EQ_INT(0, 1, "%d", _L);
+    ASSERT_EQ_INT(0, 1, "%d", _L);
 }
 
 TEST(failure, str)
 {
-	ASSERT_EQ_STR("hello", "world");
+    ASSERT_EQ_STR("hello", "world");
 }
 
 TEST(failure, ptr)
 {
-	ASSERT_EQ_PTR((void*)0, (void*)1);
+    ASSERT_EQ_PTR((void*)0, (void*)1);
 }
 
 TEST(failure, float)
 {
-	ASSERT_EQ_FLOAT(0, 1);
+    ASSERT_EQ_FLOAT(0, 1);
 }
 
 TEST(failure, double)
 {
-	ASSERT_EQ_DOUBLE(1, 2);
+    ASSERT_EQ_DOUBLE(1, 2);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -35,5 +35,5 @@ TEST(failure, double)
 
 DEFINE_TEST(failure, 0)
 {
-	TEST_PORTING_ASSERT(_TEST.rret != 0);
+    TEST_PORTING_ASSERT(_TEST.rret != 0);
 }

@@ -6,8 +6,8 @@
 
 TEST(feature, get_current_name)
 {
-	ASSERT_EQ_STR(cutest_get_current_fixture(), "feature");
-	ASSERT_EQ_STR(cutest_get_current_test(), "get_current_name");
+    ASSERT_EQ_STR(cutest_get_current_fixture(), "feature");
+    ASSERT_EQ_STR(cutest_get_current_test(), "get_current_name");
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -16,5 +16,5 @@ TEST(feature, get_current_name)
 
 DEFINE_TEST(feature, get_current_name)
 {
-	TEST_PORTING_ASSERT(_TEST.rret == 0);
+    TEST_PORTING_ASSERT(_TEST.rret == 0);
 }

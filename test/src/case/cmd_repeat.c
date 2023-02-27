@@ -8,7 +8,7 @@ static int counter = 0;
 
 TEST(repeat, 0)
 {
-	counter++;
+    counter++;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -17,5 +17,5 @@ TEST(repeat, 0)
 
 DEFINE_TEST(repeat, 0, "--test_repeat=2")
 {
-	TEST_PORTING_ASSERT(counter == 2);
+    TEST_PORTING_ASSERT(counter == 2);
 }

@@ -36,12 +36,12 @@ extern "C" {
 /**
  * @brief Patch version.
  */
-#define CUTEST_VERSION_PATCH        9
+#define CUTEST_VERSION_PATCH        10
 
 /**
  * @brief Development version.
  */
-#define CUTEST_VERSION_PREREL       0
+#define CUTEST_VERSION_PREREL       1
 
 /**
  * @brief Ensure the api is exposed as C function.
@@ -1381,11 +1381,11 @@ void cutest_skip_test(void);
  * To porting specific interface, add one or more flags listed below:
  * | Interface                      | Flag                          |
  * | ------------------------------ | ----------------------------- |
- * | cutest_porting_setjmp          | CUTEST_PORTING_SETJMP         |
- * | cutest_porting_clock_gettime   | CUTEST_PORTING_CLOCK_GETTIME  |
  * | cutest_porting_abort           | CUTEST_PORTING_ABORT          |
- * | cutest_porting_gettid          | CUTEST_PORTING_GETTID         |
+ * | cutest_porting_clock_gettime   | CUTEST_PORTING_CLOCK_GETTIME  |
  * | cutest_porting_cvfprintf       | CUTEST_PORTING_CVFPRINTF      |
+ * | cutest_porting_gettid          | CUTEST_PORTING_GETTID         |
+ * | cutest_porting_setjmp          | CUTEST_PORTING_SETJMP         |
  *
  * @{
  */
@@ -1492,7 +1492,7 @@ void* cutest_porting_gettid(void);
  * int cutest_porting_cvfprintf(FILE* stream, int color, const char* fmt, va_list ap)
  * {
  *     (void)color;
- *     return fprintf(stream, fmt, ap);
+ *     return vfprintf(stream, fmt, ap);
  * }
  * ```
  *

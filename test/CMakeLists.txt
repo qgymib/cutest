@@ -1,4 +1,46 @@
 
+add_library(test_runtime
+    src/string_matrix.c
+    src/test.c)
+target_include_directories(test_runtime
+    PUBLIC
+        $<INSTALL_INTERFACE:include>
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>)
+setup_target_wall(test_runtime)
+
+function(test_setup_test_case)
+    set(prefix TESTCASE)
+    set(options OPTIONAL FAST)
+    set(singleValues TARGET)
+    set(multiValues SOURCES LINK CFLAGS)
+
+    include(CMakeParseArguments)
+    cmake_parse_arguments(${prefix}
+        "${options}"
+        "${singleValues}"
+        "${multiValues}"
+        ${ARGN})
+
+    add_executable(${TESTCASE_TARGET}
+        ${PROJECT_SOURCE_DIR}/src/cutest.c
+        ${TESTCASE_SOURCES})
+    target_link_libraries(${TESTCASE_TARGET} PRIVATE
+        test_runtime
+        ${TESTCASE_LINK})
+    target_compile_options(${TESTCASE_TARGET} PRIVATE
+        ${TESTCASE_CFLAGS})
+    target_include_directories(${TESTCASE_TARGET}
+        PUBLIC
+            $<INSTALL_INTERFACE:include>
+        PRIVATE
+            ${PROJECT_SOURCE_DIR}/include
+            $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>)
+    setup_target_wall(${TESTCASE_TARGET})
+    add_test(NAME ${TESTCASE_TARGET} COMMAND ${TESTCASE_TARGET})
+endfunction()
+
 set(test_case_list
     cmd_also_run_disabled_tests
     cmd_filter
@@ -19,19 +61,27 @@ set(test_case_list
     feature_manual_register
     feature_simple)
 
-add_library(test_runtime
-    src/string_matrix.c
-    src/test.c)
-target_include_directories(${PROJECT_NAME}
-    PUBLIC
-        $<INSTALL_INTERFACE:include>
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>)
-setup_target_wall(test_runtime)
-target_link_libraries(test_runtime PUBLIC cutest)
-
 foreach(x IN LISTS test_case_list)
-    add_executable(${x} src/case/${x}.c)
-    setup_target_wall(${x})
-    target_link_libraries(${x} PRIVATE test_runtime)
-    add_test(NAME ${x} COMMAND ${x})
+    test_setup_test_case(TARGET ${x}
+        SOURCES src/case/${x}.c)
 endforeach()
+
+test_setup_test_case(TARGET porting_abort
+    SOURCES src/case/porting_abort.c
+    CFLAGS -DCUTEST_PORTING_ABORT)
+
+test_setup_test_case(TARGET porting_clock_gettime
+    SOURCES src/case/porting_clock_gettime.c
+    CFLAGS -DCUTEST_PORTING_CLOCK_GETTIME)
+
+test_setup_test_case(TARGET porting_cvfprintf
+    SOURCES src/case/porting_cvfprintf.c
+    CFLAGS -DCUTEST_PORTING_CVFPRINTF)
+
+test_setup_test_case(TARGET porting_gettid
+    SOURCES src/case/porting_gettid.c
+    CFLAGS -DCUTEST_PORTING_GETTID)
+
+test_setup_test_case(TARGET porting_setjmp
+    SOURCES src/case/porting_setjmp.c
+    CFLAGS -DCUTEST_PORTING_SETJMP)
