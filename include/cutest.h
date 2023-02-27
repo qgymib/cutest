@@ -73,7 +73,7 @@ extern "C" {
  * 
  * ```c
  * TEST(foo, self) {\
- *     ASSERT_EQ_D32(0, 0);
+ *     ASSERT_EQ_INT(0, 0);
  * }
  * ```
  *
@@ -90,7 +90,7 @@ extern "C" {
  * }
  * 
  * TEST_F(foo, normal) {
- *     ASSERT_NE_D32(0, 0);
+ *     ASSERT_NE_INT(0, 0);
  * }
  *
  * TEST_PARAMETERIZED_DEFINE(foo, param, int, 0, 1, 2);
@@ -506,20 +506,11 @@ void cutest_register_case(cutest_case_t* test_case);
  * + GE: `a` is equal to `b` or greater than `b`.
  *
  * The `TYPE` means the type of value `a` and `b`.
- * + D32: int32_t
- * + U32: uint32_t
- * + D64: int64_t
- * + U64: uint64_t
- * + STR: const char*
- * + PTR: const void*
- * + SIZE: size_t
- * + FLOAT: float
- * + DOUBLE: double
  *
  * > To support more types, checkout #TEST_REGISTER_TYPE_ONCE().
  *
- * So, an assertion like #ASSERT_EQ_D32() means except `a` and `b` have type of
- * `int32_t` and they are the same value.
+ * So, an assertion like #ASSERT_EQ_INT() means except `a` and `b` have type of
+ * `int` and they are the same value.
  *
  * You may notice all assertions have syntax of `ASSERT_OP_TYPE(a, b, fmt, ...)`,
  * it means custom print is available if assertion fails. For example, the
@@ -527,7 +518,7 @@ void cutest_register_case(cutest_case_t* test_case);
  * 
  * ```c
  * int errcode = ENOENT;
- * ASSERT_EQ_D32(0, errcode, "%s(%d)", strerror(errcode), errcode);
+ * ASSERT_EQ_INT(0, errcode, "%s(%d)", strerror(errcode), errcode);
  * ```
  *
  * Will print something like:
@@ -540,7 +531,7 @@ void cutest_register_case(cutest_case_t* test_case);
  * to refer to left operator and `_R` to refer to right operator:
  * 
  * ```c
- * ASSERT_EQ_D32(0, 1+2, "%d is not %d", _L, _R);
+ * ASSERT_EQ_INT(0, 1 + 2, "%d is not %d", _L, _R);
  * ```
  *
  * The output will be something like:
