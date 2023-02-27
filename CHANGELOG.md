@@ -4,6 +4,7 @@
 
 ### Features
 1. Smart print integer without `<inttypes.h>`
+2. Allow user have their own `TEST_INITIALIZER`
 
 ### BREAKING CHANGES
 1. Rename colorful print porting function

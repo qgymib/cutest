@@ -41,7 +41,7 @@ extern "C" {
 /**
  * @brief Development version.
  */
-#define CUTEST_VERSION_PREREL       3
+#define CUTEST_VERSION_PREREL       4
 
 /**
  * @brief Ensure the api is exposed as C function.
@@ -289,8 +289,23 @@ extern "C" {
 /**
  * @def TEST_INITIALIZER(f)
  * @brief Run the following code before main() invoke.
+ * 
+ * It generate a startup entrypoint with following function protocol that has
+ * no parameter and return value:
+ * ```c
+ * void (*function)(void);
+ * ```
+ *
+ * @param[f] The entrypoint name.
  */
-#ifdef __cplusplus
+#ifdef TEST_INITIALIZER
+/*
+ * Do nothing.
+ * We assume user have their own way to register test entrypoint.
+ *
+ * @warning Function must have protocol of `void (*)(void)`.
+ */
+#elif __cplusplus
 #   define TEST_INITIALIZER(f) \
         TEST_C_API void f(void); \
         struct f##_t_ { f##_t_(void) { f(); } }; f##_t_ f##_; \
