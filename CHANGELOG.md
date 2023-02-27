@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.0.8
+
+### Fixed
+1. Fix: cannot porting `cutest_porting_cvfprintf`
+
+
 ## v1.0.7 (2023/02/27)
 
 ### Features

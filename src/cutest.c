@@ -701,7 +701,9 @@ int cutest_porting_compare_floating_number(int type, const void* v1, const void*
 
 /* do nothing */
 
-#elif defined(_WIN32)
+#else
+
+#if defined(_WIN32)
 
 #include <io.h>
 #define isatty(x)                        _isatty(x)
@@ -900,6 +902,8 @@ int cutest_porting_cvfprintf(FILE* stream, int color, const char* fmt, va_list a
 
     return ret;
 }
+
+#endif
 
 /**
  * END: cutest_porting_cvfprintf()
