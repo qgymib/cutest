@@ -2,6 +2,9 @@
 
 ## v1.0.8
 
+### Features
+1. Allow to porting specific interface
+
 ### Fixed
 1. Fix: cannot porting `cutest_porting_cvfprintf`
 

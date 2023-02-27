@@ -41,7 +41,7 @@ extern "C" {
 /**
  * @brief Development version.
  */
-#define CUTEST_VERSION_PREREL       1
+#define CUTEST_VERSION_PREREL       2
 
 /**
  * @brief Ensure the api is exposed as C function.
@@ -1375,8 +1375,17 @@ void cutest_skip_test(void);
 /**
  * @defgroup TEST_PORTING_SYSTEM_API System API
  * 
- * To use porting interface, add `CUTEST_USE_PORTING` (eg. `-DCUTEST_USE_PORTING`)
+ * To use porting all the interfaces, add `CUTEST_PORTING` (eg. `-DCUTEST_PORTING`)
  * when compile [cutest](https://github.com/qgymib/cutest).
+ *
+ * To use specific porting interface, add one or more flags listed below:
+ * | Interface                      | Flag                          |
+ * | ------------------------------ | ----------------------------- |
+ * | cutest_porting_setjmp          | CUTEST_PORTING_SETJMP         |
+ * | cutest_porting_clock_gettime   | CUTEST_PORTING_CLOCK_GETTIME  |
+ * | cutest_porting_abort           | CUTEST_PORTING_ABORT          |
+ * | cutest_porting_gettid          | CUTEST_PORTING_GETTID         |
+ * | cutest_porting_cvfprintf       | CUTEST_PORTING_CVFPRINTF      |
  *
  * @{
  */
@@ -1398,34 +1407,51 @@ typedef struct cutest_porting_timespec
 typedef struct cutest_porting_jmpbuf cutest_porting_jmpbuf_t;
 
 /**
- * 
+ * @brief Function protocol for longjmp().
+ * @param[in] buf   Jump buffer.
+ * @param[in] val   Jump value, cannot be 0.
+ */
+typedef void (*cutest_porting_longjmp_fn)(cutest_porting_jmpbuf_t* buf, int val);
+
+/**
+ * @brief Execute function when call setjmp().
+ * @param[in] buf           Jump buffer.
+ * @param[in] fn_longjmp    Function to do longjmp.
+ * @param[in] val           0 if first call, otherwise is the value passed to \p fn_longjmp.
+ * @param[in] data          User defined data passed to #cutest_porting_setjmp()/
+ */
+typedef void (*cutest_porting_setjmp_fn)(cutest_porting_jmpbuf_t* buf,
+    cutest_porting_longjmp_fn fn_longjmp, int val, void* data);
+
+/**
+ * @brief Wrapper for setjmp() and longjmp().
+ *
+ * A example implementation is:
+ *
  * ```c
  * struct cutest_porting_jmpbuf
  * {
  *     jmp_buf buf;
  * };
- * void cutest_porting_setjmp(void (*execute)(cutest_porting_jmpbuf_t* buf, int val, void* data),
- *     void* data)
- * {
- *     cutest_porting_jmpbuf_t jmpbuf;
- *     execute(&jmpbuf, setjmp(jmpbuf.buf), data);
- * }
- * ```
- * 
- * @see https://man7.org/linux/man-pages/man3/setjmp.3.html
- */
-void cutest_porting_setjmp(void (*execute)(cutest_porting_jmpbuf_t* buf, int val, void* data), void* data);
-
-/**
- * ```c
- * void cutest_porting_longjmp(cutest_porting_jmpbuf_t* buf, int val)
+ * static void _cutest_porting_longjmp(cutest_porting_jmpbuf_t* buf, int val)
  * {
  *     longjmp(buf->buf, val);
  * }
+ * void cutest_porting_setjmp(cutest_porting_setjmp_fn execute, void* data)
+ * {
+ *     cutest_porting_jmpbuf_t jmpbuf;
+ *
+ *     execute(
+ *         &jmpbuf,
+ *         _cutest_porting_longjmp,
+ *         setjmp(jmpbuf.buf),
+ *         data);
+ * }
  * ```
- * @see https://man7.org/linux/man-pages/man3/longjmp.3p.html
+ *
+ * @see https://man7.org/linux/man-pages/man3/setjmp.3.html
  */
-void cutest_porting_longjmp(cutest_porting_jmpbuf_t* buf, int val);
+void cutest_porting_setjmp(cutest_porting_setjmp_fn execute, void* data);
 
 /**
  * @see https://linux.die.net/man/3/clock_gettime
@@ -1434,6 +1460,8 @@ void cutest_porting_clock_gettime(cutest_porting_timespec_t* tp);
 
 /**
  * @see https://man7.org/linux/man-pages/man3/abort.3.html
+ * @note It is not recommend to ignore last words because that will missing
+ *   something really important.
  * @param[in] fmt   Last words.
  * @param[in] ...   Arguments to last words.
  * @return          This function does not return.
@@ -1499,8 +1527,8 @@ int cutest_porting_cvfprintf(FILE* stream, int color, const char* fmt, va_list a
  * This works fine on most time, but there are indeed some hardware does
  * not follow this standard, and this technology just broken.
  *
- * To use custom compare algorithm, define `CUTEST_USE_PORTING_FLOATING_COMPARE_ALGORITHM`
- * (eg. `-DCUTEST_USE_PORTING_FLOATING_COMPARE_ALGORITHM`) when compile.
+ * To use custom compare algorithm, define `CUTEST_PORTING_COMPARE_FLOATING_NUMBER`
+ * (eg. `-DCUTEST_PORTING_COMPARE_FLOATING_NUMBER`) when compile.
  *
  * @see https://bitbashing.io/comparing-floats.html
  *

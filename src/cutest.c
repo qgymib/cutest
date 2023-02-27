@@ -22,6 +22,14 @@
 // Porting
 ///////////////////////////////////////////////////////////////////////////////
 
+#if defined(CUTEST_PORTING)
+#   define CUTEST_PORTING_SETJMP
+#   define CUTEST_PORTING_CLOCK_GETTIME
+#   define CUTEST_PORTING_ABORT
+#   define CUTEST_PORTING_GETTID
+#   define CUTEST_PORTING_CVFPRINTF
+#endif
+
 /**
  * @brief Abort the program if assertion \p x is false.
  * @note This macro does not respect `NDEBUG`.
@@ -236,7 +244,7 @@ static char* cutest_porting_strchr(const char* s, int c)
  * @{
  * BEG: cutest_porting_clock_gettime()
  */
-#if defined(CUTEST_USE_PORTING)
+#if defined(CUTEST_PORTING_CLOCK_GETTIME)
 
 /* Do nothing */
 
@@ -358,7 +366,7 @@ void cutest_porting_clock_gettime(cutest_porting_timespec_t* tp)
  * BEG: cutest_porting_abort()
  */
 
-#if defined(CUTEST_USE_PORTING)
+#if defined(CUTEST_PORTING_ABORT)
 
 /* Do nothing */
 
@@ -389,7 +397,7 @@ int cutest_porting_abort(const char* fmt, ...)
  * BEG: cutest_porting_gettid()
  */
 
-#if defined(CUTEST_USE_PORTING)
+#if defined(CUTEST_PORTING_GETTID)
 
 /* Do nothing */
 
@@ -423,7 +431,7 @@ void* cutest_porting_gettid(void)
  * BEG: cutest_porting_setjmp()
  */
 
-#if defined(CUTEST_USE_PORTING)
+#if defined(CUTEST_PORTING_SETJMP)
 
 /* Do nothing */
 
@@ -436,15 +444,18 @@ struct cutest_porting_jmpbuf
     jmp_buf buf;
 };
 
-void cutest_porting_setjmp(void (*execute)(cutest_porting_jmpbuf_t* buf, int val, void* data), void* data)
-{
-    cutest_porting_jmpbuf_t jmpbuf;
-    execute(&jmpbuf, setjmp(jmpbuf.buf), data);
-}
-
-void cutest_porting_longjmp(cutest_porting_jmpbuf_t* buf, int val)
+static void _cutest_porting_longjmp(cutest_porting_jmpbuf_t* buf, int val)
 {
     longjmp(buf->buf, val);
+}
+
+void cutest_porting_setjmp(cutest_porting_setjmp_fn execute, void* data)
+{
+    cutest_porting_jmpbuf_t jmpbuf;
+    execute(&jmpbuf,
+        _cutest_porting_longjmp,
+        setjmp(jmpbuf.buf),
+        data);
 }
 
 #endif
@@ -459,7 +470,7 @@ void cutest_porting_longjmp(cutest_porting_jmpbuf_t* buf, int val)
  * BEG: cutest_porting_compare_floating_number()
  */
 
-#if defined(CUTEST_USE_PORTING_FLOATING_COMPARE_ALGORITHM)
+#if defined(CUTEST_PORTING_COMPARE_FLOATING_NUMBER)
 
 /* Do nothing */
 
@@ -697,7 +708,7 @@ int cutest_porting_compare_floating_number(int type, const void* v1, const void*
  * @{
  */
 
-#if defined(CUTEST_USE_PORTING)
+#if defined(CUTEST_PORTING)
 
 /* do nothing */
 
@@ -1762,11 +1773,12 @@ typedef struct test_ctx
         unsigned                shuffle : 1;                    /**< Randomize running cases */
     } mask;
 
-    cutest_porting_jmpbuf_t*    jmpbuf;                            /**< Jump buffer */
+    cutest_porting_jmpbuf_t*    jmpbuf;                         /**< Jump buffer */
+    cutest_porting_longjmp_fn   fn_longjmp;                     /**< Long jmp function. */
 
     FILE*                       out;
     const cutest_hook_t*        hook;
-}test_ctx_t;
+} test_ctx_t;
 
 static int _cutest_on_cmp_case(const cutest_map_node_t* key1, const cutest_map_node_t* key2, void* arg)
 {
@@ -1815,7 +1827,7 @@ static int _cutest_on_cmp_type(const cutest_map_node_t* key1, const cutest_map_n
 static test_ctx_t           g_test_ctx;
 static test_nature_t        g_test_nature = {
     TEST_CASE_TABLE_INIT,                                               /* .case_table */
-    CUTEST_MAP_INIT(_cutest_on_cmp_type, NULL),                           /* .type_table */
+    CUTEST_MAP_INIT(_cutest_on_cmp_type, NULL),                         /* .type_table */
 };
 
 static const char* s_test_help_encoded =
@@ -1997,11 +2009,14 @@ static void _cutest_hook_after_fixture_setup(cutest_case_t* test_case, int ret)
     g_test_ctx.hook->after_setup(test_case->info.fixture_name, ret);
 }
 
-static void _cutest_fixture_run_setup_jmp(cutest_porting_jmpbuf_t* buf, int val, void* data)
+static void _cutest_fixture_run_setup_jmp(cutest_porting_jmpbuf_t* buf,
+    cutest_porting_longjmp_fn fn_longjmp, int val, void* data)
 {
     fixture_run_helper_t* helper = data;
     test_case_info_t* info = helper->info;
+
     g_test_ctx.jmpbuf = buf;
+    g_test_ctx.fn_longjmp = fn_longjmp;
 
     if (val != 0)
     {
@@ -2095,10 +2110,13 @@ static void _cutest_hook_after_all_test(void)
     g_test_ctx.hook->after_all_test();
 }
 
-static void _cutest_fixture_run_teardown_jmp(cutest_porting_jmpbuf_t* buf, int val, void* data)
+static void _cutest_fixture_run_teardown_jmp(cutest_porting_jmpbuf_t* buf,
+    cutest_porting_longjmp_fn fn_longjmp, int val, void* data)
 {
     test_case_info_t* info = data;
+
     g_test_ctx.jmpbuf = buf;
+    g_test_ctx.fn_longjmp = fn_longjmp;
 
     if (val != 0)
     {
@@ -2155,12 +2173,14 @@ static void _cutest_finishlize(test_case_info_t* info)
     cutest_porting_cfprintf(g_test_ctx.out, CUTEST_COLOR_DEFAULT, "\n");
 }
 
-static void _cutest_run_case_normal_body_jmp(cutest_porting_jmpbuf_t* buf, int val, void* data)
+static void _cutest_run_case_normal_body_jmp(cutest_porting_jmpbuf_t* buf,
+    cutest_porting_longjmp_fn fn_longjmp, int val, void* data)
 {
     test_case_helper_t* helper = data;
     test_case_info_t* info = helper->info;
 
     g_test_ctx.jmpbuf = buf;
+    g_test_ctx.fn_longjmp = fn_longjmp;
 
     if (val != 0)
     {
@@ -2271,13 +2291,15 @@ cleanup:
     _cutest_finishlize(&info);
 }
 
-static void _cutest_run_case_parameterized_body_jmp(cutest_porting_jmpbuf_t* buf, int val, void* data)
+static void _cutest_run_case_parameterized_body_jmp(cutest_porting_jmpbuf_t* buf,
+    cutest_porting_longjmp_fn fn_longjmp, int val, void* data)
 {
     test_run_parameterized_helper_t* helper = data;
     test_case_info_t* info = helper->info;
     cutest_case_t* test_case = info->test_case;
 
     g_test_ctx.jmpbuf = buf;
+    g_test_ctx.fn_longjmp = fn_longjmp;
 
     if (val != 0)
     {
@@ -3205,7 +3227,7 @@ void cutest_internal_assert_failure(void)
     }
     else
     {
-        cutest_porting_longjmp(g_test_ctx.jmpbuf, MASK_FAILURE);
+        g_test_ctx.fn_longjmp(g_test_ctx.jmpbuf, MASK_FAILURE);
     }
 }
 
