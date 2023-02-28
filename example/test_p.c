@@ -35,6 +35,7 @@ TEST_PARAMETERIZED_DEFINE(example, test_p_simple, int, 1, 2, 3);
  * It does not mater how many times you call `TEST_GET_PARAM()`, as it will
  * always return the same resule.
  */
+//! [ADD_SIMPLE_PARAMETERIZED_TEST]
 TEST_P(example, test_p_simple)
 {
     /* We can get parameterized data by `TEST_GET_PARAM()`. */
@@ -43,6 +44,7 @@ TEST_P(example, test_p_simple)
     /* You will always get the same result from `TEST_GET_PARAM()` */
     ASSERT_EQ_INT(data, TEST_GET_PARAM());
 }
+//! [ADD_SIMPLE_PARAMETERIZED_TEST]
 
 ///////////////////////////////////////////////////////////////////////////////
 // example.test_p_structure

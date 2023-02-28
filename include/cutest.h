@@ -41,7 +41,7 @@ extern "C" {
 /**
  * @brief Development version.
  */
-#define CUTEST_VERSION_PREREL       1
+#define CUTEST_VERSION_PREREL       2
 
 /**
  * @brief Ensure the api is exposed as C function.
@@ -107,6 +107,8 @@ extern "C" {
 /**
  * @brief Setup test fixture
  * @param [in] fixture  The name of fixture
+ * @see TEST_F
+ * @see TEST_P
  */
 #define TEST_FIXTURE_SETUP(fixture)    \
     TEST_C_API static void s_cutest_fixture_setup_##fixture(void)
@@ -114,6 +116,8 @@ extern "C" {
 /**
  * @brief TearDown test suit
  * @param [in] fixture  The name of fixture
+ * @see TEST_F
+ * @see TEST_P
  */
 #define TEST_FIXTURE_TEAREDOWN(fixture)    \
     TEST_C_API static void s_cutest_fixture_teardown_##fixture(void)
@@ -177,17 +181,20 @@ extern "C" {
  * You can get the parameter by #TEST_GET_PARAM(). Each cycle the #TEST_GET_PARAM()
  * will return the matching data defined in #TEST_PARAMETERIZED_DEFINE()
  *
+ * @snippet test_p.c ADD_SIMPLE_PARAMETERIZED_TEST
+ *
  * @note If you declare a Parameterized Test but do not want to use #TEST_GET_PARAM(),
  *   you may get a compile time warning like `unused parameter _test_parameterized_data`.
  *   To suppress this warning, just place #TEST_PARAMETERIZED_SUPPRESS_UNUSED
  *   in the begin of your test body.
+ *
+ * @snippet test_p.c SUPPRESS_UNUSED_PARAMETERIZED_DATA
  *
  * @param [in] fixture  The name of fixture
  * @param [in] test     The name of test case
  * @see TEST_GET_PARAM()
  * @see TEST_PARAMETERIZED_DEFINE()
  * @see TEST_PARAMETERIZED_SUPPRESS_UNUSED
- * @snippet test_p.c
  */
 #define TEST_P(fixture, test) \
     TEST_C_API void u_cutest_body_##fixture##_##test(\
@@ -207,6 +214,8 @@ extern "C" {
  * @brief Test Fixture
  * @param [in] fixture  The name of fixture
  * @param [in] test     The name of test case
+ * @see TEST_FIXTURE_SETUP
+ * @see TEST_FIXTURE_TEAREDOWN
  */
 #define TEST_F(fixture, test) \
     TEST_C_API void cutest_usertest_body_##fixture##_##test(void);\
@@ -246,6 +255,11 @@ extern "C" {
 
 /**
  * @brief Simple Test
+ * 
+ * Define a simple test that have no setup (AKA. #TEST_FIXTURE_SETUP) and teardown
+ * (AKA. #TEST_FIXTURE_TEAREDOWN) stage, which should be a self contained test.
+ * 
+ * @snippet test.c DEFINE_SIMPLE_TEST
  * @param [in] fixture  suit name
  * @param [in] test     case name
  */
@@ -285,52 +299,6 @@ extern "C" {
     TEST_C_API void cutest_usertest_body_##fixture##_##test(void)
 
 /** @cond */
-
-/**
- * @def TEST_INITIALIZER(f)
- * @brief Run the following code before main() invoke.
- * 
- * It generate a startup entrypoint with following function protocol that has
- * no parameter and return value:
- * ```c
- * void (*function)(void);
- * ```
- *
- * @param[f] The entrypoint name.
- */
-#ifdef TEST_INITIALIZER
-/*
- * Do nothing.
- * We assume user have their own way to register test entrypoint.
- *
- * @warning Function must have protocol of `void (*)(void)`.
- */
-#elif __cplusplus
-#   define TEST_INITIALIZER(f) \
-        TEST_C_API void f(void); \
-        struct f##_t_ { f##_t_(void) { f(); } }; f##_t_ f##_; \
-        TEST_C_API void f(void)
-#elif defined(_MSC_VER)
-#   pragma section(".CRT$XCU",read)
-#   define TEST_INITIALIZER2_(f,p) \
-        TEST_C_API void f(void); \
-        __declspec(allocate(".CRT$XCU")) void (*f##_)(void) = f; \
-        __pragma(comment(linker,"/include:" p #f "_")) \
-        TEST_C_API void f(void)
-#   ifdef _WIN64
-#       define TEST_INITIALIZER(f) TEST_INITIALIZER2_(f,"")
-#   else
-#       define TEST_INITIALIZER(f) TEST_INITIALIZER2_(f,"_")
-#   endif
-#elif defined(__GNUC__) || defined(__clang__) || defined(__llvm__)
-#   define TEST_INITIALIZER(f) \
-        TEST_C_API void f(void) __attribute__((constructor)); \
-        TEST_C_API void f(void)
-#else
-#   define TEST_INITIALIZER(f) \
-        TEST_C_API void f(void)
-#   define TEST_NEED_MANUAL_REGISTRATION    1
-#endif
 
 /**
  * @def TEST_ARG_COUNT
@@ -412,11 +380,23 @@ void cutest_register_case(cutest_case_t* test_case);
 /**
  * @defgroup TEST_MANUAL_REGISTRATION Manually registr test
  *
- * By default all test cases are registered automatically. If not, please check
- * whether the value of #TEST_NEED_MANUAL_REGISTRATION is 1. If so, it means
- * that your compiler does not support run codes before `main()`.
+ * @note In most case you don't need it. By default all test cases are
+ *   registered automatically. If not, please check whether the value of
+ *   #TEST_NEED_MANUAL_REGISTRATION is 1. If so, it means that your compiler
+ *   does not support function constructor.
  *
- * To make things works, you need to manually register your tests.
+ * @warning There is a chance that even your compiler support function
+ *   constructor, the linker will remove constructor code in link stage. In
+ *   such case you still need to register test manually.
+ *
+ * If your environment does not support automatically register test cases, you
+ * need to manually register your tests.
+ *
+ * There are at least two ways to manually register test cases:
+ *
+ * ## X-Macro
+ *
+ * @note This works on any standard C compiler.
  *
  * Assume you have following tests defined:
  *
@@ -450,10 +430,103 @@ void cutest_register_case(cutest_case_t* test_case);
  *   MY_TEST_TABLE(TEST_MANUAL_REGISTER_TEST_INTERFACE)
  *   ```
  *
- * @note Manual registeration can work well with automatical registeration.
+ * ## Section
+ *
+ * @note This rely on compiler and linker. Here we take gcc as example.
+ *
+ * First of all, you need a section name so all following magic can happen,
+ * let's say `cutest`.
+ *
+ * 1. Custom #TEST_INITIALIZER before include `cutest.h`
+ *   ```c
+ *   #define TEST_INITIALIZER(f) \
+ *       TEST_C_API void f(void) __attribute__((__section__(".cutest")));\
+ *       TEST_C_API void f(void)
+ *   
+ *   #include <cutest.h>
+ *   ```
+ *
+ * 2. Custom linker script .`lds`. Please note the code `ALIGN(0x4)`, it is the
+ *    size of function pointer, which should be `0x4` on 32-bit platform and
+ *    `0x8` on 64-bit platform.
+ *   ```
+ *   .cutest :
+ *   {
+ *       . = ALIGN(0x4);
+ *       _cutest_entry_start = .;
+ *       KEEP(*(SORT(.cutest*)));
+ *       _cutest_entry_end = .;
+ *       . = ALIGN(0x4);
+ *   } >RAM0L
+ *   ```
+ *
+ * 3. Load register test cases before call #cutest_run_tests()
+ *   ```c
+ *   extern (void(*)(void)) _cutest_entry_start;
+ *   extern (void(*)(void)) _cutest_entry_end;
+ *
+ *   int main(int argc, char* argv[])
+ *   {
+ *       uintptr_t func = _cutest_entry_start;
+ *       for (; func < _cutest_entry_end; func += sizeof(void*))
+ *       {
+ *           (void(*)(void)) f = func;
+ *           f();
+ *       }
+ *       return cutest_run_tests(argc, argv, stdout, NULL);
+ *   }
+ *   ```
  *
  * @{
  */
+
+/**
+ * @def TEST_INITIALIZER(f)
+ * @brief Function constructor.
+ *
+ * Run the following code before main() invoke.
+ *
+ * It generate a startup entrypoint with following function protocol that has
+ * no parameter and return value:
+ * ```c
+ * void (*function)(void);
+ * ```
+ *
+ * @param[f] The entrypoint name.
+ */
+#ifdef TEST_INITIALIZER
+/*
+ * Do nothing.
+ * We assume user have their own way to register test entrypoint.
+ *
+ * @warning Function must have protocol of `void (*)(void)`.
+ */
+#elif __cplusplus
+#   define TEST_INITIALIZER(f) \
+        TEST_C_API void f(void); \
+        struct f##_t_ { f##_t_(void) { f(); } }; f##_t_ f##_; \
+        TEST_C_API void f(void)
+#elif defined(_MSC_VER)
+#   pragma section(".CRT$XCU",read)
+#   define TEST_INITIALIZER2_(f,p) \
+        TEST_C_API void f(void); \
+        __declspec(allocate(".CRT$XCU")) void (*f##_)(void) = f; \
+        __pragma(comment(linker,"/include:" p #f "_")) \
+        TEST_C_API void f(void)
+#   ifdef _WIN64
+#       define TEST_INITIALIZER(f) TEST_INITIALIZER2_(f,"")
+#   else
+#       define TEST_INITIALIZER(f) TEST_INITIALIZER2_(f,"_")
+#   endif
+#elif defined(__GNUC__) || defined(__clang__) || defined(__llvm__)
+#   define TEST_INITIALIZER(f) \
+        TEST_C_API void f(void) __attribute__((__constructor__)); \
+        TEST_C_API void f(void)
+#else
+#   define TEST_INITIALIZER(f) \
+        TEST_C_API void f(void)
+#   define TEST_NEED_MANUAL_REGISTRATION    1
+#endif
 
 /**
  * @brief Whether manual registration is needed.
@@ -1088,9 +1161,9 @@ void cutest_register_case(cutest_case_t* test_case);
  *   ```
  *
  * @note Although not restricted, it is recommend to register all custom type before run any test.
- * @param[in] TYPE  Data type.
- * @param[in] cmp   Compare function. It must have proto of `int (*)(const TYPE*, const TYPE*)`.
- * @param[in] dump  Dump function. It must have proto of `int (*)(FILE*, const TYPE*)`.
+ * @param[in] TYPE      Data type.
+ * @param[in] fn_cmp    Compare function. It must have proto of `int (*)(const TYPE*, const TYPE*)`.
+ * @param[in] fn_dump   Dump function. It must have proto of `int (*)(FILE*, const TYPE*)`.
  */
 #define TEST_REGISTER_TYPE_ONCE(TYPE, fn_cmp, fn_dump)    \
     do {\
@@ -1390,6 +1463,52 @@ void cutest_skip_test(void);
  * @{
  */
 
+/**
+ * @defgroup TEST_PORTING_SYSTEM_API_ABORT abort()
+ * @{
+ */
+
+/**
+ * @see https://man7.org/linux/man-pages/man3/abort.3.html
+ * @note It is not recommend to ignore last words because that will missing
+ *   something really important.
+ * @param[in] fmt   Last words.
+ * @param[in] ...   Arguments to last words.
+ * @return          This function does not return.
+ */
+int cutest_porting_abort(const char* fmt, ...);
+
+/**
+ * END GROUP: TEST_PORTING_SYSTEM_API_ABORT
+ * @}
+ */
+
+/**
+ * @defgroup TEST_PORTING_SYSTEM_API_CLOCK_GETTIME clock_gettime()
+ * @{
+ */
+
+typedef struct cutest_porting_timespec
+{
+    long    tv_sec;
+    long    tv_nsec;
+} cutest_porting_timespec_t;
+
+/**
+ * @see https://linux.die.net/man/3/clock_gettime
+ */
+void cutest_porting_clock_gettime(cutest_porting_timespec_t* tp);
+
+/**
+ * END GROUP: TEST_PORTING_SYSTEM_API_CLOCK_GETTIME
+ * @}
+ */
+
+/**
+ * @defgroup TEST_PORTING_SYSTEM_API_FPRINTF fprintf()
+ * @{
+ */
+
 typedef enum cutest_porting_color
 {
     CUTEST_COLOR_DEFAULT,
@@ -1398,11 +1517,69 @@ typedef enum cutest_porting_color
     CUTEST_COLOR_YELLOW,
 } cutest_porting_color_t;
 
-typedef struct cutest_porting_timespec
-{
-    long    tv_sec;
-    long    tv_nsec;
-} cutest_porting_timespec_t;
+/**
+ * @brief Colorful print.
+ *
+ * Different system have different solutions to do colorful print, so we have a
+ * interface to do it.
+ *
+ * Below is a simple implementation that works just fine except drop colorful
+ * support:
+ *
+ * ```c
+ * int cutest_porting_cvfprintf(FILE* stream, int color, const char* fmt, va_list ap)
+ * {
+ *     (void)color;
+ *     return vfprintf(stream, fmt, ap);
+ * }
+ * ```
+ *
+ * @note The color support is optional, it only affects the vision on console.
+ *   If you do not known how to add support for it, just ignore the parameter
+ *   \p color.
+ *
+ * @warning If you want to support colorful print, do remember to distinguish
+ *   whether data is print to console. If \p stream is a normal file and the
+ *   color control charasters are printed into the file, this file is highly
+ *   possible mess up.
+ *
+ * @param[in] stream    The stream to print.
+ * @param[in] color     Print color. Checkout #cutest_porting_color_t.
+ * @param[in] fmt       Print format.
+ * @param[in] ap        Print arguments.
+ */
+int cutest_porting_cvfprintf(FILE* stream, int color, const char* fmt, va_list ap);
+
+/**
+ * END GROUP: TEST_PORTING_SYSTEM_API_FPRINTF
+ * @}
+ */
+
+/**
+ * @defgroup TEST_PORTING_SYSTEM_API_GETTID gettid()
+ * @{
+ */
+
+/**
+ * @brief Get current thread ID.
+ *
+ * This function is used for check whether ASSERTION macros are called from
+ * main thread. If your system does not support multithread, just return NULL.
+ *
+ * @see https://man7.org/linux/man-pages/man3/pthread_self.3.html
+ * @see https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-getcurrentthreadid
+ */
+void* cutest_porting_gettid(void);
+
+/**
+ * END GROUP: TEST_PORTING_SYSTEM_API_GETTID
+ * @}
+ */
+
+/**
+ * @defgroup TEST_PORTING_SYSTEM_API_SETJMP setjmp()
+ * @{
+ */
 
 typedef struct cutest_porting_jmpbuf cutest_porting_jmpbuf_t;
 
@@ -1454,63 +1631,9 @@ typedef void (*cutest_porting_setjmp_fn)(cutest_porting_jmpbuf_t* buf,
 void cutest_porting_setjmp(cutest_porting_setjmp_fn execute, void* data);
 
 /**
- * @see https://linux.die.net/man/3/clock_gettime
+ * END GROUP: TEST_PORTING_SYSTEM_API_SETJMP
+ * @}
  */
-void cutest_porting_clock_gettime(cutest_porting_timespec_t* tp);
-
-/**
- * @see https://man7.org/linux/man-pages/man3/abort.3.html
- * @note It is not recommend to ignore last words because that will missing
- *   something really important.
- * @param[in] fmt   Last words.
- * @param[in] ...   Arguments to last words.
- * @return          This function does not return.
- */
-int cutest_porting_abort(const char* fmt, ...);
-
-/**
- * @brief Get current thread ID.
- *
- * This function is used for check whether ASSERTION macros are called from
- * main thread. If your system does not support multithread, just return NULL.
- *
- * @see https://man7.org/linux/man-pages/man3/pthread_self.3.html
- * @see https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-getcurrentthreadid
- */
-void* cutest_porting_gettid(void);
-
-/**
- * @brief Colorful print.
- *
- * Different system have different solutions to do colorful print, so we have a
- * interface to do it.
- *
- * Below is a simple implementation that works just fine except drop colorful
- * support:
- *
- * ```c
- * int cutest_porting_cvfprintf(FILE* stream, int color, const char* fmt, va_list ap)
- * {
- *     (void)color;
- *     return vfprintf(stream, fmt, ap);
- * }
- * ```
- *
- * @note The color support is optional, it only affects the vision on console.
- *   If you do not known how to add support for it, just ignore the parameter
- *   \p color.
- *
- * @warning If you want to support colorful print, do remember to distinguish
- *   whether data is print to console. If \p stream is a normal file and the
- *   color control charasters are printed into the file, this file is highly
- *   possible mess up.
- *
- * @param[in] stream    The stream to print.
- * @param[in] color     Print color. Checkout #cutest_porting_color_t.
- * @param[in] fmt       Print format.
- * @param[in] ap        Print arguments.
- */
-int cutest_porting_cvfprintf(FILE* stream, int color, const char* fmt, va_list ap);
 
 /**
  * Group: TEST_PORTING_SYSTEM_API
