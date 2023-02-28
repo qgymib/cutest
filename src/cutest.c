@@ -1664,6 +1664,8 @@ static int cutest_timestamp_dif(const cutest_porting_timespec_t* t1,
 #define SET_MASK(val, mask)                 do { (val) |= (mask); } while (0)
 #define HAS_MASK(val, mask)                 ((val) & (mask))
 
+#define MAX_RAND                            99999
+
 /**
  * @brief microseconds in one second
  */
@@ -1773,6 +1775,7 @@ typedef struct test_ctx
         unsigned                shuffle : 1;                    /**< Randomize running cases */
     } mask;
 
+    unsigned long               shuffle_seed;
     cutest_porting_jmpbuf_t*    jmpbuf;                         /**< Jump buffer */
     cutest_porting_longjmp_fn   fn_longjmp;                     /**< Long jmp function. */
 
@@ -1854,7 +1857,7 @@ static const char* s_test_help_encoded =
 "      Randomize tests' orders on every iteration.\n"
 "  " COLOR_GREEN("--test_random_seed=") COLOR_YELLO("[NUMBER]") "\n"
 "      Random number seed to use for shuffling test orders (between 0 and\n"
-"      99999. By default a seed based on the current time is used for shuffle).\n"
+"      " TEST_STRINGIFY(MAX_RAND) ". By default a seed based on the current time is used for shuffle).\n"
 "\n"
 "Test Output:\n"
 "  " COLOR_GREEN("--test_print_time=") COLOR_YELLO("(") COLOR_GREEN("0") COLOR_YELLO("|") COLOR_GREEN("1") COLOR_YELLO(")") "\n"
@@ -2688,6 +2691,14 @@ static int _cutest_setup_arg_print_time(const char* str)
     return 0;
 }
 
+static void _cutest_srand(unsigned long s)
+{
+    s = s % (MAX_RAND + 1);
+
+    g_test_ctx.shuffle_seed = s;
+    cutest_porting_srand(s);
+}
+
 static int _cutest_setup_arg_random_seed(const char* str)
 {
     unsigned long val = 0;
@@ -2696,7 +2707,12 @@ static int _cutest_setup_arg_random_seed(const char* str)
         return 1 << 8 | 1;
     }
 
-    cutest_porting_srand(val);
+    if (val > MAX_RAND)
+    {
+        return 1 << 8 | 1;
+    }
+
+    _cutest_srand(val);
     return 0;
 }
 
@@ -2985,6 +3001,7 @@ static void cutest_setup_once(void)
     {
         token = 1;
         _cutest_setup_type();
+        _cutest_srand(1);
     }
 }
 
@@ -3113,11 +3130,6 @@ static void _cutest_run_all_test_once(void)
 {
     _cutest_reset_all_test();
 
-    cutest_porting_fprintf(g_test_ctx.out, "[==========]");
-    cutest_porting_fprintf(g_test_ctx.out, " total %u test%s registered.\n",
-        (unsigned)g_test_nature.case_table.size,
-        g_test_nature.case_table.size > 1 ? "s" : "");
-
     cutest_porting_timespec_t tv_total_start, tv_total_end;
     cutest_porting_clock_gettime(&tv_total_start);
 
@@ -3143,8 +3155,32 @@ static void _cutest_cleanup(void)
     g_test_ctx.hook = NULL;
 }
 
+static void _cutest_show_information(void)
+{
+    cutest_porting_fprintf(g_test_ctx.out,
+        "[  $PARAM  ] --test_shuffle=%d\n", (int)g_test_ctx.mask.shuffle);
+    cutest_porting_fprintf(g_test_ctx.out,
+        "[  $PARAM  ] --test_random_seed=%lu\n", g_test_ctx.shuffle_seed);
+    cutest_porting_fprintf(g_test_ctx.out,
+        "[  $PARAM  ] --test_also_run_disabled_tests=%d\n", (int)g_test_ctx.mask.also_run_disabled_tests);
+    cutest_porting_fprintf(g_test_ctx.out,
+        "[  $PARAM  ] --test_filter=%s\n", g_test_ctx.filter.pattern.ptr != NULL ? g_test_ctx.filter.pattern.ptr : "");
+    cutest_porting_fprintf(g_test_ctx.out,
+        "[  $PARAM  ] --test_repeat=%lu\n", g_test_ctx.counter.repeat.repeat);
+    cutest_porting_fprintf(g_test_ctx.out,
+        "[  $PARAM  ] --test_break_on_failure=%d\n", (int)g_test_ctx.mask.break_on_failure);
+    cutest_porting_fprintf(g_test_ctx.out,
+        "[  $PARAM  ] --test_print_time=%d\n", (int)!g_test_ctx.mask.no_print_time);
+    cutest_porting_fprintf(g_test_ctx.out,
+        "[==========] total %u test%s registered.\n",
+        (unsigned)g_test_nature.case_table.size,
+        g_test_nature.case_table.size > 1 ? "s" : "");
+}
+
 static void _cutest_run_all_tests(void)
 {
+    _cutest_show_information();
+
     for (g_test_ctx.counter.repeat.repeated = 0;
         g_test_ctx.counter.repeat.repeated < g_test_ctx.counter.repeat.repeat;
         g_test_ctx.counter.repeat.repeated++)

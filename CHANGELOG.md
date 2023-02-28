@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.0.10
+
+### Features
+1. Print parameter information before execute tests
+
+
 ## v1.0.9 (2023/02/27)
 
 ### Fixed
