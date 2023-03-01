@@ -5,7 +5,7 @@ UnitTest framework for C.
 
 1. Absolutely no memory allocation. You are safe to observe and measure your own program's memory usage.
 2. Tests are automatically registered when declared. No need to rewrite your test name!
-3. A rich set of assertions.
+3. A rich set of assertions. And you can register your own type.
 4. Value-parameterized tests.
 
 ## Quick start

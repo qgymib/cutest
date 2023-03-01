@@ -1,17 +1,67 @@
 /**
- * @file
- */
-/**
  * @mainpage CUnitTest
- * CUnitTest is a test framework for C. It's was inspired by GoogleTest originally.
+ * # cutest
+ * UnitTest framework for C.
  *
- * CUnitTest has following features:
- * + C89 / C99 / C11 compatible.
- * + GCC / Clang / MSVC compatible.
- * + x86 / x86_64 / arm / arm64 compatible.
- * + No dynamic memory alloc at runtime.
- * + Tests are automatically registered when declared.
- * + Support parameterized tests.
+ * ## Features
+ *
+ * 1. Absolutely no memory allocation. You are safe to observe and measure your own program's memory usage.
+ * 2. Tests are automatically registered when declared. No need to rewrite your test name!
+ * 3. A rich set of assertions. And you can register your own type.
+ * 4. Value-parameterized tests.
+ *
+ * ## Quick start
+ *
+ * ### Step 1. Call entrypoint function in your `main()`
+ *
+ * ```c
+ * int main(int argc, char* argv[]) {
+ *     return cutest_run_tests(argc, argv, stdout, NULL);
+ * }
+ * ```
+ *
+ * ### Step 2. Write your test code
+ *
+ * ```c
+ * TEST(simple, test) {
+ *     ASSERT_NE_STR("hello", "world");
+ * }
+ * ```
+ *
+ * ### Step 3. Nothing more!
+ *
+ * You are done for everything! Compile your code and run, you will have following output:
+ *
+ * ```
+ * [==========] total 1 test registered.
+ * [ RUN      ] simple.test
+ * [       OK ] simple.test (0 ms)
+ * [==========] 1/1 test case ran. (0 ms total)
+ * [  PASSED  ] 1 test.
+ * ```
+ *
+ * ## Integration
+ *
+ * ### CMake
+ *
+ * Add following code to your CMakeLists.txt:
+ *
+ * ```cmake
+ * add_subdirectory(cutest)
+ * target_link_libraries(${YOUR_TEST_EXECUTABLE} PRIVATE cutest)
+ * ```
+ *
+ * Remember to replace `${YOUR_TEST_EXECUTABLE}` with your actual executable name.
+ *
+ * ### Manually
+ *
+ * Just copy `cutest.h` (in `include/` directory) and `cutest.c` (in `src/` directory) to your build tree, and you are done.
+ *
+ * Please do note that `cutest.c` use `#include "cutest.h"` syntax to find the header file, so be sure it can be found.
+ *
+ * ## Documents
+ *
+ * Checkout [Online manual](https://qgymib.github.io/cutest/) for API reference.
  */
 #ifndef __C_UNIT_TEST_H__
 #define __C_UNIT_TEST_H__
@@ -41,7 +91,7 @@ extern "C" {
 /**
  * @brief Development version.
  */
-#define CUTEST_VERSION_PREREL       3
+#define CUTEST_VERSION_PREREL       4
 
 /**
  * @brief Ensure the api is exposed as C function.
