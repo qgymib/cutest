@@ -63,6 +63,30 @@
  *
  * Checkout [Online manual](https://qgymib.github.io/cutest/) for API reference.
  */
+/**
+ * @page FAQ
+ *
+ * @section C2146 Syntax error : missing 'token' before identifier ...
+ *
+ * It is likely that you are trying to use syntax like `ASSERT_EQ_INT(a, b, fmt, ...)`
+ * to print something custom.
+ *
+ * Due to a bug of MSVC ([__VA_ARGS__ incorrectly passed to nested macro as a single argument][1]),
+ * we are not able to pass a `const char*` string to parameter _fmt_.
+ *
+ * To avoid this compiler error, use:
+ * ```c
+ * ASSERT_EQ_INT(a, b, "example print %d", _L);
+ * ```
+ *
+ * instead of:
+ * ```c
+ * const char* fmt = "example print %d";
+ * ASSERT_EQ_INT(a, b, fmt, _L);
+ * ```
+ *
+ * [1]: (https://developercommunity.visualstudio.com/t/-va-args-incorrectly-passed-to-nested-macro-as-a-s/698476)
+ */
 #ifndef __C_UNIT_TEST_H__
 #define __C_UNIT_TEST_H__
 
@@ -91,7 +115,7 @@ extern "C" {
 /**
  * @brief Development version.
  */
-#define CUTEST_VERSION_PREREL       4
+#define CUTEST_VERSION_PREREL       5
 
 /**
  * @brief Ensure the api is exposed as C function.
