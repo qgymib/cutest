@@ -1,6 +1,6 @@
 # Changelog
 
-## v2.0.0
+## v2.0.0 (2023/03/06)
 
 ### Features
 1. Print parameter information before execute tests
