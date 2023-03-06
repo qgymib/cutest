@@ -3157,20 +3157,27 @@ static void _cutest_cleanup(void)
 
 static void _cutest_show_information(void)
 {
+#if CUTEST_VERSION_PREREL
     cutest_porting_fprintf(g_test_ctx.out,
-        "[  $PARAM  ] --test_shuffle=%d\n", (int)g_test_ctx.mask.shuffle);
+        "[ $VERSION ] %d.%d.%d-dev%d\n", CUTEST_VERSION_MAJOR, CUTEST_VERSION_MINOR, CUTEST_VERSION_PATCH, CUTEST_VERSION_PREREL);
+#else
     cutest_porting_fprintf(g_test_ctx.out,
-        "[  $PARAM  ] --test_random_seed=%lu\n", g_test_ctx.shuffle_seed);
+        "[ $VERSION ] %d.%d.%d\n", CUTEST_VERSION_MAJOR, CUTEST_VERSION_MINOR, CUTEST_VERSION_PATCH);
+#endif
     cutest_porting_fprintf(g_test_ctx.out,
-        "[  $PARAM  ] --test_also_run_disabled_tests=%d\n", (int)g_test_ctx.mask.also_run_disabled_tests);
+        "[ $PARAME. ] --test_shuffle=%d\n", (int)g_test_ctx.mask.shuffle);
     cutest_porting_fprintf(g_test_ctx.out,
-        "[  $PARAM  ] --test_filter=%s\n", g_test_ctx.filter.pattern.ptr != NULL ? g_test_ctx.filter.pattern.ptr : "");
+        "[ $PARAME. ] --test_random_seed=%lu\n", g_test_ctx.shuffle_seed);
     cutest_porting_fprintf(g_test_ctx.out,
-        "[  $PARAM  ] --test_repeat=%lu\n", g_test_ctx.counter.repeat.repeat);
+        "[ $PARAME. ] --test_also_run_disabled_tests=%d\n", (int)g_test_ctx.mask.also_run_disabled_tests);
     cutest_porting_fprintf(g_test_ctx.out,
-        "[  $PARAM  ] --test_break_on_failure=%d\n", (int)g_test_ctx.mask.break_on_failure);
+        "[ $PARAME. ] --test_filter=%s\n", g_test_ctx.filter.pattern.ptr != NULL ? g_test_ctx.filter.pattern.ptr : "");
     cutest_porting_fprintf(g_test_ctx.out,
-        "[  $PARAM  ] --test_print_time=%d\n", (int)!g_test_ctx.mask.no_print_time);
+        "[ $PARAME. ] --test_repeat=%lu\n", g_test_ctx.counter.repeat.repeat);
+    cutest_porting_fprintf(g_test_ctx.out,
+        "[ $PARAME. ] --test_break_on_failure=%d\n", (int)g_test_ctx.mask.break_on_failure);
+    cutest_porting_fprintf(g_test_ctx.out,
+        "[ $PARAME. ] --test_print_time=%d\n", (int)!g_test_ctx.mask.no_print_time);
     cutest_porting_fprintf(g_test_ctx.out,
         "[==========] total %u test%s registered.\n",
         (unsigned)g_test_nature.case_table.size,

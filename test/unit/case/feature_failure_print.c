@@ -19,7 +19,7 @@ DEFINE_TEST(failure_print, c_string)
 {
 	string_matrix_t* matrix = string_matrix_create_from_file(_TEST.out, "\n");
 
-	const char* ret = string_matrix_access(matrix, 12, 0);
+	const char* ret = string_matrix_access(matrix, 13, 0);
 	TEST_PORTING_ASSERT(strcmp(ret, "0 is not 1") == 0);
 
 	string_matrix_destroy(matrix);
