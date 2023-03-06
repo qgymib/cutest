@@ -1,9 +1,13 @@
 # Changelog
 
-## v1.0.10
+## v2.0.0
 
 ### Features
 1. Print parameter information before execute tests
+2. Assertions can accept C string variable as format parameter.
+
+### BREAKING CHANGES
+1. Rename `ASSERT_TEMPLATE_EXT` to `ASSERT_TEMPLATE`
 
 
 ## v1.0.9 (2023/02/27)

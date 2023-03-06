@@ -52,13 +52,15 @@ set(test_case_list
     cmd_repeat
     cmd_shuffle
     feature_all_assertion
-    feature_arg_count
     feature_assertion_failure
+    feature_barg
     feature_current_test
     feature_custom_type
     feature_empty
+    feature_failure_print
     feature_hook_balance
     feature_manual_register
+    feature_narg
     feature_simple)
 
 foreach(x IN LISTS test_case_list)

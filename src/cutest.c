@@ -3316,11 +3316,8 @@ int cutest_internal_compare(const char* type_name, const void* addr1, const void
 
 void cutest_internal_dump(const char* file, int line, const char* type_name,
     const char* op, const char* op_l, const char* op_r,
-    const void* addr1, const void* addr2,
-    const char* fmt, ...)
+    const void* addr1, const void* addr2)
 {
-    va_list ap;
-
     cutest_type_info_t* type_info = _cutest_get_type_info(type_name);
     if (type_info == NULL)
     {
@@ -3337,12 +3334,13 @@ void cutest_internal_dump(const char* file, int line, const char* type_name,
     cutest_porting_fprintf(g_test_ctx.out, " vs ");
     type_info->dump(g_test_ctx.out, addr2);
     cutest_porting_fprintf(g_test_ctx.out, "\n");
+}
 
-    if (*fmt != '\0')
-    {
-        va_start(ap, fmt);
-        cutest_porting_vfprintf(g_test_ctx.out, fmt, ap);
-        cutest_porting_fprintf(g_test_ctx.out, "\n");
-        va_end(ap);
-    }
+void cutest_internal_printf(const char* fmt, ...)
+{
+    va_list ap;
+    va_start(ap, fmt);
+    cutest_porting_vfprintf(g_test_ctx.out, fmt, ap);
+    cutest_porting_fprintf(g_test_ctx.out, "\n");
+    va_end(ap);
 }

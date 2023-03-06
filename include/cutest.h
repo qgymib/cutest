@@ -68,8 +68,8 @@
  *
  * @section C2146 Syntax error : missing 'token' before identifier ...
  *
- * It is likely that you are trying to use syntax like `ASSERT_EQ_INT(a, b, fmt, ...)`
- * to print something custom.
+ * It is likely that you are using version 1.x.x and trying to use syntax like
+ * `ASSERT_EQ_INT(a, b, fmt, ...)` to print something custom.
  *
  * Due to a bug of MSVC ([__VA_ARGS__ incorrectly passed to nested macro as a single argument][1]),
  * we are not able to pass a `const char*` string to parameter _fmt_.
@@ -100,7 +100,7 @@ extern "C" {
 /**
  * @brief Major version.
  */
-#define CUTEST_VERSION_MAJOR        1
+#define CUTEST_VERSION_MAJOR        2
 
 /**
  * @brief Minor version.
@@ -110,12 +110,12 @@ extern "C" {
 /**
  * @brief Patch version.
  */
-#define CUTEST_VERSION_PATCH        10
+#define CUTEST_VERSION_PATCH        0
 
 /**
  * @brief Development version.
  */
-#define CUTEST_VERSION_PREREL       5
+#define CUTEST_VERSION_PREREL       1
 
 /**
  * @brief Ensure the api is exposed as C function.
@@ -427,6 +427,59 @@ extern "C" {
         count, ...) count
 #endif
 
+ /**
+  * @def TEST_BARG
+  * @brief Check if any parameter exists.
+  */
+#if defined(_MSC_VER)
+#   define TEST_BARG(...)  \
+        TEST_INTERNAL_BARG3(TEST_INTERNAL_BARG4(__VA_ARGS__))
+#   define TEST_INTERNAL_BARG4(...)    \
+        unused, __VA_ARGS__
+#   define TEST_INTERNAL_BARG3(...)   \
+        TEST_EXPAND(TEST_INTERNAL_BARG(__VA_ARGS__, \
+            1, 1, 1, 1, 1, 1, 1, 1, \
+            1, 1, 1, 1, 1, 1, 1, 1, \
+            1, 1, 1, 1, 1, 1, 1, 1, \
+            1, 1, 1, 1, 1, 1, 1, 1, \
+            1, 1, 1, 1, 1, 1, 1, 1, \
+            1, 1, 1, 1, 1, 1, 1, 1, \
+            1, 1, 1, 1, 1, 1, 1, 1, \
+            1, 1, 1, 1, 1, 1, 1, 0) \
+        )
+#   define TEST_INTERNAL_BARG(\
+         _1,  _2,  _3,  _4,  _5,  _6,  _7,  _8, \
+         _9, _10, _11, _12, _13, _14, _15, _16, \
+        _17, _18, _19, _20, _21, _22, _23, _24, \
+        _25, _26, _27, _28, _29, _30, _31, _32, \
+        _33, _34, _35, _36, _37, _38, _39, _40, \
+        _41, _42, _43, _44, _45, _46, _47, _48, \
+        _49, _50, _51, _52, _53, _54, _55, _56, \
+        _57, _58, _59, _60, _61, _62, _63, _64, \
+        count, ...) count
+#else
+#   define TEST_BARG(...)  \
+        TEST_INTERNAL_BARG(0, ## __VA_ARGS__, 1, \
+            1, 1, 1, 1, 1, 1, 1, 1, \
+            1, 1, 1, 1, 1, 1, 1, 1, \
+            1, 1, 1, 1, 1, 1, 1, 1, \
+            1, 1, 1, 1, 1, 1, 1, 1, \
+            1, 1, 1, 1, 1, 1, 1, 1, \
+            1, 1, 1, 1, 1, 1, 1, 1, \
+            1, 1, 1, 1, 1, 1, 1, 1, \
+            1, 1, 1, 1, 1, 1, 1, 0)
+#   define TEST_INTERNAL_BARG(_0, \
+         _1,  _2,  _3,  _4,  _5,  _6,  _7,  _8, \
+         _9, _10, _11, _12, _13, _14, _15, _16, \
+        _17, _18, _19, _20, _21, _22, _23, _24, \
+        _25, _26, _27, _28, _29, _30, _31, _32, \
+        _33, _34, _35, _36, _37, _38, _39, _40, \
+        _41, _42, _43, _44, _45, _46, _47, _48, \
+        _49, _50, _51, _52, _53, _54, _55, _56, \
+        _57, _58, _59, _60, _61, _62, _63, _64, \
+        count, ...) count
+#endif
+
 #define TEST_STRINGIFY(...)     TEST_STRINGIFY_2(__VA_ARGS__)
 #define TEST_STRINGIFY_2(...)   #__VA_ARGS__
 
@@ -670,22 +723,24 @@ void cutest_register_case(cutest_case_t* test_case);
 
 /**
  * @defgroup TEST_ASSERTION Assertion
- * 
+ *
+ * ## Basic usage
+ *
  * [cutest](https://github.com/qgymib/cutest/) support rich set of assertion. An
  * assertion typically have following syntax:
- * 
+ *
  * ```c
  * ASSERT_OP_TYPE(a, b)
  * ASSERT_OP_TYPE(a, b, fmt, ...)
  * ```
- * 
+ *
  * The `OP` means which compare operation you want to use:
- * + EQ: `a` is equal to `b`.
- * + NE: `a` is not equal to `b`.
- * + LT: `a` is less than `b`.
- * + LE: `a` is equal to `b` or less than `b`.
- * + GT: `a` is greater than `b`.
- * + GE: `a` is equal to `b` or greater than `b`.
+ * + `EQ`: `a` is equal to `b`.
+ * + `NE`: `a` is not equal to `b`.
+ * + `LT`: `a` is less than `b`.
+ * + `LE`: `a` is equal to `b` or less than `b`.
+ * + `GT`: `a` is greater than `b`.
+ * + `GE`: `a` is equal to `b` or greater than `b`.
  *
  * The `TYPE` means the type of value `a` and `b`.
  *
@@ -694,10 +749,12 @@ void cutest_register_case(cutest_case_t* test_case);
  * So, an assertion like #ASSERT_EQ_INT() means except `a` and `b` have type of
  * `int` and they are the same value.
  *
+ * ## Extra cusom information
+ *
  * You may notice all assertions have syntax of `ASSERT_OP_TYPE(a, b, fmt, ...)`,
  * it means custom print is available if assertion fails. For example, the
  * following code
- * 
+ *
  * ```c
  * int errcode = ENOENT;
  * ASSERT_EQ_INT(0, errcode, "%s(%d)", strerror(errcode), errcode);
@@ -711,7 +768,7 @@ void cutest_register_case(cutest_case_t* test_case);
  *
  * You may also want to refer to the actual value of operator, you can use `_L`
  * to refer to left operator and `_R` to refer to right operator:
- * 
+ *
  * ```c
  * ASSERT_EQ_INT(0, 1 + 2, "%d is not %d", _L, _R);
  * ```
@@ -764,12 +821,12 @@ void cutest_register_case(cutest_case_t* test_case);
  * @defgroup TEST_ASSERTION_C89_CHAR char
  * @{
  */
-#define ASSERT_EQ_CHAR(a, b, ...)       ASSERT_TEMPLATE_EXT(char, ==, a, b, __VA_ARGS__)
-#define ASSERT_NE_CHAR(a, b, ...)       ASSERT_TEMPLATE_EXT(char, !=, a, b, __VA_ARGS__)
-#define ASSERT_LT_CHAR(a, b, ...)       ASSERT_TEMPLATE_EXT(char, <,  a, b, __VA_ARGS__)
-#define ASSERT_LE_CHAR(a, b, ...)       ASSERT_TEMPLATE_EXT(char, <=, a, b, __VA_ARGS__)
-#define ASSERT_GT_CHAR(a, b, ...)       ASSERT_TEMPLATE_EXT(char, >,  a, b, __VA_ARGS__)
-#define ASSERT_GE_CHAR(a, b, ...)       ASSERT_TEMPLATE_EXT(char, >=, a, b, __VA_ARGS__)
+#define ASSERT_EQ_CHAR(a, b, ...)       ASSERT_TEMPLATE(char, ==, a, b, __VA_ARGS__)
+#define ASSERT_NE_CHAR(a, b, ...)       ASSERT_TEMPLATE(char, !=, a, b, __VA_ARGS__)
+#define ASSERT_LT_CHAR(a, b, ...)       ASSERT_TEMPLATE(char, <,  a, b, __VA_ARGS__)
+#define ASSERT_LE_CHAR(a, b, ...)       ASSERT_TEMPLATE(char, <=, a, b, __VA_ARGS__)
+#define ASSERT_GT_CHAR(a, b, ...)       ASSERT_TEMPLATE(char, >,  a, b, __VA_ARGS__)
+#define ASSERT_GE_CHAR(a, b, ...)       ASSERT_TEMPLATE(char, >=, a, b, __VA_ARGS__)
 /**
  * @}
  */
@@ -778,12 +835,12 @@ void cutest_register_case(cutest_case_t* test_case);
  * @defgroup TEST_ASSERTION_C89_DCHAR signed char
  * @{
  */
-#define ASSERT_EQ_DCHAR(a, b, ...)      ASSERT_TEMPLATE_EXT(signed char, ==, a, b, __VA_ARGS__)
-#define ASSERT_NE_DCHAR(a, b, ...)      ASSERT_TEMPLATE_EXT(signed char, !=, a, b, __VA_ARGS__)
-#define ASSERT_LT_DCHAR(a, b, ...)      ASSERT_TEMPLATE_EXT(signed char, <,  a, b, __VA_ARGS__)
-#define ASSERT_LE_DCHAR(a, b, ...)      ASSERT_TEMPLATE_EXT(signed char, <=, a, b, __VA_ARGS__)
-#define ASSERT_GT_DCHAR(a, b, ...)      ASSERT_TEMPLATE_EXT(signed char, >,  a, b, __VA_ARGS__)
-#define ASSERT_GE_DCHAR(a, b, ...)      ASSERT_TEMPLATE_EXT(signed char, >=, a, b, __VA_ARGS__)
+#define ASSERT_EQ_DCHAR(a, b, ...)      ASSERT_TEMPLATE(signed char, ==, a, b, __VA_ARGS__)
+#define ASSERT_NE_DCHAR(a, b, ...)      ASSERT_TEMPLATE(signed char, !=, a, b, __VA_ARGS__)
+#define ASSERT_LT_DCHAR(a, b, ...)      ASSERT_TEMPLATE(signed char, <,  a, b, __VA_ARGS__)
+#define ASSERT_LE_DCHAR(a, b, ...)      ASSERT_TEMPLATE(signed char, <=, a, b, __VA_ARGS__)
+#define ASSERT_GT_DCHAR(a, b, ...)      ASSERT_TEMPLATE(signed char, >,  a, b, __VA_ARGS__)
+#define ASSERT_GE_DCHAR(a, b, ...)      ASSERT_TEMPLATE(signed char, >=, a, b, __VA_ARGS__)
 /**
  * @}
  */
@@ -792,12 +849,12 @@ void cutest_register_case(cutest_case_t* test_case);
  * @defgroup TEST_ASSERTION_C89_UCHAR unsigned char
  * @{
  */
-#define ASSERT_EQ_UCHAR(a, b, ...)      ASSERT_TEMPLATE_EXT(unsigned char, ==, a, b, __VA_ARGS__)
-#define ASSERT_NE_UCHAR(a, b, ...)      ASSERT_TEMPLATE_EXT(unsigned char, !=, a, b, __VA_ARGS__)
-#define ASSERT_LT_UCHAR(a, b, ...)      ASSERT_TEMPLATE_EXT(unsigned char, <,  a, b, __VA_ARGS__)
-#define ASSERT_LE_UCHAR(a, b, ...)      ASSERT_TEMPLATE_EXT(unsigned char, <=, a, b, __VA_ARGS__)
-#define ASSERT_GT_UCHAR(a, b, ...)      ASSERT_TEMPLATE_EXT(unsigned char, >,  a, b, __VA_ARGS__)
-#define ASSERT_GE_UCHAR(a, b, ...)      ASSERT_TEMPLATE_EXT(unsigned char, >=, a, b, __VA_ARGS__)
+#define ASSERT_EQ_UCHAR(a, b, ...)      ASSERT_TEMPLATE(unsigned char, ==, a, b, __VA_ARGS__)
+#define ASSERT_NE_UCHAR(a, b, ...)      ASSERT_TEMPLATE(unsigned char, !=, a, b, __VA_ARGS__)
+#define ASSERT_LT_UCHAR(a, b, ...)      ASSERT_TEMPLATE(unsigned char, <,  a, b, __VA_ARGS__)
+#define ASSERT_LE_UCHAR(a, b, ...)      ASSERT_TEMPLATE(unsigned char, <=, a, b, __VA_ARGS__)
+#define ASSERT_GT_UCHAR(a, b, ...)      ASSERT_TEMPLATE(unsigned char, >,  a, b, __VA_ARGS__)
+#define ASSERT_GE_UCHAR(a, b, ...)      ASSERT_TEMPLATE(unsigned char, >=, a, b, __VA_ARGS__)
 /**
  * @}
  */
@@ -806,12 +863,12 @@ void cutest_register_case(cutest_case_t* test_case);
  * @defgroup TEST_ASSERTION_C89_SHORT short
  * @{
  */
-#define ASSERT_EQ_SHORT(a, b, ...)      ASSERT_TEMPLATE_EXT(short, ==, a, b, __VA_ARGS__)
-#define ASSERT_NE_SHORT(a, b, ...)      ASSERT_TEMPLATE_EXT(short, !=, a, b, __VA_ARGS__)
-#define ASSERT_LT_SHORT(a, b, ...)      ASSERT_TEMPLATE_EXT(short, <,  a, b, __VA_ARGS__)
-#define ASSERT_LE_SHORT(a, b, ...)      ASSERT_TEMPLATE_EXT(short, <=, a, b, __VA_ARGS__)
-#define ASSERT_GT_SHORT(a, b, ...)      ASSERT_TEMPLATE_EXT(short, >,  a, b, __VA_ARGS__)
-#define ASSERT_GE_SHORT(a, b, ...)      ASSERT_TEMPLATE_EXT(short, >=, a, b, __VA_ARGS__)
+#define ASSERT_EQ_SHORT(a, b, ...)      ASSERT_TEMPLATE(short, ==, a, b, __VA_ARGS__)
+#define ASSERT_NE_SHORT(a, b, ...)      ASSERT_TEMPLATE(short, !=, a, b, __VA_ARGS__)
+#define ASSERT_LT_SHORT(a, b, ...)      ASSERT_TEMPLATE(short, <,  a, b, __VA_ARGS__)
+#define ASSERT_LE_SHORT(a, b, ...)      ASSERT_TEMPLATE(short, <=, a, b, __VA_ARGS__)
+#define ASSERT_GT_SHORT(a, b, ...)      ASSERT_TEMPLATE(short, >,  a, b, __VA_ARGS__)
+#define ASSERT_GE_SHORT(a, b, ...)      ASSERT_TEMPLATE(short, >=, a, b, __VA_ARGS__)
 /**
  * @}
  */
@@ -820,12 +877,12 @@ void cutest_register_case(cutest_case_t* test_case);
  * @defgroup TEST_ASSERTION_C89_USHORT unsigned short
  * @{
  */
-#define ASSERT_EQ_USHORT(a, b, ...)     ASSERT_TEMPLATE_EXT(unsigned short, ==, a, b, __VA_ARGS__)
-#define ASSERT_NE_USHORT(a, b, ...)     ASSERT_TEMPLATE_EXT(unsigned short, !=, a, b, __VA_ARGS__)
-#define ASSERT_LT_USHORT(a, b, ...)     ASSERT_TEMPLATE_EXT(unsigned short, <,  a, b, __VA_ARGS__)
-#define ASSERT_LE_USHORT(a, b, ...)     ASSERT_TEMPLATE_EXT(unsigned short, <=, a, b, __VA_ARGS__)
-#define ASSERT_GT_USHORT(a, b, ...)     ASSERT_TEMPLATE_EXT(unsigned short, >,  a, b, __VA_ARGS__)
-#define ASSERT_GE_USHORT(a, b, ...)     ASSERT_TEMPLATE_EXT(unsigned short, >=, a, b, __VA_ARGS__)
+#define ASSERT_EQ_USHORT(a, b, ...)     ASSERT_TEMPLATE(unsigned short, ==, a, b, __VA_ARGS__)
+#define ASSERT_NE_USHORT(a, b, ...)     ASSERT_TEMPLATE(unsigned short, !=, a, b, __VA_ARGS__)
+#define ASSERT_LT_USHORT(a, b, ...)     ASSERT_TEMPLATE(unsigned short, <,  a, b, __VA_ARGS__)
+#define ASSERT_LE_USHORT(a, b, ...)     ASSERT_TEMPLATE(unsigned short, <=, a, b, __VA_ARGS__)
+#define ASSERT_GT_USHORT(a, b, ...)     ASSERT_TEMPLATE(unsigned short, >,  a, b, __VA_ARGS__)
+#define ASSERT_GE_USHORT(a, b, ...)     ASSERT_TEMPLATE(unsigned short, >=, a, b, __VA_ARGS__)
 /**
  * @}
  */
@@ -834,12 +891,12 @@ void cutest_register_case(cutest_case_t* test_case);
  * @defgroup TEST_ASSERTION_C89_INT int
  * @{
  */
-#define ASSERT_EQ_INT(a, b, ...)        ASSERT_TEMPLATE_EXT(int, ==, a, b, __VA_ARGS__)
-#define ASSERT_NE_INT(a, b, ...)        ASSERT_TEMPLATE_EXT(int, !=, a, b, __VA_ARGS__)
-#define ASSERT_LT_INT(a, b, ...)        ASSERT_TEMPLATE_EXT(int, <,  a, b, __VA_ARGS__)
-#define ASSERT_LE_INT(a, b, ...)        ASSERT_TEMPLATE_EXT(int, <=, a, b, __VA_ARGS__)
-#define ASSERT_GT_INT(a, b, ...)        ASSERT_TEMPLATE_EXT(int, >,  a, b, __VA_ARGS__)
-#define ASSERT_GE_INT(a, b, ...)        ASSERT_TEMPLATE_EXT(int, >=, a, b, __VA_ARGS__)
+#define ASSERT_EQ_INT(a, b, ...)        ASSERT_TEMPLATE(int, ==, a, b, __VA_ARGS__)
+#define ASSERT_NE_INT(a, b, ...)        ASSERT_TEMPLATE(int, !=, a, b, __VA_ARGS__)
+#define ASSERT_LT_INT(a, b, ...)        ASSERT_TEMPLATE(int, <,  a, b, __VA_ARGS__)
+#define ASSERT_LE_INT(a, b, ...)        ASSERT_TEMPLATE(int, <=, a, b, __VA_ARGS__)
+#define ASSERT_GT_INT(a, b, ...)        ASSERT_TEMPLATE(int, >,  a, b, __VA_ARGS__)
+#define ASSERT_GE_INT(a, b, ...)        ASSERT_TEMPLATE(int, >=, a, b, __VA_ARGS__)
 /**
  * @}
  */
@@ -848,12 +905,12 @@ void cutest_register_case(cutest_case_t* test_case);
  * @defgroup TEST_ASSERTION_C89_UINT unsigned int
  * @{
  */
-#define ASSERT_EQ_UINT(a, b, ...)       ASSERT_TEMPLATE_EXT(unsigned int, ==, a, b, __VA_ARGS__)
-#define ASSERT_NE_UINT(a, b, ...)       ASSERT_TEMPLATE_EXT(unsigned int, !=, a, b, __VA_ARGS__)
-#define ASSERT_LT_UINT(a, b, ...)       ASSERT_TEMPLATE_EXT(unsigned int, <,  a, b, __VA_ARGS__)
-#define ASSERT_LE_UINT(a, b, ...)       ASSERT_TEMPLATE_EXT(unsigned int, <=, a, b, __VA_ARGS__)
-#define ASSERT_GT_UINT(a, b, ...)       ASSERT_TEMPLATE_EXT(unsigned int, >,  a, b, __VA_ARGS__)
-#define ASSERT_GE_UINT(a, b, ...)       ASSERT_TEMPLATE_EXT(unsigned int, >=, a, b, __VA_ARGS__)
+#define ASSERT_EQ_UINT(a, b, ...)       ASSERT_TEMPLATE(unsigned int, ==, a, b, __VA_ARGS__)
+#define ASSERT_NE_UINT(a, b, ...)       ASSERT_TEMPLATE(unsigned int, !=, a, b, __VA_ARGS__)
+#define ASSERT_LT_UINT(a, b, ...)       ASSERT_TEMPLATE(unsigned int, <,  a, b, __VA_ARGS__)
+#define ASSERT_LE_UINT(a, b, ...)       ASSERT_TEMPLATE(unsigned int, <=, a, b, __VA_ARGS__)
+#define ASSERT_GT_UINT(a, b, ...)       ASSERT_TEMPLATE(unsigned int, >,  a, b, __VA_ARGS__)
+#define ASSERT_GE_UINT(a, b, ...)       ASSERT_TEMPLATE(unsigned int, >=, a, b, __VA_ARGS__)
 /**
  * @}
  */
@@ -862,12 +919,12 @@ void cutest_register_case(cutest_case_t* test_case);
  * @defgroup TEST_ASSERTION_C89_LONG long
  * @{
  */
-#define ASSERT_EQ_LONG(a, b, ...)       ASSERT_TEMPLATE_EXT(long, ==, a, b, __VA_ARGS__)
-#define ASSERT_NE_LONG(a, b, ...)       ASSERT_TEMPLATE_EXT(long, !=, a, b, __VA_ARGS__)
-#define ASSERT_LT_LONG(a, b, ...)       ASSERT_TEMPLATE_EXT(long, <,  a, b, __VA_ARGS__)
-#define ASSERT_LE_LONG(a, b, ...)       ASSERT_TEMPLATE_EXT(long, <=, a, b, __VA_ARGS__)
-#define ASSERT_GT_LONG(a, b, ...)       ASSERT_TEMPLATE_EXT(long, >,  a, b, __VA_ARGS__)
-#define ASSERT_GE_LONG(a, b, ...)       ASSERT_TEMPLATE_EXT(long, >=, a, b, __VA_ARGS__)
+#define ASSERT_EQ_LONG(a, b, ...)       ASSERT_TEMPLATE(long, ==, a, b, __VA_ARGS__)
+#define ASSERT_NE_LONG(a, b, ...)       ASSERT_TEMPLATE(long, !=, a, b, __VA_ARGS__)
+#define ASSERT_LT_LONG(a, b, ...)       ASSERT_TEMPLATE(long, <,  a, b, __VA_ARGS__)
+#define ASSERT_LE_LONG(a, b, ...)       ASSERT_TEMPLATE(long, <=, a, b, __VA_ARGS__)
+#define ASSERT_GT_LONG(a, b, ...)       ASSERT_TEMPLATE(long, >,  a, b, __VA_ARGS__)
+#define ASSERT_GE_LONG(a, b, ...)       ASSERT_TEMPLATE(long, >=, a, b, __VA_ARGS__)
 /**
  * @}
  */
@@ -876,12 +933,12 @@ void cutest_register_case(cutest_case_t* test_case);
  * @defgroup TEST_ASSERTION_C89_ULONG unsigned long
  * @{
  */
-#define ASSERT_EQ_ULONG(a, b, ...)      ASSERT_TEMPLATE_EXT(unsigned long, ==, a, b, __VA_ARGS__)
-#define ASSERT_NE_ULONG(a, b, ...)      ASSERT_TEMPLATE_EXT(unsigned long, !=, a, b, __VA_ARGS__)
-#define ASSERT_LT_ULONG(a, b, ...)      ASSERT_TEMPLATE_EXT(unsigned long, <,  a, b, __VA_ARGS__)
-#define ASSERT_LE_ULONG(a, b, ...)      ASSERT_TEMPLATE_EXT(unsigned long, <=, a, b, __VA_ARGS__)
-#define ASSERT_GT_ULONG(a, b, ...)      ASSERT_TEMPLATE_EXT(unsigned long, >,  a, b, __VA_ARGS__)
-#define ASSERT_GE_ULONG(a, b, ...)      ASSERT_TEMPLATE_EXT(unsigned long, >=, a, b, __VA_ARGS__)
+#define ASSERT_EQ_ULONG(a, b, ...)      ASSERT_TEMPLATE(unsigned long, ==, a, b, __VA_ARGS__)
+#define ASSERT_NE_ULONG(a, b, ...)      ASSERT_TEMPLATE(unsigned long, !=, a, b, __VA_ARGS__)
+#define ASSERT_LT_ULONG(a, b, ...)      ASSERT_TEMPLATE(unsigned long, <,  a, b, __VA_ARGS__)
+#define ASSERT_LE_ULONG(a, b, ...)      ASSERT_TEMPLATE(unsigned long, <=, a, b, __VA_ARGS__)
+#define ASSERT_GT_ULONG(a, b, ...)      ASSERT_TEMPLATE(unsigned long, >,  a, b, __VA_ARGS__)
+#define ASSERT_GE_ULONG(a, b, ...)      ASSERT_TEMPLATE(unsigned long, >=, a, b, __VA_ARGS__)
 /**
  * @}
  */
@@ -890,12 +947,12 @@ void cutest_register_case(cutest_case_t* test_case);
  * @defgroup TEST_ASSERTION_C89_FLOAT float
  * @{
  */
-#define ASSERT_EQ_FLOAT(a, b, ...)      ASSERT_TEMPLATE_EXT(float, ==, a, b, __VA_ARGS__)
-#define ASSERT_NE_FLOAT(a, b, ...)      ASSERT_TEMPLATE_EXT(float, !=, a, b, __VA_ARGS__)
-#define ASSERT_LT_FLOAT(a, b, ...)      ASSERT_TEMPLATE_EXT(float, <,  a, b, __VA_ARGS__)
-#define ASSERT_LE_FLOAT(a, b, ...)      ASSERT_TEMPLATE_EXT(float, <=, a, b, __VA_ARGS__)
-#define ASSERT_GT_FLOAT(a, b, ...)      ASSERT_TEMPLATE_EXT(float, >,  a, b, __VA_ARGS__)
-#define ASSERT_GE_FLOAT(a, b, ...)      ASSERT_TEMPLATE_EXT(float, >=, a, b, __VA_ARGS__)
+#define ASSERT_EQ_FLOAT(a, b, ...)      ASSERT_TEMPLATE(float, ==, a, b, __VA_ARGS__)
+#define ASSERT_NE_FLOAT(a, b, ...)      ASSERT_TEMPLATE(float, !=, a, b, __VA_ARGS__)
+#define ASSERT_LT_FLOAT(a, b, ...)      ASSERT_TEMPLATE(float, <,  a, b, __VA_ARGS__)
+#define ASSERT_LE_FLOAT(a, b, ...)      ASSERT_TEMPLATE(float, <=, a, b, __VA_ARGS__)
+#define ASSERT_GT_FLOAT(a, b, ...)      ASSERT_TEMPLATE(float, >,  a, b, __VA_ARGS__)
+#define ASSERT_GE_FLOAT(a, b, ...)      ASSERT_TEMPLATE(float, >=, a, b, __VA_ARGS__)
 /**
  * @}
  */
@@ -904,12 +961,12 @@ void cutest_register_case(cutest_case_t* test_case);
  * @defgroup TEST_ASSERTION_C89_DOUBLE double
  * @{
  */
-#define ASSERT_EQ_DOUBLE(a, b, ...)     ASSERT_TEMPLATE_EXT(double, ==, a, b, __VA_ARGS__)
-#define ASSERT_NE_DOUBLE(a, b, ...)     ASSERT_TEMPLATE_EXT(double, !=, a, b, __VA_ARGS__)
-#define ASSERT_LT_DOUBLE(a, b, ...)     ASSERT_TEMPLATE_EXT(double, <,  a, b, __VA_ARGS__)
-#define ASSERT_LE_DOUBLE(a, b, ...)     ASSERT_TEMPLATE_EXT(double, <=, a, b, __VA_ARGS__)
-#define ASSERT_GT_DOUBLE(a, b, ...)     ASSERT_TEMPLATE_EXT(double, >,  a, b, __VA_ARGS__)
-#define ASSERT_GE_DOUBLE(a, b, ...)     ASSERT_TEMPLATE_EXT(double, >=, a, b, __VA_ARGS__)
+#define ASSERT_EQ_DOUBLE(a, b, ...)     ASSERT_TEMPLATE(double, ==, a, b, __VA_ARGS__)
+#define ASSERT_NE_DOUBLE(a, b, ...)     ASSERT_TEMPLATE(double, !=, a, b, __VA_ARGS__)
+#define ASSERT_LT_DOUBLE(a, b, ...)     ASSERT_TEMPLATE(double, <,  a, b, __VA_ARGS__)
+#define ASSERT_LE_DOUBLE(a, b, ...)     ASSERT_TEMPLATE(double, <=, a, b, __VA_ARGS__)
+#define ASSERT_GT_DOUBLE(a, b, ...)     ASSERT_TEMPLATE(double, >,  a, b, __VA_ARGS__)
+#define ASSERT_GE_DOUBLE(a, b, ...)     ASSERT_TEMPLATE(double, >=, a, b, __VA_ARGS__)
 /**
  * @}
  */
@@ -918,12 +975,12 @@ void cutest_register_case(cutest_case_t* test_case);
  * @defgroup TEST_ASSERTION_C89_PTR const void*
  * @{
  */
-#define ASSERT_EQ_PTR(a, b, ...)        ASSERT_TEMPLATE_EXT(const void*, ==, a, b, __VA_ARGS__)
-#define ASSERT_NE_PTR(a, b, ...)        ASSERT_TEMPLATE_EXT(const void*, !=, a, b, __VA_ARGS__)
-#define ASSERT_LT_PTR(a, b, ...)        ASSERT_TEMPLATE_EXT(const void*, <,  a, b, __VA_ARGS__)
-#define ASSERT_LE_PTR(a, b, ...)        ASSERT_TEMPLATE_EXT(const void*, <=, a, b, __VA_ARGS__)
-#define ASSERT_GT_PTR(a, b, ...)        ASSERT_TEMPLATE_EXT(const void*, >,  a, b, __VA_ARGS__)
-#define ASSERT_GE_PTR(a, b, ...)        ASSERT_TEMPLATE_EXT(const void*, >=, a, b, __VA_ARGS__)
+#define ASSERT_EQ_PTR(a, b, ...)        ASSERT_TEMPLATE(const void*, ==, a, b, __VA_ARGS__)
+#define ASSERT_NE_PTR(a, b, ...)        ASSERT_TEMPLATE(const void*, !=, a, b, __VA_ARGS__)
+#define ASSERT_LT_PTR(a, b, ...)        ASSERT_TEMPLATE(const void*, <,  a, b, __VA_ARGS__)
+#define ASSERT_LE_PTR(a, b, ...)        ASSERT_TEMPLATE(const void*, <=, a, b, __VA_ARGS__)
+#define ASSERT_GT_PTR(a, b, ...)        ASSERT_TEMPLATE(const void*, >,  a, b, __VA_ARGS__)
+#define ASSERT_GE_PTR(a, b, ...)        ASSERT_TEMPLATE(const void*, >=, a, b, __VA_ARGS__)
 /**
  * @}
  */
@@ -932,8 +989,8 @@ void cutest_register_case(cutest_case_t* test_case);
  * @defgroup TEST_ASSERTION_C89_STR const char*
  * @{
  */
-#define ASSERT_EQ_STR(a, b, ...)        ASSERT_TEMPLATE_EXT(const char*, ==, a, b, __VA_ARGS__)
-#define ASSERT_NE_STR(a, b, ...)        ASSERT_TEMPLATE_EXT(const char*, !=, a, b, __VA_ARGS__)
+#define ASSERT_EQ_STR(a, b, ...)        ASSERT_TEMPLATE(const char*, ==, a, b, __VA_ARGS__)
+#define ASSERT_NE_STR(a, b, ...)        ASSERT_TEMPLATE(const char*, !=, a, b, __VA_ARGS__)
 /**
  * @}
  */
@@ -992,12 +1049,12 @@ void cutest_register_case(cutest_case_t* test_case);
  * @defgroup TEST_ASSERTION_C99_LONGLONG long long
  * @{
  */
-#define ASSERT_EQ_LONGLONG(a, b, ...)   ASSERT_TEMPLATE_EXT(long long, ==, a, b, __VA_ARGS__)
-#define ASSERT_NE_LONGLONG(a, b, ...)   ASSERT_TEMPLATE_EXT(long long, !=, a, b, __VA_ARGS__)
-#define ASSERT_LT_LONGLONG(a, b, ...)   ASSERT_TEMPLATE_EXT(long long, <,  a, b, __VA_ARGS__)
-#define ASSERT_LE_LONGLONG(a, b, ...)   ASSERT_TEMPLATE_EXT(long long, <=, a, b, __VA_ARGS__)
-#define ASSERT_GT_LONGLONG(a, b, ...)   ASSERT_TEMPLATE_EXT(long long, >,  a, b, __VA_ARGS__)
-#define ASSERT_GE_LONGLONG(a, b, ...)   ASSERT_TEMPLATE_EXT(long long, >=, a, b, __VA_ARGS__)
+#define ASSERT_EQ_LONGLONG(a, b, ...)   ASSERT_TEMPLATE(long long, ==, a, b, __VA_ARGS__)
+#define ASSERT_NE_LONGLONG(a, b, ...)   ASSERT_TEMPLATE(long long, !=, a, b, __VA_ARGS__)
+#define ASSERT_LT_LONGLONG(a, b, ...)   ASSERT_TEMPLATE(long long, <,  a, b, __VA_ARGS__)
+#define ASSERT_LE_LONGLONG(a, b, ...)   ASSERT_TEMPLATE(long long, <=, a, b, __VA_ARGS__)
+#define ASSERT_GT_LONGLONG(a, b, ...)   ASSERT_TEMPLATE(long long, >,  a, b, __VA_ARGS__)
+#define ASSERT_GE_LONGLONG(a, b, ...)   ASSERT_TEMPLATE(long long, >=, a, b, __VA_ARGS__)
 /**
  * @}
  */
@@ -1006,12 +1063,12 @@ void cutest_register_case(cutest_case_t* test_case);
  * @defgroup TEST_ASSERTION_C99_ULONGLONG unsigned long long
  * @{
  */
-#define ASSERT_EQ_ULONGLONG(a, b, ...)  ASSERT_TEMPLATE_EXT(unsigned long long, ==, a, b, __VA_ARGS__)
-#define ASSERT_NE_ULONGLONG(a, b, ...)  ASSERT_TEMPLATE_EXT(unsigned long long, !=, a, b, __VA_ARGS__)
-#define ASSERT_LT_ULONGLONG(a, b, ...)  ASSERT_TEMPLATE_EXT(unsigned long long, <,  a, b, __VA_ARGS__)
-#define ASSERT_LE_ULONGLONG(a, b, ...)  ASSERT_TEMPLATE_EXT(unsigned long long, <=, a, b, __VA_ARGS__)
-#define ASSERT_GT_ULONGLONG(a, b, ...)  ASSERT_TEMPLATE_EXT(unsigned long long, >,  a, b, __VA_ARGS__)
-#define ASSERT_GE_ULONGLONG(a, b, ...)  ASSERT_TEMPLATE_EXT(unsigned long long, >=, a, b, __VA_ARGS__)
+#define ASSERT_EQ_ULONGLONG(a, b, ...)  ASSERT_TEMPLATE(unsigned long long, ==, a, b, __VA_ARGS__)
+#define ASSERT_NE_ULONGLONG(a, b, ...)  ASSERT_TEMPLATE(unsigned long long, !=, a, b, __VA_ARGS__)
+#define ASSERT_LT_ULONGLONG(a, b, ...)  ASSERT_TEMPLATE(unsigned long long, <,  a, b, __VA_ARGS__)
+#define ASSERT_LE_ULONGLONG(a, b, ...)  ASSERT_TEMPLATE(unsigned long long, <=, a, b, __VA_ARGS__)
+#define ASSERT_GT_ULONGLONG(a, b, ...)  ASSERT_TEMPLATE(unsigned long long, >,  a, b, __VA_ARGS__)
+#define ASSERT_GE_ULONGLONG(a, b, ...)  ASSERT_TEMPLATE(unsigned long long, >=, a, b, __VA_ARGS__)
 /**
  * @}
  */
@@ -1020,12 +1077,12 @@ void cutest_register_case(cutest_case_t* test_case);
  * @defgroup TEST_ASSERTION_C99_INT8 int8_t
  * @{
  */
-#define ASSERT_EQ_INT8(a, b, ...)       ASSERT_TEMPLATE_EXT(int8_t, ==, a, b, __VA_ARGS__)
-#define ASSERT_NE_INT8(a, b, ...)       ASSERT_TEMPLATE_EXT(int8_t, !=, a, b, __VA_ARGS__)
-#define ASSERT_LT_INT8(a, b, ...)       ASSERT_TEMPLATE_EXT(int8_t, <,  a, b, __VA_ARGS__)
-#define ASSERT_LE_INT8(a, b, ...)       ASSERT_TEMPLATE_EXT(int8_t, <=, a, b, __VA_ARGS__)
-#define ASSERT_GT_INT8(a, b, ...)       ASSERT_TEMPLATE_EXT(int8_t, >,  a, b, __VA_ARGS__)
-#define ASSERT_GE_INT8(a, b, ...)       ASSERT_TEMPLATE_EXT(int8_t, >=, a, b, __VA_ARGS__)
+#define ASSERT_EQ_INT8(a, b, ...)       ASSERT_TEMPLATE(int8_t, ==, a, b, __VA_ARGS__)
+#define ASSERT_NE_INT8(a, b, ...)       ASSERT_TEMPLATE(int8_t, !=, a, b, __VA_ARGS__)
+#define ASSERT_LT_INT8(a, b, ...)       ASSERT_TEMPLATE(int8_t, <,  a, b, __VA_ARGS__)
+#define ASSERT_LE_INT8(a, b, ...)       ASSERT_TEMPLATE(int8_t, <=, a, b, __VA_ARGS__)
+#define ASSERT_GT_INT8(a, b, ...)       ASSERT_TEMPLATE(int8_t, >,  a, b, __VA_ARGS__)
+#define ASSERT_GE_INT8(a, b, ...)       ASSERT_TEMPLATE(int8_t, >=, a, b, __VA_ARGS__)
 /**
  * @}
  */
@@ -1034,12 +1091,12 @@ void cutest_register_case(cutest_case_t* test_case);
  * @defgroup TEST_ASSERTION_C99_UINT8 uint8_t
  * @{
  */
-#define ASSERT_EQ_UINT8(a, b, ...)      ASSERT_TEMPLATE_EXT(uint8_t, ==, a, b, __VA_ARGS__)
-#define ASSERT_NE_UINT8(a, b, ...)      ASSERT_TEMPLATE_EXT(uint8_t, !=, a, b, __VA_ARGS__)
-#define ASSERT_LT_UINT8(a, b, ...)      ASSERT_TEMPLATE_EXT(uint8_t, <,  a, b, __VA_ARGS__)
-#define ASSERT_LE_UINT8(a, b, ...)      ASSERT_TEMPLATE_EXT(uint8_t, <=, a, b, __VA_ARGS__)
-#define ASSERT_GT_UINT8(a, b, ...)      ASSERT_TEMPLATE_EXT(uint8_t, >,  a, b, __VA_ARGS__)
-#define ASSERT_GE_UINT8(a, b, ...)      ASSERT_TEMPLATE_EXT(uint8_t, >=, a, b, __VA_ARGS__)
+#define ASSERT_EQ_UINT8(a, b, ...)      ASSERT_TEMPLATE(uint8_t, ==, a, b, __VA_ARGS__)
+#define ASSERT_NE_UINT8(a, b, ...)      ASSERT_TEMPLATE(uint8_t, !=, a, b, __VA_ARGS__)
+#define ASSERT_LT_UINT8(a, b, ...)      ASSERT_TEMPLATE(uint8_t, <,  a, b, __VA_ARGS__)
+#define ASSERT_LE_UINT8(a, b, ...)      ASSERT_TEMPLATE(uint8_t, <=, a, b, __VA_ARGS__)
+#define ASSERT_GT_UINT8(a, b, ...)      ASSERT_TEMPLATE(uint8_t, >,  a, b, __VA_ARGS__)
+#define ASSERT_GE_UINT8(a, b, ...)      ASSERT_TEMPLATE(uint8_t, >=, a, b, __VA_ARGS__)
 /**
  * @}
  */
@@ -1048,12 +1105,12 @@ void cutest_register_case(cutest_case_t* test_case);
  * @defgroup TEST_ASSERTION_C99_INT16 int16_t
  * @{
  */
-#define ASSERT_EQ_INT16(a, b, ...)      ASSERT_TEMPLATE_EXT(int16_t, ==, a, b, __VA_ARGS__)
-#define ASSERT_NE_INT16(a, b, ...)      ASSERT_TEMPLATE_EXT(int16_t, !=, a, b, __VA_ARGS__)
-#define ASSERT_LT_INT16(a, b, ...)      ASSERT_TEMPLATE_EXT(int16_t, <,  a, b, __VA_ARGS__)
-#define ASSERT_LE_INT16(a, b, ...)      ASSERT_TEMPLATE_EXT(int16_t, <=, a, b, __VA_ARGS__)
-#define ASSERT_GT_INT16(a, b, ...)      ASSERT_TEMPLATE_EXT(int16_t, >,  a, b, __VA_ARGS__)
-#define ASSERT_GE_INT16(a, b, ...)      ASSERT_TEMPLATE_EXT(int16_t, >=, a, b, __VA_ARGS__)
+#define ASSERT_EQ_INT16(a, b, ...)      ASSERT_TEMPLATE(int16_t, ==, a, b, __VA_ARGS__)
+#define ASSERT_NE_INT16(a, b, ...)      ASSERT_TEMPLATE(int16_t, !=, a, b, __VA_ARGS__)
+#define ASSERT_LT_INT16(a, b, ...)      ASSERT_TEMPLATE(int16_t, <,  a, b, __VA_ARGS__)
+#define ASSERT_LE_INT16(a, b, ...)      ASSERT_TEMPLATE(int16_t, <=, a, b, __VA_ARGS__)
+#define ASSERT_GT_INT16(a, b, ...)      ASSERT_TEMPLATE(int16_t, >,  a, b, __VA_ARGS__)
+#define ASSERT_GE_INT16(a, b, ...)      ASSERT_TEMPLATE(int16_t, >=, a, b, __VA_ARGS__)
 /**
  * @}
  */
@@ -1063,12 +1120,12 @@ void cutest_register_case(cutest_case_t* test_case);
  * @defgroup TEST_ASSERTION_C99_UINT16 uint16_t
  * @{
  */
-#define ASSERT_EQ_UINT16(a, b, ...)     ASSERT_TEMPLATE_EXT(uint16_t, ==, a, b, __VA_ARGS__)
-#define ASSERT_NE_UINT16(a, b, ...)     ASSERT_TEMPLATE_EXT(uint16_t, !=, a, b, __VA_ARGS__)
-#define ASSERT_LT_UINT16(a, b, ...)     ASSERT_TEMPLATE_EXT(uint16_t, <,  a, b, __VA_ARGS__)
-#define ASSERT_LE_UINT16(a, b, ...)     ASSERT_TEMPLATE_EXT(uint16_t, <=, a, b, __VA_ARGS__)
-#define ASSERT_GT_UINT16(a, b, ...)     ASSERT_TEMPLATE_EXT(uint16_t, >,  a, b, __VA_ARGS__)
-#define ASSERT_GE_UINT16(a, b, ...)     ASSERT_TEMPLATE_EXT(uint16_t, >=, a, b, __VA_ARGS__)
+#define ASSERT_EQ_UINT16(a, b, ...)     ASSERT_TEMPLATE(uint16_t, ==, a, b, __VA_ARGS__)
+#define ASSERT_NE_UINT16(a, b, ...)     ASSERT_TEMPLATE(uint16_t, !=, a, b, __VA_ARGS__)
+#define ASSERT_LT_UINT16(a, b, ...)     ASSERT_TEMPLATE(uint16_t, <,  a, b, __VA_ARGS__)
+#define ASSERT_LE_UINT16(a, b, ...)     ASSERT_TEMPLATE(uint16_t, <=, a, b, __VA_ARGS__)
+#define ASSERT_GT_UINT16(a, b, ...)     ASSERT_TEMPLATE(uint16_t, >,  a, b, __VA_ARGS__)
+#define ASSERT_GE_UINT16(a, b, ...)     ASSERT_TEMPLATE(uint16_t, >=, a, b, __VA_ARGS__)
 /**
  * @}
  */
@@ -1077,12 +1134,12 @@ void cutest_register_case(cutest_case_t* test_case);
  * @defgroup TEST_ASSERTION_C99_INT32 int32_t
  * @{
  */
-#define ASSERT_EQ_INT32(a, b, ...)      ASSERT_TEMPLATE_EXT(int32_t, ==, a, b, __VA_ARGS__)
-#define ASSERT_NE_INT32(a, b, ...)      ASSERT_TEMPLATE_EXT(int32_t, !=, a, b, __VA_ARGS__)
-#define ASSERT_LT_INT32(a, b, ...)      ASSERT_TEMPLATE_EXT(int32_t, <,  a, b, __VA_ARGS__)
-#define ASSERT_LE_INT32(a, b, ...)      ASSERT_TEMPLATE_EXT(int32_t, <=, a, b, __VA_ARGS__)
-#define ASSERT_GT_INT32(a, b, ...)      ASSERT_TEMPLATE_EXT(int32_t, >,  a, b, __VA_ARGS__)
-#define ASSERT_GE_INT32(a, b, ...)      ASSERT_TEMPLATE_EXT(int32_t, >=, a, b, __VA_ARGS__)
+#define ASSERT_EQ_INT32(a, b, ...)      ASSERT_TEMPLATE(int32_t, ==, a, b, __VA_ARGS__)
+#define ASSERT_NE_INT32(a, b, ...)      ASSERT_TEMPLATE(int32_t, !=, a, b, __VA_ARGS__)
+#define ASSERT_LT_INT32(a, b, ...)      ASSERT_TEMPLATE(int32_t, <,  a, b, __VA_ARGS__)
+#define ASSERT_LE_INT32(a, b, ...)      ASSERT_TEMPLATE(int32_t, <=, a, b, __VA_ARGS__)
+#define ASSERT_GT_INT32(a, b, ...)      ASSERT_TEMPLATE(int32_t, >,  a, b, __VA_ARGS__)
+#define ASSERT_GE_INT32(a, b, ...)      ASSERT_TEMPLATE(int32_t, >=, a, b, __VA_ARGS__)
 /**
  * @}
  */
@@ -1091,12 +1148,12 @@ void cutest_register_case(cutest_case_t* test_case);
  * @defgroup TEST_ASSERTION_C99_UINT32 uint32_t
  * @{
  */
-#define ASSERT_EQ_UINT32(a, b, ...)     ASSERT_TEMPLATE_EXT(uint32_t, ==, a, b, __VA_ARGS__)
-#define ASSERT_NE_UINT32(a, b, ...)     ASSERT_TEMPLATE_EXT(uint32_t, !=, a, b, __VA_ARGS__)
-#define ASSERT_LT_UINT32(a, b, ...)     ASSERT_TEMPLATE_EXT(uint32_t, <,  a, b, __VA_ARGS__)
-#define ASSERT_LE_UINT32(a, b, ...)     ASSERT_TEMPLATE_EXT(uint32_t, <=, a, b, __VA_ARGS__)
-#define ASSERT_GT_UINT32(a, b, ...)     ASSERT_TEMPLATE_EXT(uint32_t, >,  a, b, __VA_ARGS__)
-#define ASSERT_GE_UINT32(a, b, ...)     ASSERT_TEMPLATE_EXT(uint32_t, >=, a, b, __VA_ARGS__)
+#define ASSERT_EQ_UINT32(a, b, ...)     ASSERT_TEMPLATE(uint32_t, ==, a, b, __VA_ARGS__)
+#define ASSERT_NE_UINT32(a, b, ...)     ASSERT_TEMPLATE(uint32_t, !=, a, b, __VA_ARGS__)
+#define ASSERT_LT_UINT32(a, b, ...)     ASSERT_TEMPLATE(uint32_t, <,  a, b, __VA_ARGS__)
+#define ASSERT_LE_UINT32(a, b, ...)     ASSERT_TEMPLATE(uint32_t, <=, a, b, __VA_ARGS__)
+#define ASSERT_GT_UINT32(a, b, ...)     ASSERT_TEMPLATE(uint32_t, >,  a, b, __VA_ARGS__)
+#define ASSERT_GE_UINT32(a, b, ...)     ASSERT_TEMPLATE(uint32_t, >=, a, b, __VA_ARGS__)
 /**
  * @}
  */
@@ -1105,12 +1162,12 @@ void cutest_register_case(cutest_case_t* test_case);
  * @defgroup TEST_ASSERTION_C99_INT64 int64_t
  * @{
  */
-#define ASSERT_EQ_INT64(a, b, ...)      ASSERT_TEMPLATE_EXT(int64_t, ==, a, b, __VA_ARGS__)
-#define ASSERT_NE_INT64(a, b, ...)      ASSERT_TEMPLATE_EXT(int64_t, !=, a, b, __VA_ARGS__)
-#define ASSERT_LT_INT64(a, b, ...)      ASSERT_TEMPLATE_EXT(int64_t, <,  a, b, __VA_ARGS__)
-#define ASSERT_LE_INT64(a, b, ...)      ASSERT_TEMPLATE_EXT(int64_t, <=, a, b, __VA_ARGS__)
-#define ASSERT_GT_INT64(a, b, ...)      ASSERT_TEMPLATE_EXT(int64_t, >,  a, b, __VA_ARGS__)
-#define ASSERT_GE_INT64(a, b, ...)      ASSERT_TEMPLATE_EXT(int64_t, >=, a, b, __VA_ARGS__)
+#define ASSERT_EQ_INT64(a, b, ...)      ASSERT_TEMPLATE(int64_t, ==, a, b, __VA_ARGS__)
+#define ASSERT_NE_INT64(a, b, ...)      ASSERT_TEMPLATE(int64_t, !=, a, b, __VA_ARGS__)
+#define ASSERT_LT_INT64(a, b, ...)      ASSERT_TEMPLATE(int64_t, <,  a, b, __VA_ARGS__)
+#define ASSERT_LE_INT64(a, b, ...)      ASSERT_TEMPLATE(int64_t, <=, a, b, __VA_ARGS__)
+#define ASSERT_GT_INT64(a, b, ...)      ASSERT_TEMPLATE(int64_t, >,  a, b, __VA_ARGS__)
+#define ASSERT_GE_INT64(a, b, ...)      ASSERT_TEMPLATE(int64_t, >=, a, b, __VA_ARGS__)
 /**
  * @}
  */
@@ -1119,12 +1176,12 @@ void cutest_register_case(cutest_case_t* test_case);
  * @defgroup TEST_ASSERTION_C99_UINT64 uint64_t
  * @{
  */
-#define ASSERT_EQ_UINT64(a, b, ...)     ASSERT_TEMPLATE_EXT(uint64_t, ==, a, b, __VA_ARGS__)
-#define ASSERT_NE_UINT64(a, b, ...)     ASSERT_TEMPLATE_EXT(uint64_t, !=, a, b, __VA_ARGS__)
-#define ASSERT_LT_UINT64(a, b, ...)     ASSERT_TEMPLATE_EXT(uint64_t, <,  a, b, __VA_ARGS__)
-#define ASSERT_LE_UINT64(a, b, ...)     ASSERT_TEMPLATE_EXT(uint64_t, <=, a, b, __VA_ARGS__)
-#define ASSERT_GT_UINT64(a, b, ...)     ASSERT_TEMPLATE_EXT(uint64_t, >,  a, b, __VA_ARGS__)
-#define ASSERT_GE_UINT64(a, b, ...)     ASSERT_TEMPLATE_EXT(uint64_t, >=, a, b, __VA_ARGS__)
+#define ASSERT_EQ_UINT64(a, b, ...)     ASSERT_TEMPLATE(uint64_t, ==, a, b, __VA_ARGS__)
+#define ASSERT_NE_UINT64(a, b, ...)     ASSERT_TEMPLATE(uint64_t, !=, a, b, __VA_ARGS__)
+#define ASSERT_LT_UINT64(a, b, ...)     ASSERT_TEMPLATE(uint64_t, <,  a, b, __VA_ARGS__)
+#define ASSERT_LE_UINT64(a, b, ...)     ASSERT_TEMPLATE(uint64_t, <=, a, b, __VA_ARGS__)
+#define ASSERT_GT_UINT64(a, b, ...)     ASSERT_TEMPLATE(uint64_t, >,  a, b, __VA_ARGS__)
+#define ASSERT_GE_UINT64(a, b, ...)     ASSERT_TEMPLATE(uint64_t, >=, a, b, __VA_ARGS__)
 /**
  * @}
  */
@@ -1133,12 +1190,12 @@ void cutest_register_case(cutest_case_t* test_case);
  * @defgroup TEST_ASSERTION_C99_SIZE size_t
  * @{
  */
-#define ASSERT_EQ_SIZE(a, b, ...)       ASSERT_TEMPLATE_EXT(size_t, ==, a, b, __VA_ARGS__)
-#define ASSERT_NE_SIZE(a, b, ...)       ASSERT_TEMPLATE_EXT(size_t, !=, a, b, __VA_ARGS__)
-#define ASSERT_LT_SIZE(a, b, ...)       ASSERT_TEMPLATE_EXT(size_t, <,  a, b, __VA_ARGS__)
-#define ASSERT_LE_SIZE(a, b, ...)       ASSERT_TEMPLATE_EXT(size_t, <=, a, b, __VA_ARGS__)
-#define ASSERT_GT_SIZE(a, b, ...)       ASSERT_TEMPLATE_EXT(size_t, >,  a, b, __VA_ARGS__)
-#define ASSERT_GE_SIZE(a, b, ...)       ASSERT_TEMPLATE_EXT(size_t, >=, a, b, __VA_ARGS__)
+#define ASSERT_EQ_SIZE(a, b, ...)       ASSERT_TEMPLATE(size_t, ==, a, b, __VA_ARGS__)
+#define ASSERT_NE_SIZE(a, b, ...)       ASSERT_TEMPLATE(size_t, !=, a, b, __VA_ARGS__)
+#define ASSERT_LT_SIZE(a, b, ...)       ASSERT_TEMPLATE(size_t, <,  a, b, __VA_ARGS__)
+#define ASSERT_LE_SIZE(a, b, ...)       ASSERT_TEMPLATE(size_t, <=, a, b, __VA_ARGS__)
+#define ASSERT_GT_SIZE(a, b, ...)       ASSERT_TEMPLATE(size_t, >,  a, b, __VA_ARGS__)
+#define ASSERT_GE_SIZE(a, b, ...)       ASSERT_TEMPLATE(size_t, >=, a, b, __VA_ARGS__)
 /**
  * @}
  */
@@ -1147,12 +1204,12 @@ void cutest_register_case(cutest_case_t* test_case);
  * @defgroup TEST_ASSERTION_C99_PTRDIFF ptrdiff_t
  * @{
  */
-#define ASSERT_EQ_PTRDIFF(a, b, ...)    ASSERT_TEMPLATE_EXT(ptrdiff_t, ==, a, b, __VA_ARGS__)
-#define ASSERT_NE_PTRDIFF(a, b, ...)    ASSERT_TEMPLATE_EXT(ptrdiff_t, !=, a, b, __VA_ARGS__)
-#define ASSERT_LT_PTRDIFF(a, b, ...)    ASSERT_TEMPLATE_EXT(ptrdiff_t, <,  a, b, __VA_ARGS__)
-#define ASSERT_LE_PTRDIFF(a, b, ...)    ASSERT_TEMPLATE_EXT(ptrdiff_t, <=, a, b, __VA_ARGS__)
-#define ASSERT_GT_PTRDIFF(a, b, ...)    ASSERT_TEMPLATE_EXT(ptrdiff_t, >,  a, b, __VA_ARGS__)
-#define ASSERT_GE_PTRDIFF(a, b, ...)    ASSERT_TEMPLATE_EXT(ptrdiff_t, >=, a, b, __VA_ARGS__)
+#define ASSERT_EQ_PTRDIFF(a, b, ...)    ASSERT_TEMPLATE(ptrdiff_t, ==, a, b, __VA_ARGS__)
+#define ASSERT_NE_PTRDIFF(a, b, ...)    ASSERT_TEMPLATE(ptrdiff_t, !=, a, b, __VA_ARGS__)
+#define ASSERT_LT_PTRDIFF(a, b, ...)    ASSERT_TEMPLATE(ptrdiff_t, <,  a, b, __VA_ARGS__)
+#define ASSERT_LE_PTRDIFF(a, b, ...)    ASSERT_TEMPLATE(ptrdiff_t, <=, a, b, __VA_ARGS__)
+#define ASSERT_GT_PTRDIFF(a, b, ...)    ASSERT_TEMPLATE(ptrdiff_t, >,  a, b, __VA_ARGS__)
+#define ASSERT_GE_PTRDIFF(a, b, ...)    ASSERT_TEMPLATE(ptrdiff_t, >=, a, b, __VA_ARGS__)
 /**
  * @}
  */
@@ -1161,12 +1218,12 @@ void cutest_register_case(cutest_case_t* test_case);
  * @defgroup TEST_ASSERTION_C99_INTPTR inttpr_t
  * @{
  */
-#define ASSERT_EQ_INTPTR(a, b, ...)     ASSERT_TEMPLATE_EXT(intptr_t, ==, a, b, __VA_ARGS__)
-#define ASSERT_NE_INTPTR(a, b, ...)     ASSERT_TEMPLATE_EXT(intptr_t, !=, a, b, __VA_ARGS__)
-#define ASSERT_LT_INTPTR(a, b, ...)     ASSERT_TEMPLATE_EXT(intptr_t, <,  a, b, __VA_ARGS__)
-#define ASSERT_LE_INTPTR(a, b, ...)     ASSERT_TEMPLATE_EXT(intptr_t, <=, a, b, __VA_ARGS__)
-#define ASSERT_GT_INTPTR(a, b, ...)     ASSERT_TEMPLATE_EXT(intptr_t, >,  a, b, __VA_ARGS__)
-#define ASSERT_GE_INTPTR(a, b, ...)     ASSERT_TEMPLATE_EXT(intptr_t, >=, a, b, __VA_ARGS__)
+#define ASSERT_EQ_INTPTR(a, b, ...)     ASSERT_TEMPLATE(intptr_t, ==, a, b, __VA_ARGS__)
+#define ASSERT_NE_INTPTR(a, b, ...)     ASSERT_TEMPLATE(intptr_t, !=, a, b, __VA_ARGS__)
+#define ASSERT_LT_INTPTR(a, b, ...)     ASSERT_TEMPLATE(intptr_t, <,  a, b, __VA_ARGS__)
+#define ASSERT_LE_INTPTR(a, b, ...)     ASSERT_TEMPLATE(intptr_t, <=, a, b, __VA_ARGS__)
+#define ASSERT_GT_INTPTR(a, b, ...)     ASSERT_TEMPLATE(intptr_t, >,  a, b, __VA_ARGS__)
+#define ASSERT_GE_INTPTR(a, b, ...)     ASSERT_TEMPLATE(intptr_t, >=, a, b, __VA_ARGS__)
 /**
  * @}
  */
@@ -1175,12 +1232,12 @@ void cutest_register_case(cutest_case_t* test_case);
  * @defgroup TEST_ASSERTION_C99_UINTPTR uinttpr_t
  * @{
  */
-#define ASSERT_EQ_UINTPTR(a, b, ...)    ASSERT_TEMPLATE_EXT(uintptr_t, ==, a, b, __VA_ARGS__)
-#define ASSERT_NE_UINTPTR(a, b, ...)    ASSERT_TEMPLATE_EXT(uintptr_t, !=, a, b, __VA_ARGS__)
-#define ASSERT_LT_UINTPTR(a, b, ...)    ASSERT_TEMPLATE_EXT(uintptr_t, <,  a, b, __VA_ARGS__)
-#define ASSERT_LE_UINTPTR(a, b, ...)    ASSERT_TEMPLATE_EXT(uintptr_t, <=, a, b, __VA_ARGS__)
-#define ASSERT_GT_UINTPTR(a, b, ...)    ASSERT_TEMPLATE_EXT(uintptr_t, >,  a, b, __VA_ARGS__)
-#define ASSERT_GE_UINTPTR(a, b, ...)    ASSERT_TEMPLATE_EXT(uintptr_t, >=, a, b, __VA_ARGS__)
+#define ASSERT_EQ_UINTPTR(a, b, ...)    ASSERT_TEMPLATE(uintptr_t, ==, a, b, __VA_ARGS__)
+#define ASSERT_NE_UINTPTR(a, b, ...)    ASSERT_TEMPLATE(uintptr_t, !=, a, b, __VA_ARGS__)
+#define ASSERT_LT_UINTPTR(a, b, ...)    ASSERT_TEMPLATE(uintptr_t, <,  a, b, __VA_ARGS__)
+#define ASSERT_LE_UINTPTR(a, b, ...)    ASSERT_TEMPLATE(uintptr_t, <=, a, b, __VA_ARGS__)
+#define ASSERT_GT_UINTPTR(a, b, ...)    ASSERT_TEMPLATE(uintptr_t, >,  a, b, __VA_ARGS__)
+#define ASSERT_GE_UINTPTR(a, b, ...)    ASSERT_TEMPLATE(uintptr_t, >=, a, b, __VA_ARGS__)
 /**
  * @}
  */
@@ -1223,12 +1280,12 @@ void cutest_register_case(cutest_case_t* test_case);
  * + Define assertion macros
  *
  *   ```c
- *   #define ASSERT_EQ_FOO(a, b, ...)   ASSERT_TEMPLATE_EXT(foo_t, ==, a, b, __VA_ARGS__)
- *   #define ASSERT_NE_FOO(a, b, ...)   ASSERT_TEMPLATE_EXT(foo_t, !=, a, b, __VA_ARGS__)
- *   #define ASSERT_LT_FOO(a, b, ...)   ASSERT_TEMPLATE_EXT(foo_t, <,  a, b, __VA_ARGS__)
- *   #define ASSERT_LE_FOO(a, b, ...)   ASSERT_TEMPLATE_EXT(foo_t, <=, a, b, __VA_ARGS__)
- *   #define ASSERT_GT_FOO(a, b, ...)   ASSERT_TEMPLATE_EXT(foo_t, >,  a, b, __VA_ARGS__)
- *   #define ASSERT_GE_FOO(a, b, ...)   ASSERT_TEMPLATE_EXT(foo_t, >=, a, b, __VA_ARGS__)
+ *   #define ASSERT_EQ_FOO(a, b, ...)   ASSERT_TEMPLATE(foo_t, ==, a, b, __VA_ARGS__)
+ *   #define ASSERT_NE_FOO(a, b, ...)   ASSERT_TEMPLATE(foo_t, !=, a, b, __VA_ARGS__)
+ *   #define ASSERT_LT_FOO(a, b, ...)   ASSERT_TEMPLATE(foo_t, <,  a, b, __VA_ARGS__)
+ *   #define ASSERT_LE_FOO(a, b, ...)   ASSERT_TEMPLATE(foo_t, <=, a, b, __VA_ARGS__)
+ *   #define ASSERT_GT_FOO(a, b, ...)   ASSERT_TEMPLATE(foo_t, >,  a, b, __VA_ARGS__)
+ *   #define ASSERT_GE_FOO(a, b, ...)   ASSERT_TEMPLATE(foo_t, >=, a, b, __VA_ARGS__)
  *   ```
  *
  * Now you can use `ASSERT_EQ_FOO()` / `ASSERT_NE_FOO()` / etc to do assertion.
@@ -1303,14 +1360,15 @@ void cutest_register_case(cutest_case_t* test_case);
  * @param[in] fmt   Extra print format when assert failure.
  * @param[in] ...   Print arguments.
  */
-#define ASSERT_TEMPLATE_EXT(TYPE, OP, a, b, fmt, ...) \
+#define ASSERT_TEMPLATE(TYPE, OP, a, b, fmt, ...) \
     do {\
         TYPE _L = (a); TYPE _R = (b);\
         if (cutest_internal_compare(#TYPE, (const void*)&_L, (const void*)&_R) OP 0) {\
             break;\
         }\
-        cutest_internal_dump(__FILE__, __LINE__, #TYPE, #OP, #a, #b, (const void*)&_L, (const void*)&_R,\
-            "" fmt, ##__VA_ARGS__);\
+        cutest_internal_dump(__FILE__, __LINE__, \
+            #TYPE, #OP, #a, #b, (const void*)&_L, (const void*)&_R);\
+        TEST_INTERNAL_SELECT(TEST_INTERNAL_NONE, cutest_internal_printf, fmt)(fmt, ##__VA_ARGS__);\
         if (cutest_internal_break_on_failure()) {\
             TEST_DEBUGBREAK;\
         }\
@@ -1318,6 +1376,14 @@ void cutest_register_case(cutest_case_t* test_case);
     } TEST_MSVC_WARNNING_GUARD(while (0), 4127)
 
 /** @cond */
+
+#define TEST_INTERNAL_SELECT(a, b, ...)  \
+    TEST_JOIN(TEST_INTERNAL_SELECT_, TEST_BARG(__VA_ARGS__))(a, b)
+
+#define TEST_INTERNAL_SELECT_0(a, b) a
+#define TEST_INTERNAL_SELECT_1(a, b) b
+
+#define TEST_INTERNAL_NONE(...)
 
 /**
  * @brief Compare function for specific type.
@@ -1419,7 +1485,9 @@ int cutest_internal_compare(const char* type_name, const void* addr1, const void
  */
 void cutest_internal_dump(const char* file, int line, const char* type_name,
     const char* op, const char* op_l, const char* op_r,
-    const void* addr1, const void* addr2, const char* fmt, ...);
+    const void* addr1, const void* addr2);
+
+void cutest_internal_printf(const char* fmt, ...);
 
 /**
  * @brief Check if `--test_break_on_failure` is set.

@@ -19,7 +19,7 @@ static int _on_print_custom(FILE* file, const custom_type_t** addr)
     return fprintf(file, "{ a:%d }", (*addr)->a);
 }
 
-#define ASSERT_EQ_CUSTOM(a, b, ...) ASSERT_TEMPLATE_EXT(const custom_type_t*, ==, a, b, __VA_ARGS__)
+#define ASSERT_EQ_CUSTOM(a, b, ...) ASSERT_TEMPLATE(const custom_type_t*, ==, a, b, __VA_ARGS__)
 
 TEST(custom_type, 0)
 {
