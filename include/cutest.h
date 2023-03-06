@@ -218,7 +218,7 @@ extern "C" {
 #define TEST_PARAMETERIZED_DEFINE(fixture, test, TYPE, ...)  \
     TEST_C_API static void cutest_usertest_parameterized_register_##fixture##_##test(void (*cb)(TYPE*, unsigned long)) {\
         static TYPE s_parameterized_userdata[] = { __VA_ARGS__ };\
-        static cutest_case_t s_tests[TEST_ARG_COUNT(__VA_ARGS__)];\
+        static cutest_case_t s_tests[TEST_NARG(__VA_ARGS__)];\
         unsigned long number_of_parameterized_data = sizeof(s_parameterized_userdata) / sizeof(s_parameterized_userdata[0]);\
         unsigned long i = 0;\
         for (i = 0; i < number_of_parameterized_data; i++) {\
@@ -375,21 +375,56 @@ extern "C" {
 /** @cond */
 
 /**
- * @def TEST_ARG_COUNT
+ * @def TEST_NARG
  * @brief Get the number of arguments
  */
 #ifdef _MSC_VER // Microsoft compilers
-#   define TEST_ARG_COUNT(...)  \
-        TEST_INTERNAL_EXPAND_ARGS_PRIVATE(TEST_INTERNAL_ARGS_AUGMENTER(__VA_ARGS__))
-#   define TEST_INTERNAL_ARGS_AUGMENTER(...)    \
+#   define TEST_NARG(...)  \
+        TEST_INTERNAL_NARG3(TEST_INTERNAL_NARG4(__VA_ARGS__))
+#   define TEST_INTERNAL_NARG4(...)    \
         unused, __VA_ARGS__
-#   define TEST_INTERNAL_EXPAND_ARGS_PRIVATE(...)   \
-        TEST_EXPAND(TEST_INTERNAL_GET_ARG_COUNT_PRIVATE(__VA_ARGS__, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0))
-#   define TEST_INTERNAL_GET_ARG_COUNT_PRIVATE(_1_, _2_, _3_, _4_, _5_, _6_, _7_, _8_, _9_, _10_, _11_, _12_, _13_, _14_, _15_, _16_, count, ...) count
+#   define TEST_INTERNAL_NARG3(...)   \
+        TEST_EXPAND(TEST_INTERNAL_NARG(__VA_ARGS__, \
+            63, 62, 61, 60, 59, 58, 57, 56, \
+            55, 54, 53, 52, 51, 50, 49, 48, \
+            47, 46, 45, 44, 43, 42, 41, 40, \
+            39, 38, 37, 36, 35, 34, 33, 32, \
+            31, 30, 29, 28, 27, 26, 25, 24, \
+            23, 22, 21, 20, 19, 18, 17, 16, \
+            15, 14, 13, 12, 11, 10,  9,  8, \
+             7,  6,  5,  4,  3,  2,  1,  0) \
+        )
+#   define TEST_INTERNAL_NARG(\
+         _1,  _2,  _3,  _4,  _5,  _6,  _7,  _8, \
+         _9, _10, _11, _12, _13, _14, _15, _16, \
+        _17, _18, _19, _20, _21, _22, _23, _24, \
+        _25, _26, _27, _28, _29, _30, _31, _32, \
+        _33, _34, _35, _36, _37, _38, _39, _40, \
+        _41, _42, _43, _44, _45, _46, _47, _48, \
+        _49, _50, _51, _52, _53, _54, _55, _56, \
+        _57, _58, _59, _60, _61, _62, _63, _64, \
+        count, ...) count
 #else // Non-Microsoft compilers
-#   define TEST_ARG_COUNT(...)  \
-        TEST_INTERNAL_GET_ARG_COUNT_PRIVATE(0, ## __VA_ARGS__, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0)
-#   define TEST_INTERNAL_GET_ARG_COUNT_PRIVATE(_0, _1_, _2_, _3_, _4_, _5_, _6_, _7_, _8_, _9_, _10_, _11_, _12_, _13_, _14_, _15_, _16_, count, ...) count
+#   define TEST_NARG(...)  \
+        TEST_INTERNAL_NARG(0, ## __VA_ARGS__, 64, \
+            63, 62, 61, 60, 59, 58, 57, 56, \
+            55, 54, 53, 52, 51, 50, 49, 48, \
+            47, 46, 45, 44, 43, 42, 41, 40, \
+            39, 38, 37, 36, 35, 34, 33, 32, \
+            31, 30, 29, 28, 27, 26, 25, 24, \
+            23, 22, 21, 20, 19, 18, 17, 16, \
+            15, 14, 13, 12, 11, 10,  9,  8, \
+             7,  6,  5,  4,  3,  2,  1,  0)
+#   define TEST_INTERNAL_NARG(_0, \
+         _1,  _2,  _3,  _4,  _5,  _6,  _7,  _8, \
+         _9, _10, _11, _12, _13, _14, _15, _16, \
+        _17, _18, _19, _20, _21, _22, _23, _24, \
+        _25, _26, _27, _28, _29, _30, _31, _32, \
+        _33, _34, _35, _36, _37, _38, _39, _40, \
+        _41, _42, _43, _44, _45, _46, _47, _48, \
+        _49, _50, _51, _52, _53, _54, _55, _56, \
+        _57, _58, _59, _60, _61, _62, _63, _64, \
+        count, ...) count
 #endif
 
 #define TEST_STRINGIFY(...)     TEST_STRINGIFY_2(__VA_ARGS__)
