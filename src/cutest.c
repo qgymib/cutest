@@ -1875,20 +1875,57 @@ static const char* s_test_help_encoded =
 static int _cutest_pattern_match(const char* pat, unsigned long pat_sz,
     const char* str, unsigned long str_sz)
 {
-    if (pat_sz == 0)
-    {
-        return str_sz == 0;
-    }
+    const char* name = str;
+    const char* const name_begin = name;
+    const char* const name_end = name + str_sz;
 
-    switch (*pat)
+    const char* pattern = pat;
+    const char* pattern_end = pat + pat_sz;
+    const char* pattern_next = pattern;
+    const char* name_next = name;
+
+    while (pattern < pattern_end || name < name_end)
     {
-    case '?':
-        return str_sz != 0 && _cutest_pattern_match(pat + 1, pat_sz - 1, str + 1, str_sz - 1);
-    case '*':
-        return (str_sz != 0 && _cutest_pattern_match(pat, pat_sz, str + 1, str_sz - 1)) || _cutest_pattern_match(pat + 1, pat_sz - 1, str, str_sz);
-    default:
-        return *pat == *str && _cutest_pattern_match(pat + 1, pat_sz - 1, str + 1, str_sz - 1);
+        if (pattern < pattern_end)
+        {
+            switch (*pattern)
+            {
+            default:  // Match an ordinary character.
+                if (name < name_end && *name == *pattern)
+                {
+                    ++pattern;
+                    ++name;
+                    continue;
+                }
+                break;
+            case '?':  // Match any single character.
+                if (name < name_end)
+                {
+                    ++pattern;
+                    ++name;
+                    continue;
+                }
+                break;
+            case '*':
+                // Match zero or more characters. Start by skipping over the wildcard
+                // and matching zero characters from name. If that fails, restart and
+                // match one more character than the last attempt.
+                pattern_next = pattern;
+                name_next = name + 1;
+                ++pattern;
+                continue;
+            }
+        }
+        // Failed to match a character. Restart if possible.
+        if (name_begin < name_next && name_next <= name_end)
+        {
+            pattern = pattern_next;
+            name = name_next;
+            continue;
+        }
+        return 0;
     }
+    return 1;
 }
 
 /**

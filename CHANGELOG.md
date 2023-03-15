@@ -2,6 +2,9 @@
 
 ## v3.0.0
 
+### Features
+1. Switch to linear-time string globbing algorithm
+
 ### BREAKING CHANGES
 1. Rename `TEST_FIXTURE_TEAREDOWN` to `TEST_FIXTURE_TEARDOWN`
 

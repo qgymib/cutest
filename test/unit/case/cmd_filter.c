@@ -69,6 +69,13 @@ DEFINE_TEST_F(filter, asdf, "--test_filter=asdf")
     TEST_PORTING_ASSERT(s_test_filter.cnt_p3 == 0);
 }
 
+DEFINE_TEST_F(filter, p1, "--test_filter=filter.p1")
+{
+    TEST_PORTING_ASSERT(s_test_filter.cnt_p1 == 1);
+    TEST_PORTING_ASSERT(s_test_filter.cnt_p2 == 0);
+    TEST_PORTING_ASSERT(s_test_filter.cnt_p3 == 0);
+}
+
 /**
  * filter:
  * + filter.p1
