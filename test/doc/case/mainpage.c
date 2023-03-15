@@ -62,7 +62,7 @@ TEST_FIXTURE_SETUP(doc)
     _generate_main_page_in_readmd();
 }
 
-TEST_FIXTURE_TEAREDOWN(doc)
+TEST_FIXTURE_TEARDOWN(doc)
 {
     if (g_doc_ctx.h_main_page != NULL)
     {

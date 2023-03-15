@@ -8,7 +8,7 @@
 TEST_FIXTURE_SETUP(simple)
 {
 }
-TEST_FIXTURE_TEAREDOWN(simple)
+TEST_FIXTURE_TEARDOWN(simple)
 {
 }
 TEST_PARAMETERIZED_DEFINE(simple, parameterized, size_t, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10);

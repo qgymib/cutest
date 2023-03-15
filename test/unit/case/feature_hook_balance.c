@@ -29,7 +29,7 @@ TEST_FIXTURE_SETUP(hook)
     s_test_ctx.cutest_setup_cnt++;
 }
 
-TEST_FIXTURE_TEAREDOWN(hook)
+TEST_FIXTURE_TEARDOWN(hook)
 {
     s_test_ctx.cutest_teardown_cnt++;
 }

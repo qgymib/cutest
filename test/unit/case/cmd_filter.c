@@ -15,7 +15,7 @@ typedef struct test_filter
 static test_filter_t s_test_filter;
 
 TEST_FIXTURE_SETUP(filter) {}
-TEST_FIXTURE_TEAREDOWN(filter) {}
+TEST_FIXTURE_TEARDOWN(filter) {}
 
 TEST(filter, p1)
 {

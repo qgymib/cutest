@@ -100,7 +100,7 @@ extern "C" {
 /**
  * @brief Major version.
  */
-#define CUTEST_VERSION_MAJOR        2
+#define CUTEST_VERSION_MAJOR        3
 
 /**
  * @brief Minor version.
@@ -115,7 +115,7 @@ extern "C" {
 /**
  * @brief Development version.
  */
-#define CUTEST_VERSION_PREREL       0
+#define CUTEST_VERSION_PREREL       1
 
 /**
  * @brief Ensure the api is exposed as C function.
@@ -153,13 +153,13 @@ extern "C" {
  *
  * Both #TEST_F() and #TEST_P() define a set of shared test unit, which share
  * the same setup and teardown procedure defined by #TEST_FIXTURE_SETUP() and
- * #TEST_FIXTURE_TEAREDOWN().
+ * #TEST_FIXTURE_TEARDOWN().
  *
  * ```c
  * TEST_FIXTURE_SETUP(foo) {
  *     printf("setup of foo.\n");
  * }
- * TEST_FIXTURE_TEAREDOWN(foo) {
+ * TEST_FIXTURE_TEARDOWN(foo) {
  *     printf("teardown of foo.\n");
  * }
  * 
@@ -193,7 +193,7 @@ extern "C" {
  * @see TEST_F
  * @see TEST_P
  */
-#define TEST_FIXTURE_TEAREDOWN(fixture)    \
+#define TEST_FIXTURE_TEARDOWN(fixture)    \
     TEST_C_API static void s_cutest_fixture_teardown_##fixture(void)
 
 /**
@@ -289,7 +289,7 @@ extern "C" {
  * @param [in] fixture  The name of fixture
  * @param [in] test     The name of test case
  * @see TEST_FIXTURE_SETUP
- * @see TEST_FIXTURE_TEAREDOWN
+ * @see TEST_FIXTURE_TEARDOWN
  */
 #define TEST_F(fixture, test) \
     TEST_C_API void cutest_usertest_body_##fixture##_##test(void);\
@@ -331,7 +331,7 @@ extern "C" {
  * @brief Simple Test
  * 
  * Define a simple test that have no setup (AKA. #TEST_FIXTURE_SETUP) and teardown
- * (AKA. #TEST_FIXTURE_TEAREDOWN) stage, which should be a self contained test.
+ * (AKA. #TEST_FIXTURE_TEARDOWN) stage, which should be a self contained test.
  * 
  * @snippet test.c DEFINE_SIMPLE_TEST
  * @param [in] fixture  suit name
@@ -564,7 +564,7 @@ void cutest_register_case(cutest_case_t* test_case);
  *
  * ```c
  * TEST_FIXTURE_SETUP(manual_registeration){}
- * TEST_FIXTURE_TEAREDOWN(manual_registeration){}
+ * TEST_FIXTURE_TEARDOWN(manual_registeration){}
  * TEST_PARAMETERIZED_DEFINE(manual_registeration, third, int, 0);
  *
  * TEST(manual_registeration, first){}
@@ -1545,15 +1545,15 @@ typedef struct cutest_hook
     void(*after_setup)(const char* fixture, int ret);
 
     /**
-     * @brief Hook before #TEST_FIXTURE_TEAREDOWN() is called
+     * @brief Hook before #TEST_FIXTURE_TEARDOWN() is called
      * @param[in] fixture   Fixture name
      */
     void(*before_teardown)(const char* fixture);
 
     /**
-     * @brief Hook after #TEST_FIXTURE_TEAREDOWN() is called
+     * @brief Hook after #TEST_FIXTURE_TEARDOWN() is called
      * @param[in] fixture   Fixture name
-     * @param[in] ret       zero: #TEST_FIXTURE_TEAREDOWN() success, otherwise failure
+     * @param[in] ret       zero: #TEST_FIXTURE_TEARDOWN() success, otherwise failure
      */
     void(*after_teardown)(const char* fixture, int ret);
 

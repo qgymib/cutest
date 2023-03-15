@@ -1,5 +1,11 @@
 # Changelog
 
+## v3.0.0
+
+### BREAKING CHANGES
+1. Rename `TEST_FIXTURE_TEAREDOWN` to `TEST_FIXTURE_TEARDOWN`
+
+
 ## v2.0.0 (2023/03/06)
 
 ### Features

@@ -4,7 +4,7 @@ TEST_FIXTURE_SETUP(example)
 {
 }
 
-TEST_FIXTURE_TEAREDOWN(example)
+TEST_FIXTURE_TEARDOWN(example)
 {
 }
 

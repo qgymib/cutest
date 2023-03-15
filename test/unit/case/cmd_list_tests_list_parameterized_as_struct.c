@@ -14,7 +14,7 @@ TEST_FIXTURE_SETUP(parameterized)
 {
 }
 
-TEST_FIXTURE_TEAREDOWN(parameterized)
+TEST_FIXTURE_TEARDOWN(parameterized)
 {
 }
 
