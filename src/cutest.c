@@ -38,6 +38,13 @@
     ((x) ? (void)0 : (void)cutest_porting_abort(\
         "%s:%d: %s: Assertion `%s' failed.\n", __FILE__, __LINE__, __FUNCTION__, #x))
 
+/**
+ * @brief Like #CUTEST_PORTING_ASSERT, but with print support.
+ */
+#define CUTEST_PORTING_ASSERT_P(x, fmt, ...)  \
+    ((x) ? (void)0 : (void)cutest_porting_abort(\
+        "%s:%d: %s: Assertion `%s' failed: " fmt "\n", __FILE__, __LINE__, __FUNCTION__, #x, ##__VA_ARGS__))
+
 static unsigned long s_test_rand_seed = 1;
 
 static void cutest_porting_srand(unsigned long s)
@@ -374,7 +381,7 @@ void cutest_porting_clock_gettime(cutest_porting_timespec_t* tp)
 
 #include <stdlib.h>
 
-int cutest_porting_abort(const char* fmt, ...)
+void cutest_porting_abort(const char* fmt, ...)
 {
     va_list ap;
     va_start(ap, fmt);
@@ -2565,7 +2572,8 @@ static unsigned long _cutest_parameterized_parser_peek_string(const char* str)
         }
     }
 
-    return cutest_porting_abort("");
+    CUTEST_PORTING_ASSERT(!"string not end with quote");
+    return 0;
 }
 
 static unsigned long _cutest_parameterized_parser_peek_struct(const char* str)
@@ -2600,7 +2608,8 @@ static unsigned long _cutest_parameterized_parser_peek_struct(const char* str)
         }
     }
 
-    return cutest_porting_abort("");
+    CUTEST_PORTING_ASSERT_P(str[pos] != '\0', "unbalanced struct: %s", str);
+    return 0;
 }
 
 /**
@@ -2839,7 +2848,8 @@ static int _cutest_smart_print_int(FILE* stream, const void* addr,
 #endif
     }
 
-    return cutest_porting_abort("width of %u does not match any native size.\n", width);
+    CUTEST_PORTING_ASSERT_P(!"error", "width of %u does not match any native size", width);
+    return 0;
 }
 
 static int _cutest_print_char(FILE* stream, const void* addr,
@@ -3369,10 +3379,7 @@ static cutest_type_info_t* _cutest_get_type_info(const char* type_name)
 int cutest_internal_compare(const char* type_name, const void* addr1, const void* addr2)
 {
     cutest_type_info_t* type_info = _cutest_get_type_info(type_name);
-    if (type_info == NULL)
-    {
-        return cutest_porting_abort("%s not registered.\n", type_name);
-    }
+    CUTEST_PORTING_ASSERT_P(type_info != NULL, "%s not registered", type_name);
 
     return type_info->cmp(addr1, addr2);
 }

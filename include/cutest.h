@@ -115,7 +115,7 @@ extern "C" {
 /**
  * @brief Development version.
  */
-#define CUTEST_VERSION_PREREL       3
+#define CUTEST_VERSION_PREREL       4
 
 /**
  * @brief Ensure the api is exposed as C function.
@@ -1651,9 +1651,8 @@ void cutest_skip_test(void);
  *   something really important.
  * @param[in] fmt   Last words.
  * @param[in] ...   Arguments to last words.
- * @return          This function does not return.
  */
-int cutest_porting_abort(const char* fmt, ...);
+void cutest_porting_abort(const char* fmt, ...);
 
 /**
  * END GROUP: TEST_PORTING_SYSTEM_API_ABORT

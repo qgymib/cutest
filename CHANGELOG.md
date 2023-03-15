@@ -7,6 +7,7 @@
 
 ### BREAKING CHANGES
 1. Rename `TEST_FIXTURE_TEAREDOWN` to `TEST_FIXTURE_TEARDOWN`
+2. Remove return value of abort()
 
 
 ## v2.0.0 (2023/03/06)

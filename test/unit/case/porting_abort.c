@@ -6,7 +6,7 @@
 
 #include <stdlib.h>
 
-int cutest_porting_abort(const char* fmt, ...)
+void cutest_porting_abort(const char* fmt, ...)
 {
     va_list ap;
     va_start(ap, fmt);
