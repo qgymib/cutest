@@ -35,7 +35,34 @@ TEST(custom_type, 0)
 // Verify
 ///////////////////////////////////////////////////////////////////////////////
 
-DEFINE_TEST(custom_type, 0)
+typedef struct test_custom_type_ctx
 {
-    test_print_file(stderr, _TEST.out);
+    int failure_count;
+} test_custom_type_ctx_t;
+
+static test_custom_type_ctx_t g_test_custom_type_ctx;
+
+static void after_test(const char* fixture, const char* test_name, int ret)
+{
+    (void)fixture; (void)test_name;
+    if (ret != 0)
+    {
+        g_test_custom_type_ctx.failure_count++;
+    }
+}
+
+DEFINE_TEST_SETUP(custom_type)
+{
+    _TEST.hook.after_test = after_test;
+    memset(&g_test_custom_type_ctx, 0, sizeof(g_test_custom_type_ctx));
+}
+
+DEFINE_TEST_TEARDOWN(custom_type)
+{
+
+}
+
+DEFINE_TEST_F(custom_type, 0)
+{
+    TEST_PORTING_ASSERT(g_test_custom_type_ctx.failure_count == 0);
 }

@@ -1684,6 +1684,9 @@ static int cutest_timestamp_dif(const cutest_porting_timespec_t* t1,
  * @param[in] TYPE  Data type.
  */
 #define TEST_GENERATE_NATIVE_COMPARE(NAME, TYPE)  \
+    TEST_GENERATE_TEMPLATE_COMPARE(NAME, TYPE, _cutest_smart_print_int)
+
+#define TEST_GENERATE_TEMPLATE_COMPARE(NAME, TYPE, PRINT)   \
     static int _test_cmp_##NAME(TYPE* addr1, TYPE* addr2) {\
         TYPE v1 = *addr1;\
         TYPE v2 = *addr2;\
@@ -1693,8 +1696,8 @@ static int cutest_timestamp_dif(const cutest_porting_timespec_t* t1,
         return v1 < v2 ? -1 : 1;\
     }\
     static int _test_print_##NAME(FILE* file, TYPE* addr) {\
-        return _cutest_smart_print_int(file, addr, sizeof(TYPE),\
-            ((TYPE)(-1)) < ((TYPE)1));\
+        int is_signed = ((TYPE)(-1)) < ((TYPE)1);\
+        return PRINT(file, addr, sizeof(TYPE), is_signed);\
     }\
     static cutest_type_info_t NAME = {\
         { NULL, NULL, NULL }, #TYPE,\
@@ -2773,16 +2776,18 @@ static void _cutest_shuffle_cases(void)
 static int _cutest_smart_print_int(FILE* stream, const void* addr,
     unsigned width, int is_signed)
 {
-    if (width == sizeof(char))
-    {
-        return cutest_porting_fprintf(stream, "%c", *(char*)addr);
-    }
-
     if (is_signed)
     {
+        if (width == sizeof(char))
+        {
+            int val = *(char*)addr;
+            return cutest_porting_fprintf(stream, "%d", val);
+        }
+
         if (width == sizeof(short))
         {
-            return cutest_porting_fprintf(stream, "%hd", *(short*)addr);
+            int val = *(short*)addr;
+            return cutest_porting_fprintf(stream, "%d", val);
         }
 
         if (width == sizeof(int))
@@ -2804,9 +2809,16 @@ static int _cutest_smart_print_int(FILE* stream, const void* addr,
     }
     else
     {
+        if (width == sizeof(unsigned char))
+        {
+            unsigned val = *(unsigned char*)addr;
+            return cutest_porting_fprintf(stream, "%u", val);
+        }
+
         if (width == sizeof(unsigned short))
         {
-            return cutest_porting_fprintf(stream, "%hu", *(unsigned short*)addr);
+            unsigned val = *(unsigned short*)addr;
+            return cutest_porting_fprintf(stream, "%u", val);
         }
 
         if (width == sizeof(unsigned int))
@@ -2830,9 +2842,16 @@ static int _cutest_smart_print_int(FILE* stream, const void* addr,
     return cutest_porting_abort("width of %u does not match any native size.\n", width);
 }
 
-TEST_GENERATE_NATIVE_COMPARE(s_type_info_char, char);
-TEST_GENERATE_NATIVE_COMPARE(s_type_info_signed_char, signed char);
-TEST_GENERATE_NATIVE_COMPARE(s_type_info_unsigned_char, unsigned char);
+static int _cutest_print_char(FILE* stream, const void* addr,
+    unsigned width, int is_signed)
+{
+    (void)width; (void)is_signed;
+    return cutest_porting_fprintf(stream, "%c", *(char*)addr);
+}
+
+TEST_GENERATE_TEMPLATE_COMPARE(s_type_info_char, char, _cutest_print_char);
+TEST_GENERATE_TEMPLATE_COMPARE(s_type_info_signed_char, signed char, _cutest_print_char);
+TEST_GENERATE_TEMPLATE_COMPARE(s_type_info_unsigned_char, unsigned char, _cutest_print_char);
 TEST_GENERATE_NATIVE_COMPARE(s_type_info_short, short);
 TEST_GENERATE_NATIVE_COMPARE(s_type_info_unsigned_short, unsigned short);
 TEST_GENERATE_NATIVE_COMPARE(s_type_info_int, int);

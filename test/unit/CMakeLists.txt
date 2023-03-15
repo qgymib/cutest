@@ -61,6 +61,7 @@ set(test_case_list
     feature_hook_balance
     feature_manual_register
     feature_narg
+    feature_print
     feature_simple)
 
 foreach(x IN LISTS test_case_list)
