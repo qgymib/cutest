@@ -1,6 +1,6 @@
 # Changelog
 
-## v3.0.0
+## v3.0.0 (2023/03/18)
 
 ### Features
 1. Switch to linear-time string globbing algorithm
