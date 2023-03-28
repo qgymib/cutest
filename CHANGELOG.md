@@ -1,5 +1,11 @@
 # Changelog
 
+## v3.0.1
+
+### Fixed
+1. fix: wrong type of arguments to formatting function
+
+
 ## v3.0.0 (2023/03/18)
 
 ### Features

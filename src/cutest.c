@@ -2012,7 +2012,8 @@ static int _cutest_print_encoded(const char* str)
             return ret;
         }
 
-        ret += cutest_porting_cfprintf(g_test_ctx.out, color, "%.*s", p - str, str);
+        ret += cutest_porting_cfprintf(g_test_ctx.out, color, "%.*s",
+            (int)(p - str), str);
 
         const char ch = p[1];
         str = p + 2;
@@ -3261,8 +3262,10 @@ static void _cutest_run_all_tests(void)
         if (g_test_ctx.counter.repeat.repeat > 1)
         {
             cutest_porting_cfprintf(g_test_ctx.out, CUTEST_COLOR_YELLOW, "[==========]");
-            cutest_porting_cfprintf(g_test_ctx.out, CUTEST_COLOR_DEFAULT, " start loop: %u/%u\n",
-                g_test_ctx.counter.repeat.repeated + 1, g_test_ctx.counter.repeat.repeat);
+            cutest_porting_cfprintf(g_test_ctx.out, CUTEST_COLOR_DEFAULT,
+                " start loop: %u/%u\n",
+                (unsigned)(g_test_ctx.counter.repeat.repeated + 1),
+                (unsigned)g_test_ctx.counter.repeat.repeat);
         }
 
         _cutest_run_all_test_once();
@@ -3270,8 +3273,10 @@ static void _cutest_run_all_tests(void)
         if (g_test_ctx.counter.repeat.repeat > 1)
         {
             cutest_porting_cfprintf(g_test_ctx.out, CUTEST_COLOR_YELLOW, "[==========]");
-            cutest_porting_cfprintf(g_test_ctx.out, CUTEST_COLOR_DEFAULT, " end loop (%u/%u)\n",
-                g_test_ctx.counter.repeat.repeated + 1, g_test_ctx.counter.repeat.repeat);
+            cutest_porting_cfprintf(g_test_ctx.out, CUTEST_COLOR_DEFAULT,
+                " end loop (%u/%u)\n",
+                (unsigned)(g_test_ctx.counter.repeat.repeated + 1),
+                (unsigned)g_test_ctx.counter.repeat.repeat);
             if (g_test_ctx.counter.repeat.repeated < g_test_ctx.counter.repeat.repeat - 1)
             {
                 cutest_porting_cfprintf(g_test_ctx.out, CUTEST_COLOR_DEFAULT, "\n");
