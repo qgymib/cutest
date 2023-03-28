@@ -1,6 +1,6 @@
 # Changelog
 
-## v3.0.1
+## v3.0.1 (2023/03/28)
 
 ### Fixed
 1. fix: wrong type of arguments to formatting function
