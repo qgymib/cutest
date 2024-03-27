@@ -110,7 +110,7 @@ extern "C" {
 /**
  * @brief Patch version.
  */
-#define CUTEST_VERSION_PATCH        1
+#define CUTEST_VERSION_PATCH        2
 
 /**
  * @brief Development version.
@@ -185,7 +185,7 @@ extern "C" {
  * @see TEST_P
  */
 #define TEST_FIXTURE_SETUP(fixture)    \
-    TEST_C_API static void s_cutest_fixture_setup_##fixture(void)
+    static void s_cutest_fixture_setup_##fixture(void)
 
 /**
  * @brief TearDown test suit
@@ -194,7 +194,7 @@ extern "C" {
  * @see TEST_P
  */
 #define TEST_FIXTURE_TEARDOWN(fixture)    \
-    TEST_C_API static void s_cutest_fixture_teardown_##fixture(void)
+    static void s_cutest_fixture_teardown_##fixture(void)
 
 /**
  * @brief Get parameterized data
@@ -216,13 +216,13 @@ extern "C" {
  * @param[in] ...       Data values
  */
 #define TEST_PARAMETERIZED_DEFINE(fixture, test, TYPE, ...)  \
-    TEST_C_API static void cutest_usertest_parameterized_register_##fixture##_##test(void (*cb)(TYPE*, unsigned long)) {\
+    static void cutest_usertest_parameterized_register_##fixture##_##test(void (*cb)(TYPE*, unsigned long)) {\
         static TYPE s_parameterized_userdata[] = { __VA_ARGS__ };\
-        static cutest_case_t s_tests[TEST_NARG(__VA_ARGS__)];\
-        unsigned long number_of_parameterized_data = sizeof(s_parameterized_userdata) / sizeof(s_parameterized_userdata[0]);\
+        static cutest_case_t s_tests[sizeof(s_parameterized_userdata) / sizeof(s_parameterized_userdata[0])];\
+        const unsigned long number_of_parameterized_data = sizeof(s_tests) / sizeof(s_tests[0]);\
         unsigned long i = 0;\
         for (i = 0; i < number_of_parameterized_data; i++) {\
-            s_tests[i].node = (cutest_map_node_t){ NULL, NULL, NULL };\
+            s_tests[i].node = CUTEST_MAP_NODE_INIT;\
             s_tests[i].info.fixture_name = #fixture;\
             s_tests[i].info.case_name = #test;\
             s_tests[i].stage.setup = s_cutest_fixture_setup_##fixture;\
@@ -293,7 +293,7 @@ extern "C" {
  */
 #define TEST_F(fixture, test) \
     TEST_C_API void cutest_usertest_body_##fixture##_##test(void);\
-    TEST_C_API static void s_cutest_proxy_##fixture##_##test(void* _test_parameterized_data,\
+    static void s_cutest_proxy_##fixture##_##test(void* _test_parameterized_data,\
         unsigned long _test_parameterized_idx) {\
         TEST_PARAMETERIZED_SUPPRESS_UNUSED;\
         cutest_usertest_body_##fixture##_##test();\
@@ -339,7 +339,7 @@ extern "C" {
  */
 #define TEST(fixture, test)  \
     TEST_C_API void cutest_usertest_body_##fixture##_##test(void);\
-    TEST_C_API static void s_cutest_proxy_##fixture##_##test(void* _test_parameterized_data,\
+    static void s_cutest_proxy_##fixture##_##test(void* _test_parameterized_data,\
         unsigned long _test_parameterized_idx) {\
         TEST_PARAMETERIZED_SUPPRESS_UNUSED;\
         cutest_usertest_body_##fixture##_##test();\
@@ -493,6 +493,12 @@ typedef struct cutest_map_node
     struct cutest_map_node*     rb_right;               /**< right child node */
     struct cutest_map_node*     rb_left;                /**< left child node */
 } cutest_map_node_t;
+
+#if defined(__cplusplus)
+#   define CUTEST_MAP_NODE_INIT { NULL, NULL, NULL }
+#else
+#   define CUTEST_MAP_NODE_INIT (cutest_map_node_t){ NULL, NULL, NULL }
+#endif
 
 typedef struct cutest_case
 {

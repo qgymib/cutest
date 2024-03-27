@@ -1,5 +1,11 @@
 # Changelog
 
+## v3.0.2 (2024/03/27)
+
+### Fixed
+1. fix: build error when used in C++ source code files.
+
+
 ## v3.0.1 (2023/03/28)
 
 ### Fixed
