@@ -2,6 +2,9 @@
 
 ## v3.0.4
 
+### Fixed
+1. Fix: default random seed might exceed the limit.
+
 ### Features
 1. Automatic disable thread support if `Threads` not found.
 2. Test case can be unregistered by `cutest_unregister_case()`.

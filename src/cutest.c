@@ -52,10 +52,15 @@ static void cutest_porting_srand(unsigned long s)
     s_test_rand_seed = s;
 }
 
-static unsigned long cutest_porting_rand(void)
+static unsigned long cutest_porting_grand(void)
+{
+    return s_test_rand_seed;
+}
+
+static unsigned long cutest_porting_rand(unsigned long range)
 {
     s_test_rand_seed = 1103515245UL * s_test_rand_seed + 12345;
-    return s_test_rand_seed;
+    return s_test_rand_seed % range;
 }
 
 static int cutest_porting_cfprintf(FILE* stream, int color, const char* fmt, ...)
@@ -1784,8 +1789,6 @@ typedef struct test_ctx
         unsigned                    shuffle : 1;                    /**< Randomize running cases */
     } mask;
 
-    unsigned long                   shuffle_seed;
-
     struct
     {
 		cutest_porting_jmpbuf_t*    addr;                           /**< Jump address. */
@@ -1847,7 +1850,6 @@ static test_ctx_t g_test_ctx = {
     { { 0, 0, 0, 0, 0 }, { 0, 0 } },                                    /* .counter */
     { { NULL, 0 } },                                                    /* .filter */
     { 0, 0, 0, 0 },                                                     /* .mask */
-    0,                                                                  /* .shuffle_seed */
     { NULL, NULL },                                                     /* .jmp */
     NULL,                                                               /* .out */
     NULL,                                                               /* .hook */
@@ -2757,8 +2759,6 @@ static int _cutest_setup_arg_print_time(const char* str)
 static void _cutest_srand(unsigned long s)
 {
     s = s % (MAX_RAND + 1);
-
-    g_test_ctx.shuffle_seed = s;
     cutest_porting_srand(s);
 }
 
@@ -2791,7 +2791,7 @@ static void _cutest_shuffle_cases(void)
         }
 
         cutest_map_erase(&g_test_ctx.case_table, it);
-        tc->data.randkey = cutest_porting_rand();
+        tc->data.randkey = cutest_porting_rand(MAX_RAND + 1);
         cutest_map_insert(&g_test_ctx.case_table, it);
     }
 }
@@ -3081,7 +3081,6 @@ static void _cutest_setup_once(void)
     {
         token = 1;
         _cutest_setup_type();
-        _cutest_srand(1);
     }
 }
 
@@ -3089,7 +3088,7 @@ static void _cutest_prepare(void)
 {
     cutest_porting_timespec_t seed;
     cutest_porting_clock_gettime(&seed);
-    cutest_porting_srand((unsigned long)seed.tv_sec);
+    _cutest_srand((unsigned long)seed.tv_sec);
 
     g_test_ctx.runtime.tid = cutest_porting_gettid();
     g_test_ctx.counter.repeat.repeat = 1;
@@ -3131,6 +3130,15 @@ static int _cutest_setup_arg_break_on_failure(void)
     return 0;
 }
 
+static void _cutest_cleanup(void)
+{
+	cutest_map_t case_table = g_test_ctx.case_table;
+	cutest_map_t type_table = g_test_ctx.type_table;
+	cutest_porting_memset(&g_test_ctx, 0, sizeof(g_test_ctx));
+	g_test_ctx.case_table = case_table;
+	g_test_ctx.type_table = type_table;
+}
+
 /**
  * @brief Setup test context
  * @param[in] argc      The number of command line argument.
@@ -3170,16 +3178,9 @@ static int _cutest_setup(int argc, char* argv[], FILE* out, const cutest_hook_t*
         continue;\
     } while (0)
 
-    /* Do soft clear. */
-    {
-        cutest_map_t case_table = g_test_ctx.case_table;
-        cutest_map_t type_table = g_test_ctx.type_table;
-        cutest_porting_memset(&g_test_ctx, 0, sizeof(g_test_ctx));
-        g_test_ctx.case_table = case_table;
-        g_test_ctx.type_table = type_table;
-    }
-
     _cutest_setup_once();
+
+    _cutest_cleanup();
     _cutest_prepare();
 
     g_test_ctx.out = out;
@@ -3233,16 +3234,6 @@ static void _cutest_run_all_test_once(void)
     _cutest_show_report(&tv_total_start, &tv_total_end);
 }
 
-static void _cutest_cleanup(void)
-{
-    cutest_porting_memset(&g_test_ctx.runtime, 0, sizeof(g_test_ctx.runtime));
-    cutest_porting_memset(&g_test_ctx.counter, 0, sizeof(g_test_ctx.counter));
-    cutest_porting_memset(&g_test_ctx.mask, 0, sizeof(g_test_ctx.mask));
-    cutest_porting_memset(&g_test_ctx.filter, 0, sizeof(g_test_ctx.filter));
-
-    g_test_ctx.hook = NULL;
-}
-
 static void _cutest_show_information(void)
 {
 #if CUTEST_VERSION_PREREL
@@ -3255,7 +3246,7 @@ static void _cutest_show_information(void)
     cutest_porting_fprintf(g_test_ctx.out,
         "[ $PARAME. ] --test_shuffle=%d\n", (int)g_test_ctx.mask.shuffle);
     cutest_porting_fprintf(g_test_ctx.out,
-        "[ $PARAME. ] --test_random_seed=%lu\n", g_test_ctx.shuffle_seed);
+        "[ $PARAME. ] --test_random_seed=%lu\n", cutest_porting_grand());
     cutest_porting_fprintf(g_test_ctx.out,
         "[ $PARAME. ] --test_also_run_disabled_tests=%d\n", (int)g_test_ctx.mask.also_run_disabled_tests);
     cutest_porting_fprintf(g_test_ctx.out,
