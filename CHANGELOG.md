@@ -1,5 +1,11 @@
 # Changelog
 
+## v3.0.3 (2024/04/23)
+
+### Fixed
+1. fix: change cmake_minimum_required to 3.5 as required.
+
+
 ## v3.0.2 (2024/03/27)
 
 ### Fixed

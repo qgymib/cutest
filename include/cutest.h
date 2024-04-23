@@ -110,7 +110,7 @@ extern "C" {
 /**
  * @brief Patch version.
  */
-#define CUTEST_VERSION_PATCH        2
+#define CUTEST_VERSION_PATCH        3
 
 /**
  * @brief Development version.
