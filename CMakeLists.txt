@@ -6,56 +6,71 @@ project(cutest)
 ###############################################################################
 option(CUTEST_NO_C99_SUPPORT
     "Disable C99 support."
-    OFF)
+    OFF
+)
 option(CUTEST_NO_LONGLONG_SUPPORT
     "Disable long long support."
-    OFF)
+    OFF
+)
 option(CUTEST_NO_ULONGLONG_SUPPORT
     "Disable unsigned long long support."
-    OFF)
+    OFF
+)
 option(CUTEST_NO_INT8_SUPPORT
     "Disable int8_t support."
-    OFF)
+    OFF
+)
 option(CUTEST_NO_UINT8_SUPPORT
     "Disable uint8_t support."
-    OFF)
+    OFF
+)
 option(CUTEST_NO_INT16_SUPPORT
     "Disable uint16_t support."
-    OFF)
+    OFF
+)
 option(CUTEST_NO_UINT16_SUPPORT
     "Disable uint16_t support."
-    OFF)
+    OFF
+)
 option(CUTEST_NO_INT32_SUPPORT
     "Disable int32_t support."
-    OFF)
+    OFF
+)
 option(CUTEST_NO_UINT32_SUPPORT
     "Disable uint32_t support."
-    OFF)
+    OFF
+)
 option(CUTEST_NO_INT64_SUPPORT
     "Disable int64_t support."
-    OFF)
+    OFF
+)
 option(CUTEST_NO_UINT64_SUPPORT
     "Disable uint64_t support."
-    OFF)
+    OFF
+)
 option(CUTEST_NO_SIZE_SUPPORT
     "Disable size_t support."
-    OFF)
+    OFF
+)
 option(CUTEST_NO_PTRDIFF_SUPPORT
     "Disable ptrdiff_t support."
-    OFF)
+    OFF
+)
 option(CUTEST_NO_INTPTR_SUPPORT
     "Disable inttpr_t support."
-    OFF)
+    OFF
+)
 option(CUTEST_NO_UINTPTR_SUPPORT
     "Disable uinttpr_t support."
-    OFF)
+    OFF
+)
 
 ###############################################################################
 # Functions
 ###############################################################################
 
 # Enable all reasonable warnings and make all warnings into errors.
-function(setup_target_wall name)
+function(cutest_setup_target_wall name)
     if (CMAKE_C_COMPILER_ID STREQUAL "MSVC")
         target_compile_options(${name} PRIVATE /W4 /WX)
     else ()
@@ -68,16 +83,18 @@ endfunction()
 ###############################################################################
 
 add_library(${PROJECT_NAME}
-    "src/cutest.c")
+    "src/cutest.c"
+)
 
 target_include_directories(${PROJECT_NAME}
     PUBLIC
         $<INSTALL_INTERFACE:include>
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}/src)
+        ${CMAKE_CURRENT_SOURCE_DIR}/src
+)
 
-setup_target_wall(${PROJECT_NAME})
+cutest_setup_target_wall(${PROJECT_NAME})
 
 if (CUTEST_NO_C99_SUPPORT)
     target_compile_options(${name} PRIVATE -DCUTEST_NO_C99_SUPPORT)
@@ -129,10 +146,18 @@ endif ()
 # Dependency
 ###############################################################################
 
-find_package(Threads REQUIRED)
-target_link_libraries(${PROJECT_NAME}
-    PRIVATE
-        Threads::Threads)
+find_package(Threads)
+if (Threads_FOUND)
+    target_link_libraries(${PROJECT_NAME}
+        PRIVATE
+            Threads::Threads
+    )
+else()
+    target_compile_options(${PROJECT_NAME}
+        PRIVATE
+            -DCUTEST_NO_THREADS
+    )
+endif ()
 
 ###############################################################################
 # Test

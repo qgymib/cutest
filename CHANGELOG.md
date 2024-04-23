@@ -1,5 +1,11 @@
 # Changelog
 
+## v3.0.4
+
+### Features
+1. Automatic disable thread support if `Threads` not found.
+
+
 ## v3.0.3 (2024/04/23)
 
 ### Fixed

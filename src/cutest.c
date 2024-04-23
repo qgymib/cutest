@@ -408,6 +408,13 @@ void cutest_porting_abort(const char* fmt, ...)
 
 /* Do nothing */
 
+#elif defined(CUTEST_NO_THREADS)
+
+void* cutest_porting_gettid(void)
+{
+    return NULL;
+}
+
 #elif defined(_WIN32)
 
 #include <windows.h>

@@ -39,13 +39,16 @@ add_executable(doc_verify
     "utils/strtok_f.c"
     ${CMAKE_CURRENT_BINARY_DIR}/cutest_h_hex.c
     ${CMAKE_CURRENT_BINARY_DIR}/cutest_c_hex.c
-    ${CMAKE_CURRENT_BINARY_DIR}/readme_md_hex.c)
+    ${CMAKE_CURRENT_BINARY_DIR}/readme_md_hex.c
+)
 target_include_directories(doc_verify
     PRIVATE
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/>)
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/>
+)
 target_link_libraries(doc_verify
     PRIVATE
-        cutest)
-setup_target_wall(doc_verify)
+        cutest
+)
+cutest_setup_target_wall(doc_verify)
 
 add_test(NAME doc_verify COMMAND $<TARGET_FILE:doc_verify>)
