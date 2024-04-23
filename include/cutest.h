@@ -115,7 +115,7 @@ extern "C" {
 /**
  * @brief Development version.
  */
-#define CUTEST_VERSION_PREREL       1
+#define CUTEST_VERSION_PREREL       2
 
 /**
  * @brief Ensure the api is exposed as C function.
@@ -533,10 +533,22 @@ typedef struct cutest_case
 } cutest_case_t;
 
 /**
- * @brief Register test case
- * @param[in] test_case     Test case
+ * @brief Register test case.
+ *
+ * A registered test case will be automatically executed by #cutest_run_tests().
+ *
+ * @note A registered test case can not be unregistered during #cutest_run_tests().
+ * @see #cutest_unregister_case().
+ * @param[in,out] tc - Test case.
  */
-void cutest_register_case(cutest_case_t* test_case);
+void cutest_register_case(cutest_case_t* tc);
+
+/**
+ * @brief Unregister test case.
+ * @see #cutest_register_case().
+ * @param[in,out] tc - Test case.
+ */
+void cutest_unregister_case(cutest_case_t* tc);
 
 /** @endcond */
 
@@ -546,7 +558,7 @@ void cutest_register_case(cutest_case_t* test_case);
  */
 
 /**
- * @defgroup TEST_MANUAL_REGISTRATION Manually registr test
+ * @defgroup TEST_MANUAL_REGISTRATION Manually register test
  *
  * @note In most case you don't need it. By default all test cases are
  *   registered automatically. If not, please check whether the value of
@@ -755,7 +767,7 @@ void cutest_register_case(cutest_case_t* test_case);
  * So, an assertion like #ASSERT_EQ_INT() means except `a` and `b` have type of
  * `int` and they are the same value.
  *
- * ## Extra cusom information
+ * ## Extra custom information
  *
  * You may notice all assertions have syntax of `ASSERT_OP_TYPE(a, b, fmt, ...)`,
  * it means custom print is available if assertion fails. For example, the
@@ -808,7 +820,7 @@ void cutest_register_case(cutest_case_t* test_case);
  *
  * @note About `size_t` and `ptrdiff_t`: Although they are included in C89
  *   standard, the formal print conversion specifier `%%zu` and `%%td` are
- *   inclueded in C99 standard. Besides they need `<stddef.h>`, and we want
+ *   included in C99 standard. Besides they need `<stddef.h>`, and we want
  *   the dependency to be minimum.
  *
  * @note About `long double`:  Although it exists in C89 standard, we do not

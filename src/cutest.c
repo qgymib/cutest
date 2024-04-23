@@ -1689,11 +1689,6 @@ static int cutest_timestamp_dif(const cutest_porting_timespec_t* t1,
     ((TYPE*)((char*)(ptr) - (char*)&((TYPE*)0)->member))
 
 /**
- * @brief Static initializer for #test_nature_t::case_table.
- */
-#define TEST_CASE_TABLE_INIT    CUTEST_MAP_INIT(_cutest_on_cmp_case, NULL)
-
-/**
  * @brief Create compare context for \p TYPE.
  * @param[in] TYPE  Data type.
  */
@@ -1747,57 +1742,58 @@ typedef struct test_run_parameterized_helper
     test_case_info_t*           info;
 } test_run_parameterized_helper_t;
 
-typedef struct test_nature_s
-{
-    cutest_map_t                case_table;             /**< Cases in map */
-    cutest_map_t                type_table;             /**< Type table. */
-} test_nature_t;
-
 typedef struct test_ctx
 {
+    cutest_map_t                    case_table;                     /**< Cases in map */
+    cutest_map_t                    type_table;                     /**< Type table. */
+
     struct
     {
-        void*                   tid;                            /**< Thread ID */
-        cutest_case_t*          cur_node;                       /**< Current running test case node. */
+        void*                       tid;                            /**< Thread ID */
+        cutest_case_t*              cur_node;                       /**< Current running test case node. */
     } runtime;
 
     struct
     {
         struct
         {
-            unsigned            total;                          /**< The number of total running cases */
-            unsigned            disabled;                       /**< The number of disabled cases */
-            unsigned            success;                        /**< The number of successed cases */
-            unsigned            skipped;                        /**< The number of skipped cases */
-            unsigned            failed;                         /**< The number of failed cases */
+            unsigned                total;                          /**< The number of total running cases */
+            unsigned                disabled;                       /**< The number of disabled cases */
+            unsigned                success;                        /**< The number of success cases */
+            unsigned                skipped;                        /**< The number of skipped cases */
+            unsigned                failed;                         /**< The number of failed cases */
         } result;
 
         struct
         {
-            unsigned long       repeat;                         /**< How many times need to repeat */
-            unsigned long       repeated;                       /**< How many times alread repeated */
+            unsigned long           repeat;                         /**< How many times need to repeat */
+            unsigned long           repeated;                       /**< How many times already repeated */
         } repeat;
     } counter;
 
     struct
     {
-        test_str_t              pattern;                         /**< `--test_filter` */
+        test_str_t                  pattern;                         /**< `--test_filter` */
     } filter;
 
     struct
     {
-        unsigned                break_on_failure : 1;           /**< DebugBreak when failure */
-        unsigned                no_print_time : 1;              /**< Whether to print execution cost time */
-        unsigned                also_run_disabled_tests : 1;    /**< Also run disabled tests */
-        unsigned                shuffle : 1;                    /**< Randomize running cases */
+        unsigned                    break_on_failure : 1;           /**< DebugBreak when failure */
+        unsigned                    no_print_time : 1;              /**< Whether to print execution cost time */
+        unsigned                    also_run_disabled_tests : 1;    /**< Also run disabled tests */
+        unsigned                    shuffle : 1;                    /**< Randomize running cases */
     } mask;
 
-    unsigned long               shuffle_seed;
-    cutest_porting_jmpbuf_t*    jmpbuf;                         /**< Jump buffer */
-    cutest_porting_longjmp_fn   fn_longjmp;                     /**< Long jmp function. */
+    unsigned long                   shuffle_seed;
 
-    FILE*                       out;
-    const cutest_hook_t*        hook;
+    struct
+    {
+		cutest_porting_jmpbuf_t*    addr;                           /**< Jump address. */
+		cutest_porting_longjmp_fn   func;                           /**< Long jump function. */
+    } jmp;
+
+    FILE*                           out;
+    const cutest_hook_t*            hook;
 } test_ctx_t;
 
 static int _cutest_on_cmp_case(const cutest_map_node_t* key1, const cutest_map_node_t* key2, void* arg)
@@ -1844,10 +1840,17 @@ static int _cutest_on_cmp_type(const cutest_map_node_t* key1, const cutest_map_n
     return cutest_porting_strcmp(t1->type_name, t2->type_name);
 }
 
-static test_ctx_t           g_test_ctx;
-static test_nature_t        g_test_nature = {
-    TEST_CASE_TABLE_INIT,                                               /* .case_table */
+static test_ctx_t g_test_ctx = {
+    CUTEST_MAP_INIT(_cutest_on_cmp_case, NULL),                         /* .case_table */
     CUTEST_MAP_INIT(_cutest_on_cmp_type, NULL),                         /* .type_table */
+    { NULL, NULL },                                                     /* .runtime */
+    { { 0, 0, 0, 0, 0 }, { 0, 0 } },                                    /* .counter */
+    { { NULL, 0 } },                                                    /* .filter */
+    { 0, 0, 0, 0 },                                                     /* .mask */
+    0,                                                                  /* .shuffle_seed */
+    { NULL, NULL },                                                     /* .jmp */
+    NULL,                                                               /* .out */
+    NULL,                                                               /* .hook */
 };
 
 static const char* s_test_help_encoded =
@@ -2067,14 +2070,20 @@ static void _cutest_hook_after_fixture_setup(cutest_case_t* test_case, int ret)
     g_test_ctx.hook->after_setup(test_case->info.fixture_name, ret);
 }
 
+static void _cutest_run_case_set_jmp(cutest_porting_jmpbuf_t* buf,
+	cutest_porting_longjmp_fn fn_longjmp)
+{
+	g_test_ctx.jmp.addr = buf;
+	g_test_ctx.jmp.func = fn_longjmp;
+}
+
 static void _cutest_fixture_run_setup_jmp(cutest_porting_jmpbuf_t* buf,
     cutest_porting_longjmp_fn fn_longjmp, int val, void* data)
 {
     fixture_run_helper_t* helper = data;
     test_case_info_t* info = helper->info;
 
-    g_test_ctx.jmpbuf = buf;
-    g_test_ctx.fn_longjmp = fn_longjmp;
+    _cutest_run_case_set_jmp(buf, fn_longjmp);
 
     if (val != 0)
     {
@@ -2173,8 +2182,7 @@ static void _cutest_fixture_run_teardown_jmp(cutest_porting_jmpbuf_t* buf,
 {
     test_case_info_t* info = data;
 
-    g_test_ctx.jmpbuf = buf;
-    g_test_ctx.fn_longjmp = fn_longjmp;
+    _cutest_run_case_set_jmp(buf, fn_longjmp);
 
     if (val != 0)
     {
@@ -2237,8 +2245,7 @@ static void _cutest_run_case_normal_body_jmp(cutest_porting_jmpbuf_t* buf,
     test_case_helper_t* helper = data;
     test_case_info_t* info = helper->info;
 
-    g_test_ctx.jmpbuf = buf;
-    g_test_ctx.fn_longjmp = fn_longjmp;
+    _cutest_run_case_set_jmp(buf, fn_longjmp);
 
     if (val != 0)
     {
@@ -2356,8 +2363,7 @@ static void _cutest_run_case_parameterized_body_jmp(cutest_porting_jmpbuf_t* buf
     test_case_info_t* info = helper->info;
     cutest_case_t* test_case = info->test_case;
 
-    g_test_ctx.jmpbuf = buf;
-    g_test_ctx.fn_longjmp = fn_longjmp;
+    _cutest_run_case_set_jmp(buf, fn_longjmp);
 
     if (val != 0)
     {
@@ -2456,7 +2462,7 @@ static void _cutest_reset_all_test(void)
 {
     cutest_porting_memset(&g_test_ctx.counter.result, 0, sizeof(g_test_ctx.counter.result));
 
-    cutest_map_node_t* it = cutest_map_begin(&g_test_nature.case_table);
+    cutest_map_node_t* it = cutest_map_begin(&g_test_ctx.case_table);
     for (; it != NULL; it = cutest_map_next(it))
     {
         cutest_case_t* test_case = CONTAINER_OF(it, cutest_case_t, node);
@@ -2468,7 +2474,7 @@ static void _cutest_show_report_failed(void)
 {
     char buffer[512];
 
-    cutest_map_node_t* it = cutest_map_begin(&g_test_nature.case_table);
+    cutest_map_node_t* it = cutest_map_begin(&g_test_ctx.case_table);
     for (; it != NULL; it = cutest_map_next(it))
     {
         cutest_case_t* test_case = CONTAINER_OF(it, cutest_case_t, node);
@@ -2500,7 +2506,7 @@ static void _cutest_show_report(const cutest_porting_timespec_t* tv_total_start,
     cutest_porting_cfprintf(g_test_ctx.out, CUTEST_COLOR_DEFAULT, "[==========]");
     cutest_porting_cfprintf(g_test_ctx.out, CUTEST_COLOR_DEFAULT, " %u/%u test case%s ran.",
         g_test_ctx.counter.result.total,
-        (unsigned)g_test_nature.case_table.size,
+        (unsigned)g_test_ctx.case_table.size,
         g_test_ctx.counter.result.total > 1 ? "s" : "");
     if (!g_test_ctx.mask.no_print_time)
     {
@@ -2698,7 +2704,7 @@ static void _cutest_list_tests(void)
 {
     const char* last_class_name = "";
 
-    cutest_map_node_t* it = cutest_map_begin(&g_test_nature.case_table);
+    cutest_map_node_t* it = cutest_map_begin(&g_test_ctx.case_table);
     for (; it != NULL; it = cutest_map_next(it))
     {
         cutest_case_t* test_case = CONTAINER_OF(it, cutest_case_t, node);
@@ -2716,7 +2722,7 @@ static void _cutest_list_tests(void)
 
 static void _cutest_list_types(void)
 {
-    cutest_map_node_t* it = cutest_map_begin(&g_test_nature.type_table);
+    cutest_map_node_t* it = cutest_map_begin(&g_test_ctx.type_table);
     for (; it != NULL; it = cutest_map_next(it))
     {
         cutest_type_info_t* type_info = CONTAINER_OF(it, cutest_type_info_t, node);
@@ -2775,19 +2781,19 @@ static int _cutest_setup_arg_random_seed(const char* str)
 
 static void _cutest_shuffle_cases(void)
 {
-    cutest_map_t copy_case_table = TEST_CASE_TABLE_INIT;
-
-    cutest_map_node_t* it = cutest_map_begin(&g_test_nature.case_table);
-    while (it != NULL)
+    cutest_map_node_t* it;
+    while ((it = cutest_map_begin(&g_test_ctx.case_table)) != NULL)
     {
-        cutest_case_t* test_case = CONTAINER_OF(it, cutest_case_t, node);
-        it = cutest_map_next(it);
-        cutest_map_erase(&g_test_nature.case_table, &test_case->node);
+        cutest_case_t* tc = CONTAINER_OF(it, cutest_case_t, node);
+        if (tc->data.randkey != 0)
+        {
+            break;
+        }
 
-        test_case->data.randkey = cutest_porting_rand();
-        cutest_map_insert(&copy_case_table, &test_case->node);
+        cutest_map_erase(&g_test_ctx.case_table, it);
+        tc->data.randkey = cutest_porting_rand();
+        cutest_map_insert(&g_test_ctx.case_table, it);
     }
-    g_test_nature.case_table = copy_case_table;
 }
 
 static int _cutest_smart_print_int(FILE* stream, const void* addr,
@@ -3068,7 +3074,7 @@ static void _cutest_setup_type(void)
 /**
  * @brief Setup resources that will not change.
  */
-static void cutest_setup_once(void)
+static void _cutest_setup_once(void)
 {
     static int token = 0;
     if (token == 0)
@@ -3164,8 +3170,16 @@ static int _cutest_setup(int argc, char* argv[], FILE* out, const cutest_hook_t*
         continue;\
     } while (0)
 
-    cutest_porting_memset(&g_test_ctx, 0, sizeof(g_test_ctx));
-    cutest_setup_once();
+    /* Do soft clear. */
+    {
+        cutest_map_t case_table = g_test_ctx.case_table;
+        cutest_map_t type_table = g_test_ctx.type_table;
+        cutest_porting_memset(&g_test_ctx, 0, sizeof(g_test_ctx));
+        g_test_ctx.case_table = case_table;
+        g_test_ctx.type_table = type_table;
+    }
+
+    _cutest_setup_once();
     _cutest_prepare();
 
     g_test_ctx.out = out;
@@ -3207,7 +3221,7 @@ static void _cutest_run_all_test_once(void)
     cutest_porting_timespec_t tv_total_start, tv_total_end;
     cutest_porting_clock_gettime(&tv_total_start);
 
-    cutest_map_node_t* it = cutest_map_begin(&g_test_nature.case_table);
+    cutest_map_node_t* it = cutest_map_begin(&g_test_ctx.case_table);
     for (; it != NULL; it = cutest_map_next(it))
     {
         g_test_ctx.runtime.cur_node = CONTAINER_OF(it, cutest_case_t, node);
@@ -3254,8 +3268,8 @@ static void _cutest_show_information(void)
         "[ $PARAME. ] --test_print_time=%d\n", (int)!g_test_ctx.mask.no_print_time);
     cutest_porting_fprintf(g_test_ctx.out,
         "[==========] total %u test%s registered.\n",
-        (unsigned)g_test_nature.case_table.size,
-        g_test_nature.case_table.size > 1 ? "s" : "");
+        (unsigned)g_test_ctx.case_table.size,
+        g_test_ctx.case_table.size > 1 ? "s" : "");
 }
 
 static void _cutest_run_all_tests(void)
@@ -3292,9 +3306,14 @@ static void _cutest_run_all_tests(void)
     }
 }
 
-void cutest_register_case(cutest_case_t* data)
+void cutest_register_case(cutest_case_t* tc)
 {
-    CUTEST_PORTING_ASSERT(cutest_map_insert(&g_test_nature.case_table, &data->node) == 0);
+    CUTEST_PORTING_ASSERT(cutest_map_insert(&g_test_ctx.case_table, &tc->node) == 0);
+}
+
+void cutest_unregister_case(cutest_case_t* tc)
+{
+    cutest_map_erase(&g_test_ctx.case_table, &tc->node);
 }
 
 int cutest_run_tests(int argc, char* argv[], FILE* out, const cutest_hook_t* hook)
@@ -3348,7 +3367,7 @@ void cutest_internal_assert_failure(void)
     }
     else
     {
-        g_test_ctx.fn_longjmp(g_test_ctx.jmpbuf, MASK_FAILURE);
+        g_test_ctx.jmp.func(g_test_ctx.jmp.addr, MASK_FAILURE);
     }
 }
 
@@ -3368,7 +3387,7 @@ void cutest_internal_register_type(cutest_type_info_t* info)
     info->node.rb_left = NULL;
     info->node.rb_right = NULL;
 
-    if (cutest_map_insert(&g_test_nature.type_table, &info->node) < 0)
+    if (cutest_map_insert(&g_test_ctx.type_table, &info->node) < 0)
     {
         cutest_porting_abort("Duplicate type `%s'.\n", info->type_name);
     }
@@ -3379,7 +3398,7 @@ static cutest_type_info_t* _cutest_get_type_info(const char* type_name)
     cutest_type_info_t tmp;
     tmp.type_name = type_name;
 
-    cutest_map_node_t* it = cutest_map_find(&g_test_nature.type_table, &tmp.node);
+    cutest_map_node_t* it = cutest_map_find(&g_test_ctx.type_table, &tmp.node);
     if (it == NULL)
     {
         return NULL;
