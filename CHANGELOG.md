@@ -4,6 +4,7 @@
 
 ### Fixed
 1. Fix: default random seed might exceed the limit.
+2. Fix: combine `--test_repeat` and `--test_shuffle` should use different seed each loop.
 
 ### Features
 1. Automatic disable thread support if `Threads` not found.

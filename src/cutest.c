@@ -1232,6 +1232,22 @@ static cutest_map_node_t* cutest_map_begin(const cutest_map_t* handler)
 }
 
 /**
+ * @brief Returns an iterator to the end
+ * @param root      The pointer to the map
+ * @return          An iterator
+ */
+static cutest_map_node_t* cutest_map_end(const cutest_map_t* handler)
+{
+    cutest_map_node_t* n = handler->rb_root;
+
+	if (!n)
+		return NULL;
+	while (n->rb_right)
+		n = n->rb_right;
+	return n;
+}
+
+/**
  * @brief Get an iterator next to the given one.
  * @param [in] node     Current iterator
  * @return              Next iterator
@@ -2460,7 +2476,7 @@ static void _cutest_run_case(cutest_case_t* test_case)
     _cutest_run_case_normal(test_case);
 }
 
-static void _cutest_reset_all_test(void)
+static void _cutest_reset_all_test_mask(void)
 {
     cutest_porting_memset(&g_test_ctx.counter.result, 0, sizeof(g_test_ctx.counter.result));
 
@@ -2792,6 +2808,24 @@ static void _cutest_shuffle_cases(void)
 
         cutest_map_erase(&g_test_ctx.case_table, it);
         tc->data.randkey = cutest_porting_rand(MAX_RAND + 1);
+        cutest_map_insert(&g_test_ctx.case_table, it);
+    }
+}
+
+static void _cutest_undo_shuffle_cases(void)
+{
+    cutest_map_node_t* it;
+
+    while ((it = cutest_map_end(&g_test_ctx.case_table)) != NULL)
+    {
+        cutest_case_t* tc = CONTAINER_OF(it, cutest_case_t, node);
+        if (tc->data.randkey == 0)
+        {
+            break;
+        }
+
+        cutest_map_erase(&g_test_ctx.case_table, it);
+        tc->data.randkey = 0;
         cutest_map_insert(&g_test_ctx.case_table, it);
     }
 }
@@ -3132,11 +3166,14 @@ static int _cutest_setup_arg_break_on_failure(void)
 
 static void _cutest_cleanup(void)
 {
-	cutest_map_t case_table = g_test_ctx.case_table;
-	cutest_map_t type_table = g_test_ctx.type_table;
-	cutest_porting_memset(&g_test_ctx, 0, sizeof(g_test_ctx));
-	g_test_ctx.case_table = case_table;
-	g_test_ctx.type_table = type_table;
+    /* Reset all data. */
+    {
+		cutest_map_t case_table = g_test_ctx.case_table;
+		cutest_map_t type_table = g_test_ctx.type_table;
+		cutest_porting_memset(&g_test_ctx, 0, sizeof(g_test_ctx));
+		g_test_ctx.case_table = case_table;
+		g_test_ctx.type_table = type_table;
+    }
 }
 
 /**
@@ -3203,12 +3240,6 @@ static int _cutest_setup(int argc, char* argv[], FILE* out, const cutest_hook_t*
         PARSER_LONGOPT_WITH_VALUE("--test_print_time",              _cutest_setup_arg_print_time);
     }
 
-    /* shuffle if necessary */
-    if (g_test_ctx.mask.shuffle)
-    {
-        _cutest_shuffle_cases();
-    }
-
     return 0;
 
 #undef PARSER_LONGOPT_NO_VALUE
@@ -3217,7 +3248,7 @@ static int _cutest_setup(int argc, char* argv[], FILE* out, const cutest_hook_t*
 
 static void _cutest_run_all_test_once(void)
 {
-    _cutest_reset_all_test();
+    _cutest_reset_all_test_mask();
 
     cutest_porting_timespec_t tv_total_start, tv_total_end;
     cutest_porting_clock_gettime(&tv_total_start);
@@ -3280,7 +3311,16 @@ static void _cutest_run_all_tests(void)
                 (unsigned)g_test_ctx.counter.repeat.repeat);
         }
 
+		/* shuffle if necessary */
+		if (g_test_ctx.mask.shuffle)
+		{
+			_cutest_shuffle_cases();
+		}
+
         _cutest_run_all_test_once();
+
+        /* Undo shuffle. */
+        _cutest_undo_shuffle_cases();
 
         if (g_test_ctx.counter.repeat.repeat > 1)
         {
