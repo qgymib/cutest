@@ -3347,6 +3347,25 @@ void cutest_unregister_case(cutest_case_t* tc)
     cutest_map_erase(&g_test_ctx.case_table, &tc->node);
 }
 
+void cutest_case_init(cutest_case_t* tc, const char* fixture_name, const char* case_name,
+    cutest_test_case_setup_fn setup, cutest_test_case_teardown_fn teardown, cutest_test_case_body_fn body)
+{
+    const cutest_case_t s_empty_tc = {
+        { NULL, NULL, NULL },       /* .node */
+        { NULL, NULL },             /* .info */
+        { NULL, NULL, NULL },       /* .stage */
+        { 0,0 },                    /* .data */
+        { NULL, NULL, NULL, 0 },    /* .parameterized */
+    };
+    *tc = s_empty_tc;
+
+    tc->info.fixture_name = fixture_name;
+    tc->info.case_name = case_name;
+    tc->stage.setup = setup;
+    tc->stage.teardown = teardown;
+    tc->stage.body = body;
+}
+
 int cutest_run_tests(int argc, char* argv[], FILE* out, const cutest_hook_t* hook)
 {
     int ret = 0;

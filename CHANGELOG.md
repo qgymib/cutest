@@ -8,7 +8,8 @@
 
 ### Features
 1. Automatic disable thread support if `Threads` not found.
-2. Test case can be unregistered by `cutest_unregister_case()`.
+2. You can dynamic register test cases by `cutest_register_case()`.
+3. Test case can be unregistered by `cutest_unregister_case()`.
 
 
 ## v3.0.3 (2024/04/23)

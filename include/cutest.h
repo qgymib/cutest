@@ -115,7 +115,7 @@ extern "C" {
 /**
  * @brief Development version.
  */
-#define CUTEST_VERSION_PREREL       4
+#define CUTEST_VERSION_PREREL       5
 
 /**
  * @brief Ensure the api is exposed as C function.
@@ -222,14 +222,10 @@ extern "C" {
         const unsigned long number_of_parameterized_data = sizeof(s_tests) / sizeof(s_tests[0]);\
         unsigned long i = 0;\
         for (i = 0; i < number_of_parameterized_data; i++) {\
-            s_tests[i].node = CUTEST_MAP_NODE_INIT;\
-            s_tests[i].info.fixture_name = #fixture;\
-            s_tests[i].info.case_name = #test;\
-            s_tests[i].stage.setup = s_cutest_fixture_setup_##fixture;\
-            s_tests[i].stage.teardown = s_cutest_fixture_teardown_##fixture;\
-            s_tests[i].stage.body = (void(*)(void*, unsigned long))cb;\
-            s_tests[i].data.mask = 0;\
-            s_tests[i].data.randkey = 0;\
+            cutest_case_init(&s_tests[i], #fixture, #test,\
+                s_cutest_fixture_setup_##fixture,\
+                s_cutest_fixture_teardown_##fixture,\
+                (void(*)(void*, unsigned long))cb);\
             s_tests[i].parameterized.type_name = #TYPE;\
             s_tests[i].parameterized.test_data_cstr = TEST_STRINGIFY(__VA_ARGS__);\
             s_tests[i].parameterized.param_data = s_parameterized_userdata;\
@@ -299,31 +295,12 @@ extern "C" {
         cutest_usertest_body_##fixture##_##test();\
     }\
     TEST_INITIALIZER(cutest_usertest_interface_##fixture##_##test) {\
-        static cutest_case_t _case_##fixture##_##test = {\
-            {\
-                NULL, NULL, NULL,\
-            }, /* .node */\
-            {\
-                #fixture,\
-                #test,\
-            }, /* .info */\
-            {\
-                s_cutest_fixture_setup_##fixture,\
-                s_cutest_fixture_teardown_##fixture,\
-                s_cutest_proxy_##fixture##_##test,\
-            }, /* .stage */\
-            {\
-                0, 0,\
-            }, /* .data */\
-            {\
-                NULL, NULL, NULL, 0,\
-            }, /* .parameterized */\
-        };\
-        static unsigned char s_token = 0;\
-        if (s_token == 0) {\
-            s_token = 1;\
-            cutest_register_case(&_case_##fixture##_##test);\
-        }\
+        static cutest_case_t _case_##fixture##_##test;\
+        cutest_case_init(&_case_##fixture##_##test, #fixture, #test,\
+            s_cutest_fixture_setup_##fixture,\
+            s_cutest_fixture_teardown_##fixture,\
+            s_cutest_proxy_##fixture##_##test);\
+        cutest_register_case(&_case_##fixture##_##test);\
     }\
     TEST_C_API void cutest_usertest_body_##fixture##_##test(void)
 
@@ -345,30 +322,10 @@ extern "C" {
         cutest_usertest_body_##fixture##_##test();\
     }\
     TEST_INITIALIZER(cutest_usertest_interface_##fixture##_##test) {\
-        static cutest_case_t _case_##fixture##_##test = {\
-            {\
-                NULL, NULL, NULL,\
-            }, /* .node */\
-            {\
-                #fixture,\
-                #test,\
-            }, /* .info */\
-            {\
-                NULL, NULL,\
-                s_cutest_proxy_##fixture##_##test,\
-            }, /* .stage */\
-            {\
-                0, 0,\
-            }, /* .data */\
-            {\
-                NULL, NULL, NULL, 0,\
-            }, /* parameterized */\
-        };\
-        static unsigned char s_token = 0;\
-        if (s_token == 0) {\
-            s_token = 1;\
-            cutest_register_case(&_case_##fixture##_##test);\
-        }\
+        static cutest_case_t _case_##fixture##_##test;\
+        cutest_case_init(&_case_##fixture##_##test, #fixture,#test,\
+            NULL, NULL, s_cutest_proxy_##fixture##_##test);\
+        cutest_register_case(&_case_##fixture##_##test);\
     }\
     TEST_C_API void cutest_usertest_body_##fixture##_##test(void)
 
@@ -486,69 +443,6 @@ extern "C" {
 #define TEST_EXPAND(x)          x
 #define TEST_JOIN(a, b)         TEST_JOIN2(a, b)
 #define TEST_JOIN2(a, b)        a##b
-
-typedef struct cutest_map_node
-{
-    struct cutest_map_node*     __rb_parent_color;      /**< father node | color */
-    struct cutest_map_node*     rb_right;               /**< right child node */
-    struct cutest_map_node*     rb_left;                /**< left child node */
-} cutest_map_node_t;
-
-#if defined(__cplusplus)
-#   define CUTEST_MAP_NODE_INIT { NULL, NULL, NULL }
-#else
-#   define CUTEST_MAP_NODE_INIT (cutest_map_node_t){ NULL, NULL, NULL }
-#endif
-
-typedef struct cutest_case
-{
-    cutest_map_node_t           node;
-
-    struct
-    {
-        const char*             fixture_name;                   /**< suit name */
-        const char*             case_name;                      /**< case name */
-    } info;
-
-    struct
-    {
-        void                    (*setup)(void);                 /**< setup */
-        void                    (*teardown)(void);              /**< teardown */
-        void                    (*body)(void*, unsigned long);  /**< test body */
-    } stage;
-
-    struct
-    {
-        unsigned long           mask;                           /**< Internal mask */
-        unsigned long           randkey;                        /**< Random key */
-    } data;
-
-    struct
-    {
-        const char*             type_name;                      /**< User type name. */
-        const char*             test_data_cstr;                 /**< The C string of user test data. */
-        void*                   param_data;                     /**< Data passed to #cutest_case_t::stage::body */
-        unsigned long           param_idx;                      /**< Index passed to #cutest_case_t::stage::body */
-    } parameterized;
-} cutest_case_t;
-
-/**
- * @brief Register test case.
- *
- * A registered test case will be automatically executed by #cutest_run_tests().
- *
- * @note A registered test case can not be unregistered during #cutest_run_tests().
- * @see #cutest_unregister_case().
- * @param[in,out] tc - Test case.
- */
-void cutest_register_case(cutest_case_t* tc);
-
-/**
- * @brief Unregister test case.
- * @see #cutest_register_case().
- * @param[in,out] tc - Test case.
- */
-void cutest_unregister_case(cutest_case_t* tc);
 
 /** @endcond */
 
@@ -736,6 +630,110 @@ void cutest_unregister_case(cutest_case_t* tc);
 
 /**
  * Group: TEST_MANUAL_REGISTRATION
+ * @}
+ */
+
+/**
+ * @defgroup TEST_DYNAMIC_REGISTRATION Dynamic register test
+ *
+ * Of course, you can also register your test dynamically without using any of #TEST_F(), #TEST_P() or #TEST().
+ *
+ * To dynamically register test, you need to register your test case by #cutest_register_case() before #cutest_run_tests(),
+ * and unregister by #cutest_unregister_case() after all test cases are run.
+ *
+ * @warning You cannot unregister test case during #cutest_run_tests().
+ *
+ * @{
+ */
+
+typedef struct cutest_map_node
+{
+    struct cutest_map_node*     __rb_parent_color;      /**< father node | color */
+    struct cutest_map_node*     rb_right;               /**< right child node */
+    struct cutest_map_node*     rb_left;                /**< left child node */
+} cutest_map_node_t;
+
+/**
+ * @brief Test case setup function.
+ */
+typedef void (*cutest_test_case_setup_fn)(void);
+
+/**
+ * @brief Test case teardown function.
+ */
+typedef void (*cutest_test_case_teardown_fn)(void);
+
+/**
+ * @brief Test case body function.
+ * @param[in] dat - Data passed to #cutest_case_t::stage::body
+ * @param[in] idx - Index passed to #cutest_case_t::stage::body
+ */
+typedef void (*cutest_test_case_body_fn)(void* dat, unsigned long idx);
+
+typedef struct cutest_case
+{
+    cutest_map_node_t                   node;           /**< Node in rbtree. */
+
+    struct
+    {
+        const char*                     fixture_name;   /**< suit name. */
+        const char*                     case_name;      /**< case name. */
+    } info;
+
+    struct
+    {
+        cutest_test_case_setup_fn       setup;          /**< setup. */
+        cutest_test_case_teardown_fn    teardown;       /**< teardown. */
+        cutest_test_case_body_fn        body;           /**< test body. */
+    } stage;
+
+    struct
+    {
+        unsigned long                   mask;           /**< Internal mask. */
+        unsigned long                   randkey;        /**< Random key. */
+    } data;
+
+    struct
+    {
+        const char*                     type_name;      /**< User type name. */
+        const char*                     test_data_cstr; /**< The C string of user test data. */
+        void*                           param_data;     /**< Data passed to #cutest_case_t::stage::body */
+        unsigned long                   param_idx;      /**< Index passed to #cutest_case_t::stage::body */
+    } parameterized;
+} cutest_case_t;
+
+/**
+ * @brief Initialize test case as normal test.
+ * @param[out] tc - Test case.
+ * @param[in] fixture_name - Fixture name.
+ * @param[in] case_name - Test name.
+ * @param[in] setup - Setup function.
+ * @param[in] teardown - Teardown function.
+ * @param[in] body - Test body function.
+ */
+void cutest_case_init(cutest_case_t* tc, const char* fixture_name, const char* case_name,
+	cutest_test_case_setup_fn setup, cutest_test_case_teardown_fn teardown, cutest_test_case_body_fn body);
+
+/**
+ * @brief Register test case.
+ *
+ * A registered test case will be automatically executed by #cutest_run_tests().
+ *
+ * @note A registered test case can not be unregistered during #cutest_run_tests().
+ * @see #cutest_unregister_case().
+ * @param[in,out] tc - Test case.
+ */
+void cutest_register_case(cutest_case_t* tc);
+
+/**
+ * @brief Unregister test case.
+ * @see #cutest_register_case().
+ * @param[in,out] tc - Test case.
+ */
+void cutest_unregister_case(cutest_case_t* tc);
+
+/**
+ * Group: TEST_DYNAMIC_REGISTRATION
  * @}
  */
 
