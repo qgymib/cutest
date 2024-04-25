@@ -4,12 +4,6 @@
 
 #include "cutest.h"
 
-/**
- * @brief Get static array element count.
- * @param[in] arr   Static array.
- */
-#define ARRAY_SIZE(arr)                     (sizeof(arr) / sizeof(arr[0]))
-
 /*
  * Before Visual Studio 2015, there is a bug that a `do { } while (0)` will triger C4127 warning
  * https://docs.microsoft.com/en-us/cpp/error-messages/compiler-warnings/compiler-warning-level-4-c4127
@@ -863,7 +857,7 @@ static void _cutest_initlize_color_unix(void)
     }
 
     unsigned long i;
-    for (i = 0; i < ARRAY_SIZE(support_color_term_list); i++)
+    for (i = 0; i < TEST_ARRAY_SIZE(support_color_term_list); i++)
     {
         if (cutest_porting_strcmp(term, support_color_term_list[i]) == 0)
         {
@@ -3364,6 +3358,15 @@ void cutest_case_init(cutest_case_t* tc, const char* fixture_name, const char* c
     tc->stage.setup = setup;
     tc->stage.teardown = teardown;
     tc->stage.body = body;
+}
+
+void cutest_case_convert_parameterized(cutest_case_t* tc, const char* type,
+    const char* commit, void* data, unsigned long size)
+{
+    tc->parameterized.type_name = type;
+    tc->parameterized.test_data_cstr = commit;
+    tc->parameterized.param_data = data;
+    tc->parameterized.param_idx = size;
 }
 
 int cutest_run_tests(int argc, char* argv[], FILE* out, const cutest_hook_t* hook)

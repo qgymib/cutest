@@ -10,6 +10,7 @@
 1. Automatic disable thread support if `Threads` not found.
 2. You can dynamic register test cases by `cutest_register_case()`.
 3. Test case can be unregistered by `cutest_unregister_case()`.
+4. Test case is able to convert to parameterized by `cutest_case_convert_parameterized()`.
 
 
 ## v3.0.3 (2024/04/23)

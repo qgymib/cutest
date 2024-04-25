@@ -115,7 +115,7 @@ extern "C" {
 /**
  * @brief Development version.
  */
-#define CUTEST_VERSION_PREREL       5
+#define CUTEST_VERSION_PREREL       6
 
 /**
  * @brief Ensure the api is exposed as C function.
@@ -218,18 +218,15 @@ extern "C" {
 #define TEST_PARAMETERIZED_DEFINE(fixture, test, TYPE, ...)  \
     static void cutest_usertest_parameterized_register_##fixture##_##test(void (*cb)(TYPE*, unsigned long)) {\
         static TYPE s_parameterized_userdata[] = { __VA_ARGS__ };\
-        static cutest_case_t s_tests[sizeof(s_parameterized_userdata) / sizeof(s_parameterized_userdata[0])];\
-        const unsigned long number_of_parameterized_data = sizeof(s_tests) / sizeof(s_tests[0]);\
+        static cutest_case_t s_tests[TEST_ARRAY_SIZE(s_parameterized_userdata)];\
         unsigned long i = 0;\
-        for (i = 0; i < number_of_parameterized_data; i++) {\
+        for (i = 0; i < TEST_ARRAY_SIZE(s_tests); i++) {\
             cutest_case_init(&s_tests[i], #fixture, #test,\
                 s_cutest_fixture_setup_##fixture,\
                 s_cutest_fixture_teardown_##fixture,\
                 (void(*)(void*, unsigned long))cb);\
-            s_tests[i].parameterized.type_name = #TYPE;\
-            s_tests[i].parameterized.test_data_cstr = TEST_STRINGIFY(__VA_ARGS__);\
-            s_tests[i].parameterized.param_data = s_parameterized_userdata;\
-            s_tests[i].parameterized.param_idx = i;\
+            cutest_case_convert_parameterized(&s_tests[i],\
+                #TYPE, TEST_STRINGIFY(__VA_ARGS__), (void*)s_parameterized_userdata, i);\
             cutest_register_case(&s_tests[i]);\
         }\
     }\
@@ -270,11 +267,7 @@ extern "C" {
     TEST_C_API void u_cutest_body_##fixture##_##test(\
         u_cutest_parameterized_type_##fixture##_##test*, unsigned long);\
     TEST_INITIALIZER(cutest_usertest_interface_##fixture##_##test) {\
-        static unsigned char s_token = 0;\
-        if (s_token == 0) {\
-            s_token = 1;\
-            cutest_usertest_parameterized_register_##fixture##_##test(u_cutest_body_##fixture##_##test);\
-        }\
+        cutest_usertest_parameterized_register_##fixture##_##test(u_cutest_body_##fixture##_##test);\
     }\
     TEST_C_API void u_cutest_body_##fixture##_##test(\
         u_cutest_parameterized_type_##fixture##_##test* _test_parameterized_data,\
@@ -443,6 +436,8 @@ extern "C" {
 #define TEST_EXPAND(x)          x
 #define TEST_JOIN(a, b)         TEST_JOIN2(a, b)
 #define TEST_JOIN2(a, b)        a##b
+
+#define TEST_ARRAY_SIZE(arr)    (sizeof(arr) / sizeof(arr[0]))
 
 /** @endcond */
 
@@ -713,6 +708,17 @@ typedef struct cutest_case
  */
 void cutest_case_init(cutest_case_t* tc, const char* fixture_name, const char* case_name,
 	cutest_test_case_setup_fn setup, cutest_test_case_teardown_fn teardown, cutest_test_case_body_fn body);
+
+/**
+ * @brief Convert normal test case to parameterized test case.
+ * @param[in,out] tc - Test case.
+ * @param[in] type - User type name.
+ * @param[in] commit - The C string of user test data.
+ * @param[in] data - Data passed to #cutest_case_t::stage::body
+ * @param[in] size - Index passed to #cutest_case_t::stage::body
+ */
+void cutest_case_convert_parameterized(cutest_case_t* tc, const char* type,
+    const char* commit, void* data, unsigned long size);
 
 /**
  * @brief Register test case.
