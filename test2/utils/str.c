@@ -35,3 +35,10 @@ void test_str_append(test_str_t* str, const char* data, size_t len)
     str->str[required_sz] = '\0';
     str->len = required_sz;
 }
+
+test_str_t test_str_dup(const test_str_t* str)
+{
+    test_str_t ret = TEST_STR_INIT;
+    test_str_append(&ret, str->str, str->len);
+    return ret;
+}

@@ -16,6 +16,17 @@ extern "C" {
  */
 int test_file_read(const char* path, test_str_t* data);
 
+/**
+ * @brief Read file content.
+ * @param[in] path - File path.
+ * @param[in] cb   - Callback function.
+ * @param[in] arg  - Callback argument.
+ * @return - 0: success
+ * @return - -errno: on error
+ */
+int test_file_reader(const char* path,
+    int (*cb)(const char*, size_t, void*), void* arg);
+
 #ifdef __cplusplus
 }
 #endif

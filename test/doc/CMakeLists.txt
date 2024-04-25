@@ -33,7 +33,6 @@ add_custom_command(
 
 add_executable(doc_verify
     "test.c"
-    "case/encoding.c"
     "case/mainpage.c"
     "utils/foreachline.c"
     "utils/strtok_f.c"

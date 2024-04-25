@@ -1,5 +1,6 @@
 add_executable(cutest_test
     tools/__init__.c
+    tools/eolcheck.c
     tools/help.c
     utils/file.c
     utils/regex.c
@@ -20,3 +21,14 @@ target_link_libraries(cutest_test
 cutest_setup_target_wall(cutest_test)
 
 add_test(NAME cutest_test COMMAND $<TARGET_FILE:cutest_test>)
+
+add_test(NAME cutest_eol_h
+    COMMAND $<TARGET_FILE:cutest_test> -- eolcheck
+        --file=${CMAKE_CURRENT_SOURCE_DIR}/../include/cutest.h
+        --eol=LF
+)
+add_test(NAME cutest_eol_c
+    COMMAND $<TARGET_FILE:cutest_test> -- eolcheck
+        --file=${CMAKE_CURRENT_SOURCE_DIR}/../src/cutest.c
+        --eol=LF
+)
