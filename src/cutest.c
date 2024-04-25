@@ -979,13 +979,30 @@ static int _cutest_porting_color_vfprintf(FILE* stream, cutest_porting_color_t c
 #endif
 
 /**
+ * @brief Protocol type of #cutest_porting_cvfprintf().
+ */
+typedef int (*cutest_porting_cvfprintf_fn)(FILE* stream, int color,
+    const char* fmt, va_list ap);
+
+/**
  * @brief Print data to \p stream.
  */
 int _cutest_porting_cvfprintf(FILE* stream, int color, const char* fmt, va_list ap)
 {
-    int ret;
-    CUTEST_PORTING_ASSERT(stream != NULL);
+    /* Internal behavior for capture output. */
+    static cutest_porting_cvfprintf_fn s_proxy = NULL;
+    if (stream == NULL && color == -1)
+    {
+        s_proxy = (cutest_porting_cvfprintf_fn)fmt;
+        return 0;
+    }
+    if (s_proxy != NULL)
+    {
+        return s_proxy(stream, color, fmt, ap);
+    }
 
+    /* Standard behavior. */
+    int ret;
     int stream_fd = fileno(stream);
     if (!_cutest_should_use_color(isatty(stream_fd)) || (color == CUTEST_COLOR_DEFAULT))
     {

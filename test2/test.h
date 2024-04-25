@@ -12,6 +12,8 @@ extern "C" {
  */
 extern const cutest_hook_t test_hook;
 
+void cutest_test_run_tools(int argc, char* argv[]);
+
 #ifdef __cplusplus
 }
 #endif

@@ -1,4 +1,6 @@
 add_executable(cutest_test
+    cases/__init__.c
+    cases/cmd_also_run_disabled_tests.c
     tools/__init__.c
     tools/eolcheck.c
     tools/help.c
