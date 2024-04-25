@@ -1,6 +1,9 @@
 add_executable(cutest_test
     tools/__init__.c
     tools/help.c
+    utils/file.c
+    utils/regex.c
+    utils/str.c
     main.c
     test.c
 )

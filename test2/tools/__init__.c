@@ -4,9 +4,11 @@
 #include "test.h"
 
 extern const test_tool_t test_tool_help;
+extern const test_tool_t test_tool_stringfinder;
 
 static const test_tool_t* const g_command_table[] = {
     &test_tool_help,
+    &test_tool_stringfinder,
 };
 
 int test_tool_exec(int argc, char* argv[])
