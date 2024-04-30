@@ -1,6 +1,6 @@
 # Changelog
 
-## v4.0.0
+## v4.0.0 (2024/04/30)
 
 ### BREAKING CHANGES
 1. The signature of `cutest_porting_abort()` is changed.
