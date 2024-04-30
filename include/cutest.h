@@ -100,7 +100,7 @@ extern "C" {
 /**
  * @brief Major version.
  */
-#define CUTEST_VERSION_MAJOR        3
+#define CUTEST_VERSION_MAJOR        4
 
 /**
  * @brief Minor version.
@@ -110,12 +110,12 @@ extern "C" {
 /**
  * @brief Patch version.
  */
-#define CUTEST_VERSION_PATCH        4
+#define CUTEST_VERSION_PATCH        0
 
 /**
  * @brief Development version.
  */
-#define CUTEST_VERSION_PREREL       6
+#define CUTEST_VERSION_PREREL       1
 
 /**
  * @brief Ensure the api is exposed as C function.
@@ -1672,9 +1672,9 @@ void cutest_skip_test(void);
  * @note It is not recommend to ignore last words because that will missing
  *   something really important.
  * @param[in] fmt   Last words.
- * @param[in] ...   Arguments to last words.
+ * @param[in] ap    Arguments to last words.
  */
-void cutest_porting_abort(const char* fmt, ...);
+void cutest_porting_abort(const char* fmt, va_list ap);
 
 /**
  * END GROUP: TEST_PORTING_SYSTEM_API_ABORT

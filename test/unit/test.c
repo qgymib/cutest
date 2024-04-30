@@ -134,5 +134,5 @@ void cutest_porting_assert_fail_2(const char* expr, const char* file, int line, 
     cutest_porting_cprintf_2(stderr, CUTEST_COLOR_DEFAULT, "CUTEST OUTPUT:\n");
     test_print_file(stderr, _TEST.out);
     cutest_porting_cprintf_2(stderr, CUTEST_COLOR_DEFAULT, "<< EOF\n");
-    cutest_porting_abort("");
+    abort();
 }

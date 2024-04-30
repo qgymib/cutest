@@ -1,6 +1,9 @@
 # Changelog
 
-## v3.0.4
+## v4.0.0
+
+### BREAKING CHANGES
+1. The signature of `cutest_porting_abort()` is changed.
 
 ### Fixed
 1. Fix: default random seed might exceed the limit.
@@ -11,6 +14,7 @@
 2. You can dynamic register test cases by `cutest_register_case()`.
 3. Test case can be unregistered by `cutest_unregister_case()`.
 4. Test case is able to convert to parameterized by `cutest_case_convert_parameterized()`.
+5. Use weak alias to define builtin porting functions.
 
 
 ## v3.0.3 (2024/04/23)

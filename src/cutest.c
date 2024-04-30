@@ -16,6 +16,56 @@
 // Porting
 ///////////////////////////////////////////////////////////////////////////////
 
+/**
+ * @brief Define \p aliasname as a weak alias of \p name.
+ * @param[in] name - The source function.
+ * @param[in] aliasname - The weak alias name.
+ */
+#if defined(_MSC_VER)
+#   ifndef weak_alias
+#       define weak_alias(name, aliasname) \
+            __pragma(comment(linker,"/alternatename:" #aliasname "=" #name));
+#   endif
+#elif defined(__GNUC__) || defined(__clang__) || defined(__ARMCOMPILER_VERSION)
+#   ifndef weak_alias
+#       define weak_alias(name, aliasname) \
+            extern __typeof (name) aliasname __attribute__ ((weak, alias (#name)));
+#   endif
+#endif
+
+#if defined(weak_alias)
+#   define WEAK_ALIAS_FUNC(name, aliasname, ret, ...) \
+        weak_alias(name, aliasname);
+#else
+#   define WEAK_ALIAS_FUNC(name, aliasname, ret, ...) \
+        TEST_JOIN(WEAK_ALIAS_FUNC_, TEST_NARG(__VA_ARGS__))(name, aliasname, ret, __VA_ARGS__)
+#endif
+
+#define WEAK_ALIAS_FUNC_0(name, aliasname, ret) \
+    extern ret aliasname(void) {\
+        return name(); \
+    }
+
+#define WEAK_ALIAS_FUNC_1(name, aliasname, ret, targ1) \
+    extern ret aliasname(targ1 p1) {\
+        return name(p1); \
+    }
+
+#define WEAK_ALIAS_FUNC_2(name, aliasname, ret, targ1, targ2) \
+    extern ret aliasname(targ1 p1, targ2 p2) {\
+        return name(p1, p2); \
+    }
+
+#define WEAK_ALIAS_FUNC_3(name, aliasname, ret, targ1, targ2, targ3) \
+    extern ret aliasname(targ1 p1, targ2 p2, targ3 p3) {\
+        return name(p1, p2, p3); \
+    }
+
+#define WEAK_ALIAS_FUNC_4(name, aliasname, ret, targ1, targ2, targ3, targ4) \
+    extern ret aliasname(targ1 p1, targ2 p2, targ3 p3, targ4 p4) {\
+        return name(p1, p2, p3, p4); \
+    }
+
 #if defined(CUTEST_PORTING)
 #   define CUTEST_PORTING_SETJMP
 #   define CUTEST_PORTING_CLOCK_GETTIME
@@ -29,14 +79,14 @@
  * @note This macro does not respect `NDEBUG`.
  */
 #define CUTEST_PORTING_ASSERT(x) \
-    ((x) ? (void)0 : (void)cutest_porting_abort(\
+    ((x) ? (void)0 : (void)cutest_abort(\
         "%s:%d: %s: Assertion `%s' failed.\n", __FILE__, __LINE__, __FUNCTION__, #x))
 
 /**
  * @brief Like #CUTEST_PORTING_ASSERT, but with print support.
  */
 #define CUTEST_PORTING_ASSERT_P(x, fmt, ...)  \
-    ((x) ? (void)0 : (void)cutest_porting_abort(\
+    ((x) ? (void)0 : (void)cutest_abort(\
         "%s:%d: %s: Assertion `%s' failed: " fmt "\n", __FILE__, __LINE__, __FUNCTION__, #x, ##__VA_ARGS__))
 
 static unsigned long s_test_rand_seed = 1;
@@ -88,8 +138,6 @@ static int cutest_porting_fprintf(FILE* stream, const char* fmt, ...)
 
 static void* cutest_porting_memcpy(void* dst, const void* src, unsigned long n)
 {
-    CUTEST_PORTING_ASSERT(sizeof(unsigned char) == 1);
-
     unsigned char* p_dst = dst;
     const unsigned char* p_src = src;
 
@@ -309,7 +357,7 @@ static BOOL _cutest_init_timestamp_win32(PINIT_ONCE InitOnce, PVOID Parameter, P
     return TRUE;
 }
 
-void cutest_porting_clock_gettime(cutest_porting_timespec_t* tp)
+void _cutest_porting_clock_gettime(cutest_porting_timespec_t* tp)
 {
     /* One time initialize */
     static INIT_ONCE token = INIT_ONCE_STATIC_INIT;
@@ -343,12 +391,15 @@ void cutest_porting_clock_gettime(cutest_porting_timespec_t* tp)
     tp->tv_nsec = (t.QuadPart % 1000000) * 1000;
 }
 
+WEAK_ALIAS_FUNC(_cutest_porting_clock_gettime, cutest_porting_clock_gettime,
+    void, cutest_porting_timespec_t*)
+
 #elif defined(__linux__)
 
 #include <time.h>
 #include <stdlib.h>
 
-void cutest_porting_clock_gettime(cutest_porting_timespec_t* tp)
+void _cutest_porting_clock_gettime(cutest_porting_timespec_t* tp)
 {
     struct timespec tmp_ts;
     if (clock_gettime(CLOCK_MONOTONIC, &tmp_ts) < 0)
@@ -359,6 +410,9 @@ void cutest_porting_clock_gettime(cutest_porting_timespec_t* tp)
     tp->tv_sec = tmp_ts.tv_sec;
     tp->tv_nsec = tmp_ts.tv_nsec;
 }
+
+WEAK_ALIAS_FUNC(_cutest_porting_clock_gettime, cutest_porting_clock_gettime,
+    void, cutest_porting_timespec_t*)
 
 #endif
 
@@ -380,18 +434,25 @@ void cutest_porting_clock_gettime(cutest_porting_timespec_t* tp)
 
 #include <stdlib.h>
 
-void cutest_porting_abort(const char* fmt, ...)
+void _cutest_porting_abort(const char* fmt, va_list ap)
 {
-    va_list ap;
-    va_start(ap, fmt);
     vfprintf(stderr, fmt, ap);
-    va_end(ap);
     fflush(stderr);
-
     abort();
 }
 
+WEAK_ALIAS_FUNC(_cutest_porting_abort, cutest_porting_abort,
+    void, va_list)
+
 #endif
+
+static void cutest_abort(const char* fmt, ...)
+{
+    va_list ap;
+    va_start(ap, fmt);
+    cutest_porting_abort(fmt, ap);
+    va_end(ap);
+}
 
 /**
  * END: cutest_porting_abort()
@@ -418,19 +479,25 @@ void* cutest_porting_gettid(void)
 
 #include <windows.h>
 
-void* cutest_porting_gettid(void)
+void* _cutest_porting_gettid(void)
 {
     return (void*)(uintptr_t)GetCurrentThreadId();
 }
+
+WEAK_ALIAS_FUNC(_cutest_porting_gettid, cutest_porting_gettid,
+    void*)
 
 #elif defined(__linux__)
 
 #include <pthread.h>
 
-void* cutest_porting_gettid(void)
+void* _cutest_porting_gettid(void)
 {
     return (void*)pthread_self();
 }
+
+WEAK_ALIAS_FUNC(_cutest_porting_gettid, cutest_porting_gettid,
+    void*)
 
 #endif
 
@@ -462,7 +529,7 @@ static void _cutest_porting_longjmp(cutest_porting_jmpbuf_t* buf, int val)
     longjmp(buf->buf, val);
 }
 
-void cutest_porting_setjmp(cutest_porting_setjmp_fn execute, void* data)
+void _cutest_porting_setjmp(cutest_porting_setjmp_fn execute, void* data)
 {
     cutest_porting_jmpbuf_t jmpbuf;
     execute(&jmpbuf,
@@ -470,6 +537,9 @@ void cutest_porting_setjmp(cutest_porting_setjmp_fn execute, void* data)
         setjmp(jmpbuf.buf),
         data);
 }
+
+WEAK_ALIAS_FUNC(_cutest_porting_setjmp, cutest_porting_setjmp,
+    void, cutest_porting_setjmp_fn, void*)
 
 #endif
 
@@ -695,7 +765,7 @@ static int _cutest_porting_floating_number_f64(double v1, double v2)
     return v1 < v2 ? -1 : 1;
 }
 
-int cutest_porting_compare_floating_number(int type, const void* v1, const void* v2)
+int _cutest_porting_compare_floating_number(int type, const void* v1, const void* v2)
 {
     /* Ensure size match */
     CUTEST_PORTING_ASSERT(sizeof(((double_point_t*)NULL)->bits_) == sizeof(((double_point_t*)NULL)->value_));
@@ -708,6 +778,9 @@ int cutest_porting_compare_floating_number(int type, const void* v1, const void*
 
     return _cutest_porting_floating_number_f32(*(const float*)v1, *(const float*)v2);
 }
+
+WEAK_ALIAS_FUNC(_cutest_porting_compare_floating_number, cutest_porting_compare_floating_number,
+    int, int, const void*, const void*)
 
 #endif
 
@@ -908,7 +981,7 @@ static int _cutest_porting_color_vfprintf(FILE* stream, cutest_porting_color_t c
 /**
  * @brief Print data to \p stream.
  */
-int cutest_porting_cvfprintf(FILE* stream, int color, const char* fmt, va_list ap)
+int _cutest_porting_cvfprintf(FILE* stream, int color, const char* fmt, va_list ap)
 {
     int ret;
     CUTEST_PORTING_ASSERT(stream != NULL);
@@ -926,6 +999,9 @@ int cutest_porting_cvfprintf(FILE* stream, int color, const char* fmt, va_list a
 
     return ret;
 }
+
+WEAK_ALIAS_FUNC(_cutest_porting_cvfprintf, cutest_porting_cvfprintf,
+    int, FILE*, int, const char*, va_list)
 
 #endif
 
@@ -1234,11 +1310,11 @@ static cutest_map_node_t* cutest_map_end(const cutest_map_t* handler)
 {
     cutest_map_node_t* n = handler->rb_root;
 
-	if (!n)
-		return NULL;
-	while (n->rb_right)
-		n = n->rb_right;
-	return n;
+    if (!n)
+        return NULL;
+    while (n->rb_right)
+        n = n->rb_right;
+    return n;
 }
 
 /**
@@ -1801,8 +1877,8 @@ typedef struct test_ctx
 
     struct
     {
-		cutest_porting_jmpbuf_t*    addr;                           /**< Jump address. */
-		cutest_porting_longjmp_fn   func;                           /**< Long jump function. */
+        cutest_porting_jmpbuf_t*    addr;                           /**< Jump address. */
+        cutest_porting_longjmp_fn   func;                           /**< Long jump function. */
     } jmp;
 
     FILE*                           out;
@@ -2083,10 +2159,10 @@ static void _cutest_hook_after_fixture_setup(cutest_case_t* test_case, int ret)
 }
 
 static void _cutest_run_case_set_jmp(cutest_porting_jmpbuf_t* buf,
-	cutest_porting_longjmp_fn fn_longjmp)
+                                     cutest_porting_longjmp_fn fn_longjmp)
 {
-	g_test_ctx.jmp.addr = buf;
-	g_test_ctx.jmp.func = fn_longjmp;
+    g_test_ctx.jmp.addr = buf;
+    g_test_ctx.jmp.func = fn_longjmp;
 }
 
 static void _cutest_fixture_run_setup_jmp(cutest_porting_jmpbuf_t* buf,
@@ -2344,7 +2420,7 @@ static void _cutest_run_case_normal(cutest_case_t* test_case)
     unsigned long ret = _cutest_get_test_fmt_name_normal(info.fmt_name, sizeof(info.fmt_name), test_case);
     if (ret >= sizeof(info.fmt_name))
     {
-        cutest_porting_abort("");
+        cutest_abort("");
         return;
     }
     info.fmt_name_sz = ret;
@@ -2445,7 +2521,7 @@ static void _cutest_run_case_parameterized(cutest_case_t* test_case)
     unsigned long ret = _cutest_get_test_fmt_name_parameter(info.fmt_name, sizeof(info.fmt_name), test_case);
     if (ret >= sizeof(info.fmt_name))
     {
-        cutest_porting_abort("name too long.\n");
+        cutest_abort("name too long.\n");
         return;
     }
     info.fmt_name_sz = ret;
@@ -3162,11 +3238,11 @@ static void _cutest_cleanup(void)
 {
     /* Reset all data. */
     {
-		cutest_map_t case_table = g_test_ctx.case_table;
-		cutest_map_t type_table = g_test_ctx.type_table;
-		cutest_porting_memset(&g_test_ctx, 0, sizeof(g_test_ctx));
-		g_test_ctx.case_table = case_table;
-		g_test_ctx.type_table = type_table;
+        cutest_map_t case_table = g_test_ctx.case_table;
+        cutest_map_t type_table = g_test_ctx.type_table;
+        cutest_porting_memset(&g_test_ctx, 0, sizeof(g_test_ctx));
+        g_test_ctx.case_table = case_table;
+        g_test_ctx.type_table = type_table;
     }
 }
 
@@ -3305,11 +3381,11 @@ static void _cutest_run_all_tests(void)
                 (unsigned)g_test_ctx.counter.repeat.repeat);
         }
 
-		/* shuffle if necessary */
-		if (g_test_ctx.mask.shuffle)
-		{
-			_cutest_shuffle_cases();
-		}
+        /* shuffle if necessary */
+        if (g_test_ctx.mask.shuffle)
+        {
+            _cutest_shuffle_cases();
+        }
 
         _cutest_run_all_test_once();
 
@@ -3416,7 +3492,7 @@ void cutest_internal_assert_failure(void)
          * If current thread is NOT the main thread, it is dangerous to jump back
          * to caller stack, so we just abort the program.
          */
-        cutest_porting_abort("");
+        cutest_abort("");
     }
     else
     {
@@ -3442,7 +3518,7 @@ void cutest_internal_register_type(cutest_type_info_t* info)
 
     if (cutest_map_insert(&g_test_ctx.type_table, &info->node) < 0)
     {
-        cutest_porting_abort("Duplicate type `%s'.\n", info->type_name);
+        cutest_abort("Duplicate type `%s'.\n", info->type_name);
     }
 }
 
@@ -3475,7 +3551,7 @@ void cutest_internal_dump(const char* file, int line, const char* type_name,
     cutest_type_info_t* type_info = _cutest_get_type_info(type_name);
     if (type_info == NULL)
     {
-        cutest_porting_abort("%s not registered.\n", type_name);
+        cutest_abort("%s not registered.\n", type_name);
         return;
     }
 
