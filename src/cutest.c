@@ -2,6 +2,7 @@
 #   define _WIN32_WINNT   0x0600
 #endif
 
+#define CUTEST_BUILDING_DLL
 #include "cutest.h"
 
 /*

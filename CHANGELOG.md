@@ -1,5 +1,11 @@
 # Changelog
 
+## v4.0.1
+
+### Features
+1. Allow to build as shared library.
+
+
 ## v4.0.0 (2024/04/30)
 
 ### BREAKING CHANGES

@@ -64,6 +64,10 @@ option(CUTEST_NO_UINTPTR_SUPPORT
     "Disable uinttpr_t support."
     OFF
 )
+option(CUTEST_USE_DLL
+    "Build as shared library."
+    OFF
+)
 
 ###############################################################################
 # Functions
@@ -82,9 +86,12 @@ endfunction()
 # Setup library
 ###############################################################################
 
-add_library(${PROJECT_NAME}
-    "src/cutest.c"
-)
+if (CUTEST_USE_DLL)
+    add_library(${PROJECT_NAME} SHARED "src/cutest.c")
+    target_compile_options(${PROJECT_NAME} PUBLIC -DCUTEST_USE_DLL)
+else()
+    add_library(${PROJECT_NAME} "src/cutest.c")
+endif()
 
 target_include_directories(${PROJECT_NAME}
     PUBLIC

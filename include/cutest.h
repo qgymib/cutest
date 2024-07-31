@@ -110,12 +110,12 @@ extern "C" {
 /**
  * @brief Patch version.
  */
-#define CUTEST_VERSION_PATCH        0
+#define CUTEST_VERSION_PATCH        1
 
 /**
  * @brief Development version.
  */
-#define CUTEST_VERSION_PREREL       0
+#define CUTEST_VERSION_PREREL       1
 
 /**
  * @brief Ensure the api is exposed as C function.
@@ -125,6 +125,56 @@ extern "C" {
 #else
 #define TEST_C_API
 #endif
+
+/**
+ * @defgroup TEST_BUILDING_DLL Build shared library
+ * 
+ * By default this library is build for static library. If you want to build as
+ * shared library, you must enable corresponding compile options.
+ * 
+ * ## If you are using CMake
+ * 
+ * Enable `CUTEST_USE_DLL` option:
+ * 
+ * ```cmake
+ * set(CUTEST_USE_DLL ON)
+ * add_subdirectory(cutest)
+ * ```
+ * 
+ * ## If you are using other compile system
+ * 
+ * 1. Add `CUTEST_USE_DLL` to build cutest.
+ * 2. Add `CUTEST_USE_DLL` to your **own** codebase.
+ * 
+ * @{
+ */
+#if defined(_WIN32) || defined(__CYGWIN__)
+#   if defined(CUTEST_USE_DLL)
+#       if defined(CUTEST_BUILDING_DLL)
+#           if defined(__GNUC__) || defined(__clang__)
+#               define CUTEST_API   __attribute__ ((dllexport))
+#           else
+#               define CUTEST_API   __declspec(dllexport)
+#           endif
+#       else
+#           if defined(__GNUC__) || defined(__clang__)
+#               define CUTEST_API   __attribute__ ((dllimport))
+#           else
+#               define CUTEST_API   __declspec(dllimport)
+#           endif
+#       endif
+#   else
+#       define CUTEST_API
+#   endif
+#elif (defined(__GNUC__) && __GNUC__ >= 4) || defined(__clang__)
+#   define CUTEST_API   __attribute__((visibility ("default")))
+#else
+#   define CUTEST_API
+#endif
+/**
+ * END GROUP: TEST_BUILDING_DLL
+ * @}
+ */
 
 /**
  * @example main.c
@@ -442,7 +492,7 @@ extern "C" {
 /** @endcond */
 
 /**
- * Group: TEST_DEFINE
+ * END GROUP: TEST_DEFINE
  * @}
  */
 
@@ -706,8 +756,14 @@ typedef struct cutest_case
  * @param[in] teardown - Teardown function.
  * @param[in] body - Test body function.
  */
-void cutest_case_init(cutest_case_t* tc, const char* fixture_name, const char* case_name,
-	cutest_test_case_setup_fn setup, cutest_test_case_teardown_fn teardown, cutest_test_case_body_fn body);
+CUTEST_API void cutest_case_init(
+    cutest_case_t* tc,
+    const char* fixture_name,
+    const char* case_name,
+    cutest_test_case_setup_fn setup,
+    cutest_test_case_teardown_fn teardown,
+    cutest_test_case_body_fn body
+);
 
 /**
  * @brief Convert normal test case to parameterized test case.
@@ -717,8 +773,13 @@ void cutest_case_init(cutest_case_t* tc, const char* fixture_name, const char* c
  * @param[in] data - Data passed to #cutest_case_t::stage::body
  * @param[in] size - Index passed to #cutest_case_t::stage::body
  */
-void cutest_case_convert_parameterized(cutest_case_t* tc, const char* type,
-    const char* commit, void* data, unsigned long size);
+CUTEST_API void cutest_case_convert_parameterized(
+    cutest_case_t* tc,
+    const char* type,
+    const char* commit,
+    void* data,
+    unsigned long size
+);
 
 /**
  * @brief Register test case.
@@ -729,14 +790,18 @@ void cutest_case_convert_parameterized(cutest_case_t* tc, const char* type,
  * @see #cutest_unregister_case().
  * @param[in,out] tc - Test case.
  */
-void cutest_register_case(cutest_case_t* tc);
+CUTEST_API void cutest_register_case(
+    cutest_case_t* tc
+);
 
 /**
  * @brief Unregister test case.
  * @see #cutest_register_case().
  * @param[in,out] tc - Test case.
  */
-void cutest_unregister_case(cutest_case_t* tc);
+CUTEST_API void cutest_unregister_case(
+    cutest_case_t* tc
+);
 
 /**
  * Group: TEST_DYNAMIC_REGISTRATION
@@ -1440,7 +1505,9 @@ typedef struct cutest_type_info
  * @warning Use #TEST_REGISTER_TYPE_ONCE().
  * @param[in] info          Type information.
  */
-void cutest_internal_register_type(cutest_type_info_t* info);
+CUTEST_API void cutest_internal_register_type(
+    cutest_type_info_t* info
+);
 
 /**
  * @def TEST_MSVC_WARNNING_GUARD(exp, code)
@@ -1490,7 +1557,11 @@ void cutest_internal_register_type(cutest_type_info_t* info);
  * @param[in] addr2     The address of value2.
  * @return              Compare result.
  */
-int cutest_internal_compare(const char* type_name, const void* addr1, const void* addr2);
+CUTEST_API int cutest_internal_compare(
+    const char* type_name,
+    const void* addr1,
+    const void* addr2
+);
 
 /**
  * @brief Dump compare result.
@@ -1505,24 +1576,34 @@ int cutest_internal_compare(const char* type_name, const void* addr1, const void
  * @param[in] fmt       User defined print format.
  * @param[in] ...       Print arguments to \p fmt.
  */
-void cutest_internal_dump(const char* file, int line, const char* type_name,
-    const char* op, const char* op_l, const char* op_r,
-    const void* addr1, const void* addr2);
+CUTEST_API void cutest_internal_dump(
+    const char* file,
+    int line,
+    const char* type_name,
+    const char* op,
+    const char* op_l,
+    const char* op_r,
+    const void* addr1,
+    const void* addr2
+);
 
-void cutest_internal_printf(const char* fmt, ...);
+CUTEST_API void cutest_internal_printf(
+    const char* fmt,
+    ...
+);
 
 /**
  * @brief Check if `--test_break_on_failure` is set.
  * @return              Boolean.
  */
-int cutest_internal_break_on_failure(void);
+CUTEST_API int cutest_internal_break_on_failure(void);
 
 /**
  * @brief Set current test as failure
  * @note This function is available in setup stage and test body.
  * @warning Call this function in TearDown stage will cause assert.
  */
-void cutest_internal_assert_failure(void);
+CUTEST_API void cutest_internal_assert_failure(void);
 
 /** @endcond */
 
@@ -1604,26 +1685,31 @@ typedef struct cutest_hook
  * @param[in] hook      Test hook.
  * @return              0 if success, otherwise failure.
  */
-int cutest_run_tests(int argc, char* argv[], FILE* out, const cutest_hook_t* hook);
+CUTEST_API int cutest_run_tests(
+    int argc,
+    char* argv[],
+    FILE* out,
+    const cutest_hook_t* hook
+);
 
 /**
  * @brief Get current running suit name
  * @return              The suit name
  */
-const char* cutest_get_current_fixture(void);
+CUTEST_API const char* cutest_get_current_fixture(void);
 
 /**
  * @brief Get current running case name
  * @return              The case name
  */
-const char* cutest_get_current_test(void);
+CUTEST_API const char* cutest_get_current_test(void);
 
 /**
  * @brief Skip current test case.
  * @note This function only has affect in setup stage.
  * @see TEST_CLASS_SETUP
  */
-void cutest_skip_test(void);
+CUTEST_API void cutest_skip_test(void);
 
 /**
  * Group: TEST_RUN
@@ -1866,11 +1952,12 @@ void cutest_porting_setjmp(cutest_porting_setjmp_fn execute, void* data);
 int cutest_porting_compare_floating_number(int type, const void* v1, const void* v2);
 
 /**
- * Group: TEST_FLOATING_NUMBER
+ * END GROUP: TEST_FLOATING_NUMBER
  * @}
  */
 
 /**
+ * END GROUP: TEST_PORTING
  * @}
  */
 
