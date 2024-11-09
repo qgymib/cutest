@@ -5,6 +5,9 @@
 ### Features
 1. Allow to build as shared library.
 
+### Fixed
+1. Fix build error on windows x86.
+
 
 ## v4.0.0 (2024/04/30)
 

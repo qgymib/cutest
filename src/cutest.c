@@ -24,8 +24,13 @@
  */
 #if defined(_MSC_VER)
 #   ifndef weak_alias
-#       define weak_alias(name, aliasname) \
-            __pragma(comment(linker,"/alternatename:" #aliasname "=" #name));
+#       if defined(_WIN64)
+#           define weak_alias(name, aliasname) \
+                __pragma(comment(linker,"/alternatename:" #aliasname "=" #name));
+#       else
+#           define weak_alias(name, aliasname) \
+                __pragma(comment(linker,"/alternatename:_" #aliasname "=_" #name));
+#       endif
 #   endif
 #elif defined(__GNUC__) || defined(__clang__) || defined(__ARMCOMPILER_VERSION)
 #   ifndef weak_alias
@@ -338,7 +343,7 @@ static LARGE_INTEGER _cutest_get_file_time_offset(void)
     return t;
 }
 
-static BOOL _cutest_init_timestamp_win32(PINIT_ONCE InitOnce, PVOID Parameter, PVOID* Context)
+static BOOL CALLBACK _cutest_init_timestamp_win32(PINIT_ONCE InitOnce, PVOID Parameter, PVOID* Context)
 {
     (void)InitOnce; (void)Parameter; (void)Context;
 
