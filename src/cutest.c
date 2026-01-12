@@ -1,4 +1,4 @@
-#ifndef _WIN32_WINNT
+#ifndef _WIN32_WINNT /* NOLINT */
 #   define _WIN32_WINNT   0x0600
 #endif
 
@@ -6,7 +6,7 @@
 #include "cutest.h"
 
 /*
- * Before Visual Studio 2015, there is a bug that a `do { } while (0)` will triger C4127 warning
+ * Before Visual Studio 2015, there is a bug that a `do { } while (0)` will trigger C4127 warning
  * https://docs.microsoft.com/en-us/cpp/error-messages/compiler-warnings/compiler-warning-level-4-c4127
  */
 #if defined(_MSC_VER) && _MSC_VER < 1900
