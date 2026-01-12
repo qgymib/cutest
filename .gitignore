@@ -83,3 +83,6 @@ dkms.conf
 /out
 /CMakeSettings.json
 /TestResults
+
+# Clion
+/.idea
